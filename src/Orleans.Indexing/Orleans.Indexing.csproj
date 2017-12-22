@@ -16,20 +16,18 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Orleans.Core\Orleans.Core.csproj" />
+    <ProjectReference Include="..\Orleans.Runtime\Orleans.Runtime.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <Folder Include="Core\Annotations\" />
     <Folder Include="Core\MemberUpdateImpl\" />
-    <Folder Include="Core\Utils\" />
     <Folder Include="Exceptions\" />
     <Folder Include="Extensions\" />
     <Folder Include="Indexes\ActiveIndexes\Interfaces\" />
-    <Folder Include="Indexes\Interfaces\" />
     <Folder Include="Indexes\StorageManagedIndexes\Interfaces\" />
     <Folder Include="Indexes\TotalIndexes\Interfaces\" />
     <Folder Include="Properties\" />
-    <Folder Include="Query\Interfaces\" />
     <Folder Include="Query\QueryResult\" />
     <Folder Include="Scanners\Interfaces\" />
   </ItemGroup>
