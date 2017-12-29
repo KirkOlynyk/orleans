@@ -24,6 +24,7 @@ namespace Orleans.Indexing
         internal static IDictionary<string, Tuple<object, object, object>> GetIndexes(Type iGrainType)
         {
 #if (!RUNTIMECLIENT)
+            var RuntimeClient = Orleans.GrainClient.OutsideRuntimeClient;
             throw new NotImplementedException();
 #else
             IDictionary<string, Tuple<object, object, object>> indexes;
