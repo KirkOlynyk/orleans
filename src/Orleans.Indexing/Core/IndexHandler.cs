@@ -31,7 +31,8 @@ namespace Orleans.Indexing
         /// project is not available.</returns>
         internal static IDictionary<string, Tuple<object, object, object>> GetIndexes(Type iGrainType)
         {
-            return IndexRegistry.GetIndexes(iGrainType);
+            return null;
+            //return IndexRegistry.GetIndexes(iGrainType);
         }
 
         /// <summary>
@@ -51,7 +52,8 @@ namespace Orleans.Indexing
         /// project is not available.</returns>
         internal static IDictionary<string, Tuple<object, object, object>> GetIndexes<T>() where T : IIndexableGrain
         {
-            return IndexRegistry.GetIndexes<T>();
+            return null;
+            // return IndexRegistry.GetIndexes<T>();
         }
 
         /// <summary>

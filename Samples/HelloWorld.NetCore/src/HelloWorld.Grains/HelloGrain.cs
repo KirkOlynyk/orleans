@@ -16,10 +16,12 @@ namespace HelloWorld.Grains
             this.logger = logger;
         }  
 
-        Task<string> IHello.SayHello(string greeting)
+        //Task<string> IHello.SayHello(string greeting)
+        public Task<string> SayHello(string greeting)
         {
             logger.LogInformation($"SayHello message received: greeting = '{greeting}'");
-            return Task.FromResult($"You said: '{greeting}', I say: Hello!");
+            string ans = Orleans.Indexing.Class1.StringId("Hello");
+            return Task.FromResult($"You said: '{greeting}', I say: Hello!\nans = '{ans}'");
         }
     }
 }
