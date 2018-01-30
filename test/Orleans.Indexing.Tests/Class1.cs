@@ -5,9 +5,17 @@ using System.Text;
 using System.Threading.Tasks;
 using Xunit;
 using Xunit.Abstractions;
+using Orleans;
+using Orleans.Runtime;
+using Microsoft.Extensions.Logging;
 
 namespace Orleans.Indexing.Tests
 {
+    public interface ISimpleGrain : IGrainWithIntegerKey
+    {
+        Task<string> GetName();
+    }
+
     public class Class1
     {
         private readonly ITestOutputHelper output;
@@ -16,6 +24,23 @@ namespace Orleans.Indexing.Tests
         {
             this.output = output;
         }
+
+        public class SimpleGrain : Grain, ISimpleGrain
+        {
+            private ILogger logger;
+
+            public SimpleGrain(ILogger<SimpleGrain> logger)
+            {
+                this.logger = logger;
+            }
+
+            public Task<string> GetName()
+            {
+                this.logger.Info("GetName");
+                return Task.FromResult(nameof(SimpleGrain));
+            }
+        }
+
 
         [Fact]
         public void PassingTest()
