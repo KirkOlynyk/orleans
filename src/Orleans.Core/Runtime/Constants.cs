@@ -22,7 +22,9 @@ namespace Orleans.Runtime
         public const string ORLEANS_REMINDERS_AZURESTORAGE = "Orleans.Reminders.AzureStorage";
         public const string ORLEANS_STATISTICS_AZURESTORAGE = "Orleans.Statistics.AzureStorage";
 
-        public const string ORLEANS_SQL_UTILS_DLL = "OrleansSQLUtils";
+        public const string ORLEANS_CLUSTERING_ADONET = "Orleans.Clustering.AdoNet";
+        public const string ORLEANS_REMINDERS_ADONET = "Orleans.Reminders.AdoNet";
+
         public const string INVARIANT_NAME_SQL_SERVER = "System.Data.SqlClient";
 
         public const string ORLEANS_CLUSTERING_ZOOKEEPER = "Orleans.Clustering.ZooKeeper";
@@ -35,7 +37,7 @@ namespace Orleans.Runtime
         public static readonly GrainId CatalogId = GrainId.GetSystemTargetGrainId(14);
         public static readonly GrainId MembershipOracleId = GrainId.GetSystemTargetGrainId(15);
         public static readonly GrainId TypeManagerId = GrainId.GetSystemTargetGrainId(17);
-        public static readonly GrainId ProviderManagerSystemTargetId = GrainId.GetSystemTargetGrainId(19);
+        public static readonly GrainId FallbackSystemTargetId = GrainId.GetSystemTargetGrainId(19);
         public static readonly GrainId DeploymentLoadPublisherSystemTargetId = GrainId.GetSystemTargetGrainId(22);
         public static readonly GrainId MultiClusterOracleId = GrainId.GetSystemTargetGrainId(23);
         public static readonly GrainId ClusterDirectoryServiceId = GrainId.GetSystemTargetGrainId(24);
@@ -87,7 +89,7 @@ namespace Orleans.Runtime
             {MultiClusterOracleId,"MultiClusterOracle"},
             {TypeManagerId,"TypeManagerId"},
             {ProtocolGatewayId,"ProtocolGateway"},
-            {ProviderManagerSystemTargetId, "ProviderManagerSystemTarget"},
+            {FallbackSystemTargetId, "FallbackSystemTarget"},
             {DeploymentLoadPublisherSystemTargetId, "DeploymentLoadPublisherSystemTarget"},
         };
 

@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+using System;
 using System.Linq;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -8,47 +7,50 @@ using Orleans.Configuration;
 using Orleans.Runtime;
 using Orleans.Runtime.Configuration;
 using Orleans.Runtime.MembershipService;
+using Orleans.Runtime.Scheduler;
+using Orleans.Runtime.Providers;
+using Orleans.Providers;
+using Orleans.Configuration.Options;
 
 namespace Orleans.Hosting
 {
-    internal static class LegacyClusterConfigurationExtensions
+    public static class LegacyClusterConfigurationExtensions
     {
+        private const int SiloDefaultProviderInitStage = SiloLifecycleStage.RuntimeStorageServices;
+        private const int SiloDefaultProviderStartStage = SiloLifecycleStage.ApplicationServices;
+
         public static IServiceCollection AddLegacyClusterConfigurationSupport(this IServiceCollection services, ClusterConfiguration configuration)
         {
             if (configuration == null) throw new ArgumentNullException(nameof(configuration));
 
-            if (services.Any(service => service.ServiceType == typeof(ClusterConfiguration)))
+            if (services.TryGetClusterConfiguration() != null)
             {
                 throw new InvalidOperationException("Cannot configure legacy ClusterConfiguration support twice");
             }
 
             // these will eventually be removed once our code doesn't depend on the old ClientConfiguration
             services.AddSingleton(configuration);
-            services.TryAddSingleton<SiloInitializationParameters>();
-            services.TryAddFromExisting<ILocalSiloDetails, SiloInitializationParameters>();
-            services.TryAddSingleton(sp => sp.GetRequiredService<SiloInitializationParameters>().ClusterConfig);
-            services.TryAddSingleton(sp => sp.GetRequiredService<SiloInitializationParameters>().ClusterConfig.Globals);
-            services.TryAddTransient(sp => sp.GetRequiredService<SiloInitializationParameters>().NodeConfig);
+            services.TryAddSingleton<LegacyConfigurationWrapper>();
+            services.TryAddSingleton(sp => sp.GetRequiredService<LegacyConfigurationWrapper>().ClusterConfig.Globals);
+            services.TryAddTransient(sp => sp.GetRequiredService<LegacyConfigurationWrapper>().NodeConfig);
             services.TryAddSingleton<Factory<NodeConfiguration>>(
                 sp =>
                 {
-                    var initializationParams = sp.GetRequiredService<SiloInitializationParameters>();
+                    var initializationParams = sp.GetRequiredService<LegacyConfigurationWrapper>();
                     return () => initializationParams.NodeConfig;
                 });
 
             services.Configure<SiloOptions>(options =>
             {
-#pragma warning disable CS0618 // Type or member is obsolete
-                if (string.IsNullOrWhiteSpace(options.ClusterId) && !string.IsNullOrWhiteSpace(configuration.Globals.DeploymentId))
+                if (string.IsNullOrWhiteSpace(options.ClusterId) && !string.IsNullOrWhiteSpace(configuration.Globals.ClusterId))
                 {
-                    options.ClusterId = configuration.Globals.DeploymentId;
+                    options.ClusterId = configuration.Globals.ClusterId;
                 }
 
                 if (options.ServiceId == Guid.Empty)
                 {
                     options.ServiceId = configuration.Globals.ServiceId;
                 }
-#pragma warning restore CS0618 // Type or member is obsolete
             });
 
             services.Configure<MultiClusterOptions>(options =>
@@ -58,7 +60,7 @@ namespace Orleans.Hosting
                 {
                     options.HasMultiClusterNetwork = true;
                     options.BackgroundGossipInterval = globals.BackgroundGossipInterval;
-                    options.DefaultMultiCluster = globals.DefaultMultiCluster?.ToList() ?? new List<string>();
+                    options.DefaultMultiCluster = globals.DefaultMultiCluster?.ToList();
                     options.GlobalSingleInstanceNumberRetries = globals.GlobalSingleInstanceNumberRetries;
                     options.GlobalSingleInstanceRetryInterval = globals.GlobalSingleInstanceRetryInterval;
                     options.MaxMultiClusterGateways = globals.MaxMultiClusterGateways;
@@ -83,11 +85,31 @@ namespace Orleans.Hosting
             });
 
             services.Configure<NetworkingOptions>(options => LegacyConfigurationExtensions.CopyNetworkingOptions(configuration.Globals, options));
-            
+
+            services.AddOptions<EndpointOptions>()
+                .Configure<IOptions<SiloOptions>>((options, siloOptions) =>
+                {
+                    var nodeConfig = configuration.GetOrCreateNodeConfigurationForSilo(siloOptions.Value.SiloName);
+                    if (options.IPAddress == null && string.IsNullOrWhiteSpace(options.HostNameOrIPAddress))
+                    {
+                        options.IPAddress = nodeConfig.Endpoint.Address;
+                        options.Port = nodeConfig.Endpoint.Port;
+                    }
+                    if (options.ProxyPort == 0 && nodeConfig.ProxyGatewayEndpoint != null)
+                    {
+                        options.ProxyPort = nodeConfig.ProxyGatewayEndpoint.Port;
+                    }
+                });
+
             services.Configure<SerializationProviderOptions>(options =>
             {
                 options.SerializationProviders = configuration.Globals.SerializationProviders;
                 options.FallbackSerializationProvider = configuration.Globals.FallbackSerializationProvider;
+            });
+
+            services.Configure<TelemetryOptions>(options =>
+            {
+                LegacyConfigurationExtensions.CopyTelemetryOptions(configuration.Defaults.TelemetryConfiguration, services, options);
             });
 
             services.AddOptions<GrainClassOptions>().Configure<IOptions<SiloOptions>>((options, siloOptions) =>
@@ -97,7 +119,29 @@ namespace Orleans.Hosting
             });
 
             LegacyMembershipConfigurator.ConfigureServices(configuration.Globals, services);
+
+            services.AddOptions<SchedulingOptions>().Configure<GlobalConfiguration>((options, config) =>
+            {
+                options.AllowCallChainReentrancy = config.AllowCallChainReentrancy;
+                options.PerformDeadlockDetection = config.PerformDeadlockDetection;
+            });
+
+            services.TryAddSingleton<LegacyProviderConfigurator.ScheduleTask>(sp =>
+            {
+                OrleansTaskScheduler scheduler = sp.GetRequiredService<OrleansTaskScheduler>();
+                SystemTarget fallbackSystemTarget = sp.GetRequiredService<FallbackSystemTarget>();
+                return (taskFunc) => scheduler.QueueTask(taskFunc, fallbackSystemTarget.SchedulingContext);
+            });
+            LegacyProviderConfigurator<ISiloLifecycle>.ConfigureServices(configuration.Globals.ProviderConfigurations, services, SiloDefaultProviderInitStage, SiloDefaultProviderStartStage);
+
             return services;
+        }
+
+        public static ClusterConfiguration TryGetClusterConfiguration(this IServiceCollection services)
+        {
+            return services
+                .FirstOrDefault(s => s.ServiceType == typeof(ClusterConfiguration))
+                ?.ImplementationInstance as ClusterConfiguration;
         }
     }
 }

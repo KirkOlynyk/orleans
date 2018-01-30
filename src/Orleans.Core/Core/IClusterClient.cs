@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using Orleans.Runtime;
 using Orleans.Runtime.Configuration;
@@ -18,13 +17,6 @@ namespace Orleans
         bool IsInitialized { get; }
 
         /// <summary>
-        /// Provides logging facility for applications.
-        /// </summary>
-        /// <exception cref="InvalidOperationException">Thrown if Orleans runtime is not correctly initialized before this call.</exception>
-       //TODO: Mark it as [Obsolete] after all runtime has migrated
-        Logger Logger { get; }
-
-        /// <summary>
         /// Gets the service provider used by this client.
         /// </summary>
         IServiceProvider ServiceProvider { get; }
@@ -33,12 +25,6 @@ namespace Orleans
         /// Gets the client configuration.
         /// </summary>
         ClientConfiguration Configuration { get; }
-
-        /// <summary>
-        /// Returns a collection of all configured <see cref="IStreamProvider"/>s.
-        /// </summary>
-        /// <returns>A collection of all configured <see cref="IStreamProvider"/>s.</returns>
-        IEnumerable<IStreamProvider> GetStreamProviders();
 
         /// <summary>
         /// Returns the <see cref="IStreamProvider"/> with the specified <paramref name="name"/>.

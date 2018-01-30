@@ -3,12 +3,9 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
-using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Orleans.ApplicationParts;
 using Orleans.CodeGeneration;
-using Orleans.Hosting;
 using Orleans.Runtime;
 using Orleans.Runtime.Configuration;
 using Orleans.Streams;
@@ -311,20 +308,6 @@ namespace Orleans
         }
 
         /// <summary>
-        /// Provides logging facility for applications.
-        /// </summary>
-        /// <exception cref="InvalidOperationException">Thrown if Orleans runtime is not correctly initialized before this call.</exception>
-        [Obsolete(DeprecationMessage)]
-        public static Logger Logger
-        {
-            get
-            {
-                CheckInitialized();
-                return client.Logger;
-            }
-        }
-
-        /// <summary>
         /// Set a timeout for responses on this Orleans client.
         /// </summary>
         /// <param name="timeout"></param>
@@ -370,13 +353,6 @@ namespace Orleans
                 CheckInitialized();
                 RuntimeClient.ClientInvokeCallback = value;
             }
-        }
-
-        [Obsolete(DeprecationMessage)]
-        public static IEnumerable<Streams.IStreamProvider> GetStreamProviders()
-        {
-            CheckInitialized();
-            return client.GetStreamProviders();
         }
 
         internal static IStreamProviderRuntime CurrentStreamProviderRuntime

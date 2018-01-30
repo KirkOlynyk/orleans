@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Reflection;
 using System.Runtime.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
@@ -20,6 +19,7 @@ using Orleans.Streams.Core;
 using Orleans.Streams;
 using System.Runtime.ExceptionServices;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Orleans.Runtime
 {
@@ -77,7 +77,6 @@ namespace Orleans.Runtime
         private readonly OrleansTaskScheduler scheduler;
         private readonly ActivationDirectory activations;
         private IStreamProviderRuntime providerRuntime;
-        private IStreamProviderManager providerManager;
         private IServiceProvider serviceProvider;
         private readonly ILogger logger;
         private int collectionNumber;
@@ -111,10 +110,10 @@ namespace Orleans.Runtime
             MessageFactory messageFactory,
             SerializationManager serializationManager,
             IStreamProviderRuntime providerRuntime,
-            IStreamProviderManager providerManager,
             IServiceProvider serviceProvider,
             CachedVersionSelectorManager versionSelectorManager,
-            ILoggerFactory loggerFactory)
+            ILoggerFactory loggerFactory,
+            IOptions<SchedulingOptions> schedulingOptions)
             : base(Constants.CatalogId, messageCenter.MyAddress, loggerFactory)
         {
             LocalSilo = localSiloDetails.SiloAddress;
@@ -132,11 +131,20 @@ namespace Orleans.Runtime
             this.versionSelectorManager = versionSelectorManager;
             this.providerRuntime = providerRuntime;
             this.serviceProvider = serviceProvider;
-            this.providerManager = providerManager;
             logger = loggerFactory.CreateLogger<Catalog>();
             this.config = config.Globals;
             ActivationCollector = new ActivationCollector(config, loggerFactory);
-            this.Dispatcher = new Dispatcher(scheduler, messageCenter, this, config, placementDirectorsManager, grainDirectory, messageFactory, serializationManager, versionSelectorManager.CompatibilityDirectorManager, loggerFactory);
+            this.Dispatcher = new Dispatcher(scheduler,
+                messageCenter,
+                this,
+                config,
+                placementDirectorsManager,
+                grainDirectory,
+                messageFactory,
+                serializationManager,
+                versionSelectorManager.CompatibilityDirectorManager,
+                loggerFactory,
+                schedulingOptions);
             GC.GetTotalMemory(true); // need to call once w/true to ensure false returns OK value
 
             config.OnConfigChange("Globals/Activation", () => scheduler.RunOrQueueAction(Start, SchedulingContext), false);
@@ -707,11 +715,10 @@ namespace Orleans.Runtime
                 data.SetupContext(grainTypeData, this.serviceProvider);
 
                 Grain grain = grainCreator.CreateGrainInstance(data);
-
-                Dictionary<Type, IStreamSubscriptionObserverProxy> observerProxyMap;
-                //if grain implements IStreamSubscriptionObserver<T>, then can get a set of subscriptionObserver from it
-                if(TryGetStreamSubscriptionObservers(grainType, grain, out observerProxyMap))
-                    InstallStreamConsumerExtension(data, observerProxyMap);
+                
+                //if grain implements IStreamSubscriptionObserver, then install stream consumer extension on it
+                if(grain is IStreamSubscriptionObserver)
+                    InstallStreamConsumerExtension(data, grain as IStreamSubscriptionObserver);
 
                 grain.Data = data;
                 data.SetGrainInstance(grain);
@@ -722,33 +729,13 @@ namespace Orleans.Runtime
             if (logger.IsEnabled(LogLevel.Debug)) logger.Debug("CreateGrainInstance {0}{1}", data.Grain, data.ActivationId);
         }
 
-        private void InstallStreamConsumerExtension(ActivationData result, Dictionary<Type, IStreamSubscriptionObserverProxy> observerProxyMap)
+        private void InstallStreamConsumerExtension(ActivationData result, IStreamSubscriptionObserver observer)
         {
             var invoker = InsideRuntimeClient.TryGetExtensionInvoker(this.GrainTypeManager, typeof(IStreamConsumerExtension));
             if (invoker == null)
                 throw new InvalidOperationException("Extension method invoker was not generated for an extension interface");
-            var subscriptionChangeHandler = new StreamSubscriptionChangeHandler(this.providerManager, observerProxyMap);
-            var handler = new StreamConsumerExtension(this.providerRuntime, subscriptionChangeHandler);
+            var handler = new StreamConsumerExtension(this.providerRuntime, observer);
             result.TryAddExtension(invoker, handler);
-        }
-
-        private bool TryGetStreamSubscriptionObservers(Type grainType, IAddressable grain, out Dictionary<Type, IStreamSubscriptionObserverProxy> observerProxyMap)
-        {
-            var interfaces = grainType.GetInterfaces();
-            var subObserverProxyMap = new Dictionary<Type, IStreamSubscriptionObserverProxy>();
-            foreach (var interf in interfaces)
-            {
-                //use GetTypeInfo for netstandard compatible
-                if (interf.GetTypeInfo().IsGenericType && (interf.GetGenericTypeDefinition().GetTypeInfo().IsEquivalentTo(typeof(IStreamSubscriptionObserver<>))))
-                {
-                    var typeParam = interf.GetGenericArguments()[0];
-                    var observerProxy = (IStreamSubscriptionObserverProxy)this.serviceProvider.GetService(interf);
-                    observerProxy.SubscriptionObserver = grain;
-                    subObserverProxyMap.Add(typeParam, observerProxy);
-                }
-            }
-            observerProxyMap = subObserverProxyMap;
-            return subObserverProxyMap.Count > 0;
         }
 
         /// <summary>

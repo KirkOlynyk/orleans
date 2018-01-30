@@ -6,11 +6,10 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Net;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Orleans.Logging.Legacy;
 using Orleans.Logging;
+using Orleans.Logging.Legacy;
 using TestExtensions;
 using Xunit;
 using Xunit.Abstractions;
@@ -282,8 +281,7 @@ namespace Tester
 
             var serviceProvider = new ServiceCollection().AddLogging(builder =>
                     builder.AddLegacyOrleansLogging(new List<ILogConsumer>() { logConsumer }, null,
-                        eventBulkingOptions)
-                        .AddFile("Test.log"))
+                        eventBulkingOptions))
                 .BuildServiceProvider();
             var logger = serviceProvider.GetService<ILoggerFactory>().CreateLogger(testName);
 

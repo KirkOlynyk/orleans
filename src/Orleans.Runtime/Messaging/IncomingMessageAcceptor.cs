@@ -5,6 +5,7 @@ using System.Net.Sockets;
 using Microsoft.Extensions.Logging;
 using Orleans.Messaging;
 using Orleans.Serialization;
+using System.Threading.Tasks;
 
 namespace Orleans.Runtime.Messaging
 {
@@ -12,12 +13,14 @@ namespace Orleans.Runtime.Messaging
     {
         private readonly ConcurrentObjectPool<SaeaPoolWrapper> receiveEventArgsPool;
         private const int SocketBufferSize = 1024 * 128; // 128 kb
+        private const int PreambleMaxSize = 1024 * 4; // 4 kb
         private readonly IPEndPoint listenAddress;
         private Action<Message> sniffIncomingMessageHandler;
         private readonly LingerOption receiveLingerOption = new LingerOption(true, 0);
         internal Socket AcceptingSocket;
         protected MessageCenter MessageCenter;
         protected HashSet<Socket> OpenReceiveSockets;
+        private bool isStopping = false;
         protected readonly MessageFactory MessageFactory;
 
         private static readonly CounterStatistic allocatedSocketEventArgsCounter 
@@ -87,6 +90,7 @@ namespace Orleans.Runtime.Messaging
         public override void Stop()
         {
             base.Stop();
+            this.isStopping = true;
 
             if (Log.IsEnabled(LogLevel.Debug)) Log.Debug("Disconnecting the listening socket");
             SocketManager.CloseSocket(AcceptingSocket);
@@ -184,6 +188,12 @@ namespace Orleans.Runtime.Messaging
 
         private byte[] ReadFromSocket(Socket sock, int expected)
         {
+            if (expected > PreambleMaxSize)
+            {
+                Log.Warn(ErrorCode.GatewayAcceptor_InvalidSize,
+                    "Invalid expected size {0} while receiving connection preamble data from endpoint {1}.", expected, sock.RemoteEndPoint);
+                return null;
+            }
             var buffer = new byte[expected];
             int offset = 0;
             while (offset < buffer.Length)
@@ -340,19 +350,22 @@ namespace Orleans.Runtime.Messaging
                     // Prep the socket so it will reset on close
                     sock.LingerState = receiveLingerOption;
 
-                    // Add the socket to the open socket collection
-                    if (ima.RecordOpenedSocket(sock))
+                    Task.Factory.StartNew(() =>
                     {
-                        // Get the socket for the accepted client connection and put it into the 
-                        // ReadEventArg object user token.
-                        var readEventArgs = GetSocketReceiveAsyncEventArgs(sock);
+                        // Add the socket to the open socket collection
+                        if (ima.RecordOpenedSocket(sock))
+                        {
+                            // Get the socket for the accepted client connection and put it into the 
+                            // ReadEventArg object user token.
+                            var readEventArgs = GetSocketReceiveAsyncEventArgs(sock);
 
-                        StartReceiveAsync(sock, readEventArgs, ima);
-                    }
-                    else
-                    {
-                        ima.SafeCloseSocket(sock);
-                    }
+                            StartReceiveAsync(sock, readEventArgs, ima);
+                        }
+                        else
+                        {
+                            ima.SafeCloseSocket(sock);
+                        }
+                    }).Ignore();
                 }
 
                 // The next accept will be started in the caller method
@@ -582,6 +595,12 @@ namespace Orleans.Runtime.Messaging
         {
             try
             {
+                if (this.isStopping)
+                {
+                    if (Log.IsEnabled(LogLevel.Debug)) Log.Debug("System is stopping, I will not restart the accepting socket");
+                    return;
+                }
+
                 if (Log.IsEnabled(LogLevel.Debug)) Log.Debug("Restarting of the accepting socket");
                 SocketManager.CloseSocket(AcceptingSocket);
                 AcceptingSocket = MessageCenter.SocketManager.GetAcceptingSocketForEndpoint(listenAddress);

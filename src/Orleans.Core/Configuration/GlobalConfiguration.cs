@@ -435,7 +435,9 @@ namespace Orleans.Runtime.Configuration
         public TimeSpan ClientRegistrationRefresh { get; set; }
 
         internal bool PerformDeadlockDetection { get; set; }
-
+        
+        public bool AllowCallChainReentrancy { get; set; }
+        
         public string DefaultPlacementStrategy { get; set; }
 
         public CompatibilityStrategy DefaultCompatibilityStrategy { get; set; }
@@ -521,6 +523,7 @@ namespace Orleans.Runtime.Configuration
         private static readonly TimeSpan DEFAULT_UNREGISTER_RACE_DELAY = TimeSpan.FromMinutes(1);
         private static readonly TimeSpan DEFAULT_CLIENT_REGISTRATION_REFRESH = TimeSpan.FromMinutes(5);
         public const bool DEFAULT_PERFORM_DEADLOCK_DETECTION = false;
+        public const bool DEFAULT_ALLOW_CALL_CHAIN_REENTRANCY = false;
         public static readonly string DEFAULT_PLACEMENT_STRATEGY = typeof(RandomPlacement).Name;
         public static readonly string DEFAULT_MULTICLUSTER_REGISTRATION_STRATEGY = typeof(GlobalSingleInstanceRegistration).Name;
         private static readonly TimeSpan DEFAULT_DEPLOYMENT_LOAD_PUBLISHER_REFRESH_TIME = TimeSpan.FromSeconds(1);
@@ -576,6 +579,7 @@ namespace Orleans.Runtime.Configuration
             ClientRegistrationRefresh = DEFAULT_CLIENT_REGISTRATION_REFRESH;
 
             PerformDeadlockDetection = DEFAULT_PERFORM_DEADLOCK_DETECTION;
+            AllowCallChainReentrancy = DEFAULT_ALLOW_CALL_CHAIN_REENTRANCY;
             reminderServiceType = ReminderServiceProviderType.NotSpecified;
             DefaultPlacementStrategy = DEFAULT_PLACEMENT_STRATEGY;
             DeploymentLoadPublisherRefreshTime = DEFAULT_DEPLOYMENT_LOAD_PUBLISHER_REFRESH_TIME;
@@ -1030,35 +1034,6 @@ namespace Orleans.Runtime.Configuration
                         break;
                 }
             }
-        }
-
-        /// <summary>
-        /// Registers a given type of <typeparamref name="T"/> where <typeparamref name="T"/> is bootstrap provider
-        /// </summary>
-        /// <typeparam name="T">Non-abstract type which implements <see cref="IBootstrapProvider"/> interface</typeparam>
-        /// <param name="providerName">Name of the bootstrap provider</param>
-        /// <param name="properties">Properties that will be passed to bootstrap provider upon initialization</param>
-        public void RegisterBootstrapProvider<T>(string providerName, IDictionary<string, string> properties = null) where T : IBootstrapProvider
-        {
-            Type providerType = typeof(T);
-            var providerTypeInfo = providerType.GetTypeInfo();
-            if (providerTypeInfo.IsAbstract ||
-                providerTypeInfo.IsGenericType ||
-                !typeof(IBootstrapProvider).IsAssignableFrom(providerType))
-                throw new ArgumentException("Expected non-generic, non-abstract type which implements IBootstrapProvider interface", "typeof(T)");
-
-            ProviderConfigurationUtility.RegisterProvider(ProviderConfigurations, ProviderCategoryConfiguration.BOOTSTRAP_PROVIDER_CATEGORY_NAME, providerTypeInfo.FullName, providerName, properties);
-        }
-
-        /// <summary>
-        /// Registers a given bootstrap provider.
-        /// </summary>
-        /// <param name="providerTypeFullName">Full name of the bootstrap provider type</param>
-        /// <param name="providerName">Name of the bootstrap provider</param>
-        /// <param name="properties">Properties that will be passed to the bootstrap provider upon initialization </param>
-        public void RegisterBootstrapProvider(string providerTypeFullName, string providerName, IDictionary<string, string> properties = null)
-        {
-            ProviderConfigurationUtility.RegisterProvider(ProviderConfigurations, ProviderCategoryConfiguration.BOOTSTRAP_PROVIDER_CATEGORY_NAME, providerTypeFullName, providerName, properties);
         }
 
         /// <summary>

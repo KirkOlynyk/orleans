@@ -1,5 +1,6 @@
-﻿using System;
+using System;
 using System.Diagnostics;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -10,6 +11,7 @@ using Orleans.Runtime;
 using Orleans.Runtime.Configuration;
 using Orleans.Runtime.Counters;
 using Orleans.Runtime.Scheduler;
+using Orleans.Statistics;
 using TestExtensions;
 using UnitTests.Grains;
 using UnitTests.TesterInternal;
@@ -27,15 +29,13 @@ namespace UnitTests.SchedulerTests
         private readonly OrleansTaskScheduler masterScheduler;
         private readonly UnitTestSchedulingContext context;
         private readonly SiloPerformanceMetrics performanceMetrics;
-        private readonly RuntimeStatisticsGroup runtimeStatisticsGroup;
         private readonly ILoggerFactory loggerFactory;
         public OrleansTaskSchedulerAdvancedTests_Set2(ITestOutputHelper output)
         {
             this.output = output;
             loggerFactory = OrleansTaskSchedulerBasicTests.InitSchedulerLogging();
             context = new UnitTestSchedulingContext();
-            this.runtimeStatisticsGroup = new RuntimeStatisticsGroup(loggerFactory);
-            this.performanceMetrics = new SiloPerformanceMetrics(this.runtimeStatisticsGroup, this.loggerFactory);
+            this.performanceMetrics = new SiloPerformanceMetrics(new NoOpHostEnvironmentStatistics(loggerFactory), new AppEnvironmentStatistics(), this.loggerFactory);
             masterScheduler = TestInternalHelper.InitializeSchedulerForTesting(context, this.performanceMetrics, loggerFactory);
         }
         
@@ -44,7 +44,6 @@ namespace UnitTests.SchedulerTests
             masterScheduler.Stop();
             this.loggerFactory.Dispose();
             this.performanceMetrics.Dispose();
-            this.runtimeStatisticsGroup.Dispose();
         }
 
         [Fact, TestCategory("Functional"), TestCategory("Scheduler")]
@@ -770,8 +769,11 @@ namespace UnitTests.SchedulerTests
 
         private class MockSiloDetails : ILocalSiloDetails
         {
+            public string DnsHostName { get; }
             public SiloAddress SiloAddress { get; set; }
+            public SiloAddress GatewayAddress { get; }
             public string Name { get; set; } = Guid.NewGuid().ToString();
+            public string ClusterId { get; }
         }
     }
 }
