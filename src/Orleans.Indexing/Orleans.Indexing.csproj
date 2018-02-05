@@ -20,15 +20,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Core\Annotations\" />
-    <Folder Include="Core\MemberUpdateImpl\" />
     <Folder Include="Exceptions\" />
     <Folder Include="Extensions\" />
-    <Folder Include="Indexes\ActiveIndexes\Interfaces\" />
     <Folder Include="Indexes\StorageManagedIndexes\Interfaces\" />
     <Folder Include="Indexes\TotalIndexes\Interfaces\" />
     <Folder Include="Properties\" />
-    <Folder Include="Query\QueryResult\" />
     <Folder Include="Scanners\Interfaces\" />
   </ItemGroup>
 </Project>

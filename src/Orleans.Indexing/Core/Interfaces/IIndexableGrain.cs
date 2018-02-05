@@ -1,4 +1,4 @@
-﻿using Orleans.Concurrency;
+using Orleans.Concurrency;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -20,17 +20,17 @@ namespace Orleans.Indexing
         /// </summary>
         /// <param name="iUpdateGen">IIndexUpdateGenerator for a particular index</param>
         /// <returns>the corresponding image of grain for a particular index</returns>
-        Task<object> ExtractIndexImage(IIndexUpdateGenerator iUpdateGen);
+        //Task<object> ExtractIndexImage(IIndexUpdateGenerator iUpdateGen);
 
         /// <summary>
         /// This method returns the list of active work-flow IDs for a Total Index
         /// </summary>
-        Task<Immutable<HashSet<Guid>>> GetActiveWorkflowIdsList();
+        //Task<Immutable<HashSet<Guid>>> GetActiveWorkflowIdsList();
 
         /// <summary>
         /// This method removes a work-flow ID from the list of active work-flow IDs for a Total Index
         /// </summary>
-        Task RemoveFromActiveWorkflowIds(HashSet<Guid> removedWorkflowId);
+        //Task RemoveFromActiveWorkflowIds(HashSet<Guid> removedWorkflowId);
     }
     public interface IIndexableGrain<TProperties> : IIndexableGrain
     {

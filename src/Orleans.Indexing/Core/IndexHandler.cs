@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace Orleans.Indexing
@@ -62,12 +62,12 @@ namespace Orleans.Indexing
         /// <param name="iGrainType">The target grain interface type</param>
         /// <param name="indexName">The target index name on the target grain interface type</param>
         /// <returns>the index object that implements IndexInterface</returns>
-        internal static IndexInterface GetIndex(Type iGrainType, string indexName)
+        internal static IIndexInterface GetIndex(Type iGrainType, string indexName)
         {
             Tuple<object, object, object> index;
             if (GetIndexes(iGrainType).TryGetValue(indexName, out index))
             {
-                return (IndexInterface)index.Item1;
+                return (IIndexInterface)index.Item1;
             }
             else
             {
@@ -84,7 +84,7 @@ namespace Orleans.Indexing
         /// <typeparam name="T">The target grain interface type</typeparam>
         /// <param name="indexName">The target index name on the target grain interface type</param>
         /// <returns>the index object that implements IndexInterface</returns>
-        internal static IndexInterface GetIndex<T>(string indexName) where T : IIndexableGrain
+        internal static IIndexInterface GetIndex<T>(string indexName) where T : IIndexableGrain
         {
             return GetIndex(typeof(T), indexName);
         }
@@ -96,9 +96,9 @@ namespace Orleans.Indexing
         /// <typeparam name="V">value type of the target index (i.e., grain interface type)</typeparam>
         /// <param name="indexName">The target index name on the target grain interface type</param>
         /// <returns>the index object that implements IndexInterface</returns>
-        internal static IndexInterface<K, V> GetIndex<K, V>(string indexName) where V : IIndexableGrain
+        internal static IIndexInterface<K, V> GetIndex<K, V>(string indexName) where V : IIndexableGrain
         {
-            return (IndexInterface<K, V>)GetIndex(typeof(V), indexName);
+            return (IIndexInterface<K, V>)GetIndex(typeof(V), indexName);
         }
     }
 }

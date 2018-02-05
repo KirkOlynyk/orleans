@@ -1,4 +1,4 @@
-﻿using Orleans.Concurrency;
+using Orleans.Concurrency;
 using Orleans.Runtime;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -12,7 +12,7 @@ namespace Orleans.Indexing
     /// that is required for an index implementation.
     /// </summary>
     [Unordered]
-    public interface IndexInterface
+    public interface IIndexInterface
     {
         /// <summary>
         /// This method applies a given update to the current index.
@@ -80,7 +80,7 @@ namespace Orleans.Indexing
     /// the root interface for the index implementations.
     /// </summary>
     [Unordered]
-    public interface IndexInterface<K, V> : IndexInterface where V : IIndexableGrain
+    public interface IIndexInterface<K, V> : IIndexInterface where V : IIndexableGrain
     {
         /// <summary>
         /// This method retrieves the result of a lookup into the hash-index

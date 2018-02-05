@@ -1,4 +1,8 @@
-﻿using System;
+using System;
+using System.Reflection;
+using System.Collections.Generic;
+using Microsoft.Extensions.Logging;
+
 
 namespace Orleans.Indexing
 {
@@ -13,5 +17,25 @@ namespace Orleans.Indexing
         {
             return input;
         }
+    }
+
+    public class Utils
+    {
+        public static TGrainInterface GetGrain<TGrainInterface>(string primaryKey, string grainClassNamePrefix = null) where TGrainInterface : IGrainWithStringKey
+        {
+            throw new NotImplementedException();
+        }
+
+        public static IEnumerable<Type> GetTypes(Assembly assembly, Predicate<Type> whereFunc, ILogger logger)
+        {
+            return Orleans.Runtime.TypeUtils.GetTypes(assembly, whereFunc, logger);
+        }
+
+        public static bool IsConcreteGrainClass(Type type)
+        {
+            return Orleans.Runtime.TypeUtils.IsConcreteGrainClass(type);
+        }
+
+
     }
 }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Orleans.Runtime;
 
 namespace Orleans.Indexing
@@ -6,7 +6,7 @@ namespace Orleans.Indexing
     /// <summary>
     /// A utility class for the low-level operations related to indexes
     /// </summary>
-    internal static class IndexUtils
+    public static class IndexUtils
     {
         /// <summary>
         /// A utility function for getting the index grainID,
@@ -17,7 +17,7 @@ namespace Orleans.Indexing
         /// <param name="indexName">the name of the index, which
         /// is the identifier of the index</param>
         /// <returns>index grainID</returns>
-        internal static string GetIndexGrainID(Type grainType, string indexName)
+        public static string GetIndexGrainID(Type grainType, string indexName)
         {
             return string.Format("{0}-{1}", TypeUtils.GetFullName(grainType), indexName);
         }
@@ -27,13 +27,13 @@ namespace Orleans.Indexing
         /// </summary>
         /// <param name="index">the given index grain</param>
         /// <returns>the name of the index</returns>
-        internal static string GetIndexNameFromIndexGrain(IAddressable index)
+        public static string GetIndexNameFromIndexGrain(IAddressable index)
         {
             string key = index.GetPrimaryKeyString();
             return key.Substring(key.LastIndexOf("-") + 1);
         }
 
-        internal static string GetNextIndexBucketIdInChain(IAddressable index)
+        public static string GetNextIndexBucketIdInChain(IAddressable index)
         {
             string key = index.GetPrimaryKeyString();
             int next = 1;
@@ -58,7 +58,7 @@ namespace Orleans.Indexing
         /// <param name="gf">the grain factory instance</param>
         /// <param name="indexName">>the name of the index</param>
         /// <returns>the index update generator of the index</returns>
-        internal static IIndexUpdateGenerator GetIndexUpdateGenerator<T>(this IGrainFactory gf, string indexName) where T : IIndexableGrain
+        public static IIndexUpdateGenerator GetIndexUpdateGenerator<T>(this IGrainFactory gf, string indexName) where T : IIndexableGrain
         {
             Tuple<object, object, object> output;
             if (!(IndexHandler.GetIndexes<T>()).TryGetValue(indexName, out output))
@@ -74,7 +74,7 @@ namespace Orleans.Indexing
         /// <typeparam name="IGrainType">the given grain interface type</typeparam>
         /// <param name="grainInterfaceMethod">the getter method on the grain interface</param>
         /// <returns>the name of the index on the getter method of the grain interface</returns>
-        internal static string GetIndexNameOnInterfaceGetter<IGrainType>(string grainInterfaceMethod)
+        public static string GetIndexNameOnInterfaceGetter<IGrainType>(string grainInterfaceMethod)
         {
             return GetIndexNameOnInterfaceGetter(typeof(IGrainType), grainInterfaceMethod);
         }
@@ -87,7 +87,7 @@ namespace Orleans.Indexing
         /// <param name="grainType">the given grain interface type</param>
         /// <param name="grainInterfaceMethod">the getter method on the grain interface</param>
         /// <returns>the name of the index on the getter method of the grain interface</returns>
-        internal static string GetIndexNameOnInterfaceGetter(Type grainType, string grainInterfaceMethod)
+        public static string GetIndexNameOnInterfaceGetter(Type grainType, string grainInterfaceMethod)
         {
             return "__" + grainInterfaceMethod;
         }
