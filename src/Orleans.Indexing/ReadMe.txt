@@ -37,7 +37,9 @@ Git Repositories
 The V1 code base is never touched. All changes are made on the V2
 side. I have not settled on a strategy for having someone other
 than me contribute to V2. For now I suppose you could create a branch
-to work on and then submit a pull request to me.
+to work on and then submit a pull request to me. I work in the
+V2 'develop' branch and check in early and often. I you want
+to see my latest progress look there.
 
 
 Accessing the current Silo
