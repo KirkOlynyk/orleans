@@ -2,6 +2,7 @@
   <PropertyGroup>
     <RootNamespace>Orleans.Indexing.Tests</RootNamespace>
     <AssemblyName>Orleans.Indexing.Tests</AssemblyName>
+    <OrleansBuildTimeCodeGen>true</OrleansBuildTimeCodeGen>
   </PropertyGroup>
 
   <ItemGroup>

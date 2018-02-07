@@ -111,6 +111,8 @@ namespace Orleans.Indexing.Tests
             }
             catch (Exception e)
             {
+                this.DbgPrint("\n********** An Exception has be thrown **********\n");
+                this.DbgPrint("\nException Message:");
                 this.DbgPrint(e.Message);
             }
         }

@@ -59,3 +59,14 @@ manner
 Affected Files:
 - src\Orleans.Indexing\Core\IndexRegistry.cs
 - src\Orleans.Indexing\Core\Utils.TypeCodeMapper.cs
+
+Using the Test Framework
+------------------------
+
+In order to run the Tests under the Test Exporer in Visual Studio
+you must change the settings under
+Test -> Test Settings -> Default Processor Architecture
+to X64
+
+Adding your own test to the Test Framework
+------------------------------------------
