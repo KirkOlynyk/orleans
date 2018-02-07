@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Orleans.Indexing
 {
-    public class Class1
+    public class SimpleTests
     {
         /// <summary>
         /// Stub function for testing. The string identity function.

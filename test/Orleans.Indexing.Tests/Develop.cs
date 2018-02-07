@@ -17,31 +17,12 @@ using Xunit.Abstractions;
 
 namespace Orleans.Indexing.Tests
 {
-    public interface ISimpleGrain : IGrainWithIntegerKey
-    {
-        Task<string> GetName();
-    }
 
-    public class SimpleGrain : Grain, ISimpleGrain
-    {
-        private ILogger logger;
-
-        public SimpleGrain(ILogger<SimpleGrain> logger)
-        {
-            this.logger = logger;
-        }
-
-        public Task<string> GetName()
-        {
-            this.logger.Info("GetName");
-            return Task.FromResult(nameof(SimpleGrain));
-        }
-    }
-
-    public class SimpleTests : OrleansTestingBase, IClassFixture<SimpleTests.Fixture>
+    public class Develop : OrleansTestingBase, IClassFixture<Develop.Fixture>
     {
         private readonly Fixture fixture;
         private readonly ITestOutputHelper output;
+
         private readonly Type index_attribute_type;
         private readonly Type indexable_grain_type;
         private readonly Type total_index_type;
@@ -50,8 +31,7 @@ namespace Orleans.Indexing.Tests
         private readonly PropertyInfo is_unique_property;
         private readonly PropertyInfo max_entries_per_bucket_property;
 
-
-        public SimpleTests(Fixture fixture, ITestOutputHelper output)
+        public Develop(Fixture fixture, ITestOutputHelper output)
         {
             this.fixture = fixture;
             this.output = output;
@@ -63,6 +43,7 @@ namespace Orleans.Indexing.Tests
             this.is_unique_property = this.index_attribute_type.GetProperty("IsUnique");
             this.max_entries_per_bucket_property = this.index_attribute_type.GetProperty("MaxEntriesPerBucket");
         }
+
         public class Fixture : BaseTestClusterFixture
         {
             protected override void ConfigureTestCluster(TestClusterBuilder builder)
@@ -76,48 +57,47 @@ namespace Orleans.Indexing.Tests
         {
             public void Configure(IConfiguration configuration, IClientBuilder clientBuilder)
             {
-                clientBuilder.ConfigureLogging(builder => builder.AddFile(TestingUtils.CreateTraceFileName("client", configuration.GetTestClusterOptions().ClusterId)));
+                clientBuilder.ConfigureLogging(
+                    builder =>
+                    builder.AddFile(
+                        TestingUtils.CreateTraceFileName(
+                            "client",
+                            configuration.GetTestClusterOptions().ClusterId
+                        )
+                    )
+                );
             }
         }
         public class SiloBuilderConfigurator : ISiloBuilderConfigurator
         {
             public void Configure(ISiloHostBuilder hostBuilder)
             {
-                var siloName = GetSiloName(hostBuilder);
+                string siloName = GetSiloName(hostBuilder);
                 //add simpleGrain's assmebly to siloHost, so the grain assembly will be loaded to silo
                 //also configure logging using ConfigureLogging method
                 hostBuilder.ConfigureApplicationParts(parts =>
-                    parts.AddApplicationPart(typeof(SimpleGrain).Assembly).WithReferences())
-                    .ConfigureLogging(builder => builder.AddFile(TestingUtils.CreateTraceFileName((string)siloName, hostBuilder.GetTestClusterOptions().ClusterId)));
+                    parts.AddApplicationPart(typeof(Player1GrainNonFaultTolerant).Assembly).WithReferences())
+                    .ConfigureLogging(
+                        builder =>
+                        builder.AddFile(
+                            TestingUtils.CreateTraceFileName(
+                                (string)siloName,
+                                hostBuilder.GetTestClusterOptions().ClusterId
+                            )
+                        )
+                    );
             }
         }
-
-
-        [Fact, TestCategory("BVT"), TestCategory("Functional"), TestCategory("Streaming"), TestCategory("PubSub")]
-        public async Task IndexingSimpleTest1()
+        private static string GetSiloName(ISiloHostBuilder hostBuilder)
         {
-            //client side logger log out this line
-            this.DbgPrint("Entering IndexingSimpleTest");
-            this.DbgPrint("calling GetGrain ...");
-            try
+            var ignore = hostBuilder.Properties.TryGetValue("Configuration", out var configObj);
+            if (configObj is IConfiguration config)
             {
-                var grain = this.fixture.GrainFactory.GetGrain<ISimpleGrain>(1);
-                this.DbgPrint("grain: {0}", grain);
-                this.DbgPrint("calling grain.GetName ...");
-                var name = await grain.GetName();
-                this.DbgPrint("name: {0}", name);
-                Assert.NotEmpty(name);
-                this.DbgPrint("Exiting IndexingSimpleTest");
+                var siloName = config["SiloName"];
+                return siloName;
             }
-            catch (Exception e)
-            {
-                this.DbgPrint("\n********** An Exception has be thrown **********\n");
-                this.DbgPrint("\nException Message:");
-                this.DbgPrint(e.Message);
-            }
+            return null;
         }
-
-
         private IEnumerable<Type> GetGrainTypes()
         {
             Predicate<Type> whereFunc = Utils.IsConcreteGrainClass;
@@ -155,7 +135,7 @@ namespace Orleans.Indexing.Tests
                     foreach (PropertyInfo property in properties)
                     {
                         object[] custom_attributes = property.GetCustomAttributes(this.index_attribute_type, false);
-                        foreach(object attribute in custom_attributes)
+                        foreach (object attribute in custom_attributes)
                         {
                             string index_name = Get_index_name(property);
                             //this.DbgPrint("  index_name: \"{0}\"", index_name);
@@ -173,7 +153,7 @@ namespace Orleans.Indexing.Tests
                             //this.DbgPrint("  is_eargerly_updated: {0}", is_eagerly_updated.ToString());
                             //this.DbgPrint("  is_unique: {0}", is_unique.ToString());
                             //this.DbgPrint("  max_entries_per_bucket: {0}", max_entries_per_bucket);
-                            CreateIndex(index_type, index_name, is_unique, max_entries_per_bucket, property);
+                            CreateIndex(index_type, index_name, is_unique, is_eagerly_updated, max_entries_per_bucket, property);
                         }
                     }
                 }
@@ -199,37 +179,52 @@ namespace Orleans.Indexing.Tests
             return GetGenericType(baseType, genericInterfaceType);
         }
 
+        private static IIndexUpdateGenerator CreateIndexUpdateGenFromProperty(PropertyInfo indexedProperty)
+        {
+            return new IndexUpdateGenerator(indexedProperty);
+        }
+
 
         private void CreateIndex(
             Type index_type,
             string index_name,
             bool is_unique_index,
+            bool is_eager,
             int max_entries_per_bucket,
             PropertyInfo indexed_property
             )
         {
-            this.DbgPrint("Create_index");
-            this.DbgPrint("  index_name: {0}", index_name);
-            this.DbgPrint("  is_unique_index: {0}", is_unique_index.ToString());
-            this.DbgPrint("  max_entries_per_bucket: {0}", max_entries_per_bucket);
-            this.DbgPrint("  indexed_property: {0}", indexed_property.ToString());
             Type generic_index_type = GetGenericType(index_type, typeof(IIndexInterface<,>));
-            this.DbgPrint("  generic_index_type: {0}", generic_index_type.ToString());
             if (generic_index_type != null)
             {
                 Type[] index_type_args = generic_index_type.GetGenericArguments();
                 Type key_type = index_type_args[0];
                 Type grain_type = index_type_args[1];
-                this.DbgPrint("  key_type: {0}", key_type);
-                this.DbgPrint("  grain_type: {0}", grain_type);
                 if (typeof(IGrain).IsAssignableFrom(index_type))
                 {
                     string index_grain_id = IndexUtils.GetIndexGrainID(grain_type, index_name);
+                    object index = null;
+
+                    this.DbgPrint("Create_index");
+                    this.DbgPrint("  index_type.IsClass: {0}", index_type.IsClass);
+                    this.DbgPrint("  index_name: {0}", index_name);
+                    this.DbgPrint("  is_unique_index: {0}", is_unique_index.ToString());
+                    this.DbgPrint("  is_eager: {0}", is_eager.ToString());
+                    this.DbgPrint("  max_entries_per_bucket: {0}", max_entries_per_bucket);
+                    this.DbgPrint("  indexed_property: {0}", indexed_property.ToString());
+                    this.DbgPrint("  generic_index_type: {0}", generic_index_type.ToString());
+                    this.DbgPrint("  key_type: {0}", key_type);
+                    this.DbgPrint("  grain_type: {0}", grain_type);
                     this.DbgPrint("  index_grain_id: {0}", index_grain_id);
+
+                    IndexMetaData metadata = new IndexMetaData(index_type, is_unique_index, is_eager, max_entries_per_bucket);
+                    object updater = (object)CreateIndexUpdateGenFromProperty(indexed_property);
+                    Tuple<object, object, object> ans = Tuple.Create(index, (object)metadata, updater);
+
                 }
             }
         }
-        
+
         private void Process_grain_type(Type grain_type)
         {
             Type[] interfaces = grain_type.GetInterfaces();
@@ -257,14 +252,14 @@ namespace Orleans.Indexing.Tests
                                     );
                             }
                         }
-                    break;
+                        break;
                     }
                 }
             }
         }
 
 
-        [Fact, TestCategory("Functional")]
+        [Fact]
         public void IndexingSimpleTest2()
         {
             //client side logger log out this line
@@ -282,25 +277,13 @@ namespace Orleans.Indexing.Tests
             this.fixture.Logger.Info(msg);
             this.output.WriteLine(msg);
         }
-
-        private static string GetSiloName(ISiloHostBuilder hostBuilder)
-        {
-            var ignore = hostBuilder.Properties.TryGetValue("Configuration", out var configObj);
-            if (configObj is IConfiguration config)
-            {
-                var siloName = config["SiloName"];
-                return siloName;
-            }
-            return null;
-        }
     }
-
 
     public interface IPlayerProperties
     {
         string Location { get; set; }
     }
-    public interface IPlayerState : IPlayerProperties  { }
+    public interface IPlayerState : IPlayerProperties { }
 
     [Serializable]
     public class Player1PropertiesNonFaultTolerant : IPlayerProperties
@@ -311,7 +294,6 @@ namespace Orleans.Indexing.Tests
     public interface IPlayer1GrainNonFaultTolerant : IPlayerGrain, IIndexableGrain<Player1PropertiesNonFaultTolerant>
     {
     }
-
 
     public interface IPlayerGrain : IGrainWithIntegerKey
     {
@@ -327,21 +309,21 @@ namespace Orleans.Indexing.Tests
         public Player1GrainNonFaultTolerant(ILogger<Player1GrainNonFaultTolerant> logger)
         {
             this.logger = logger;
+            this.logger.Info("Player1GrainNonFaultTolerant: ILogger -> unit");
         }
 
         public Task<string> GetLocation()
         {
-            this.logger.Info("GetLocation");
+            this.logger.Info("GetLocation: unit -> Task<string>");
             return Task.FromResult(this.location);
         }
 
         public Task SetLocation(string _location)
         {
-            this.logger.Info("SetLocation");
+            this.logger.Info("SetLocation: string -> Task");
             return Task.Run(() => this.location = _location);
         }
     }
-
 
     public class Class1
     {
