@@ -1,47 +1,40 @@
 using Orleans.Streams;
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 
 namespace Orleans.Indexing
 {
     /// <summary>
-    /// This class limits the query result to a single record.
-    /// As soon as the single record is found, it stops the
-    /// underlying stream.
+    /// This class is used for creating IAsyncBatchObserver
+    /// in order to watch the first result of a query
     /// </summary>
-    /// <typeparam name="TIGrain">type of grain for query result</typeparam>
-    [Serializable]
-    public class OrleansFirstQueryResultStream<TIGrain> : OrleansQueryResultStream<TIGrain> where TIGrain : IIndexableGrain
+    /// <typeparam name="T">type of object that is being observed</typeparam>
+    public class QueryFirstResultStreamObserver<T> : IAsyncObserver<T>
     {
-        public OrleansFirstQueryResultStream() : this(CreateNewStream())
+        private Action<T> _action;
+        public QueryFirstResultStreamObserver(Action<T> action)
         {
+            this._action = action;
         }
 
-        // Accept a queryResult instance which we shall observe
-        public OrleansFirstQueryResultStream(IAsyncStream<TIGrain> stream) : base(stream)
+        public Task OnCompletedAsync()
         {
+            return Task.CompletedTask;
         }
 
-        //creates a temporary new stream for the query result,
-        //when a stream is not provided from caller
-        private static IAsyncStream<TIGrain> CreateNewStream()
+        public Task OnErrorAsync(Exception ex)
         {
-            throw new NotImplementedException();
+            throw ex;
         }
 
-        public override async Task OnNextAsync(TIGrain item, StreamSequenceToken token = null)
+        public Task OnNextAsync(T item, StreamSequenceToken token = null)
         {
-            await this._stream.OnNextAsync(item, token);
-            await this._stream.OnCompletedAsync();
-        }
-
-        public override async Task OnNextBatchAsync(IEnumerable<TIGrain> batch, StreamSequenceToken token = null)
-        {
-            if (batch.Count() == 0) return;
-            await this._stream.OnNextAsync(batch.First(), token);
-            await this._stream.OnCompletedAsync();
+            if (this._action != null)
+            {
+                this._action(item);
+                this._action = null;
+            }
+            return Task.CompletedTask;
         }
     }
 }

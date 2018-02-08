@@ -1,25 +1,29 @@
 using Orleans.Streams;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Orleans.Indexing
 {
     /// <summary>
     /// This class is used for creating IAsyncBatchObserver
-    /// in order to watch the first result of a query
+    /// in order to watch the result of a query
     /// </summary>
-    /// <typeparam name="T">type of object that is being observed</typeparam>
-    public class QueryFirstResultStreamObserver<T> : IAsyncObserver<T>
+    /// <typeparam name="T">type of objects that are being observed</typeparam>
+    public class QueryResultStreamObserver<T> : IAsyncBatchObserver<T>
     {
-        private Action<T> _action;
-        public QueryFirstResultStreamObserver(Action<T> action)
+        private Func<T, Task> _onNext;
+        private Func<Task> _onCompleted;
+        public QueryResultStreamObserver(Func<T, Task> onNext, Func<Task> onCompleted = null)
         {
-            this._action = action;
+            this._onNext = onNext;
+            this._onCompleted = onCompleted;
         }
 
         public Task OnCompletedAsync()
         {
-            //return TaskDone.Done;
+            if (this._onCompleted != null) return this._onCompleted();
             return Task.CompletedTask;
         }
 
@@ -30,13 +34,12 @@ namespace Orleans.Indexing
 
         public Task OnNextAsync(T item, StreamSequenceToken token = null)
         {
-            if (this._action != null)
-            {
-                this._action(item);
-                this._action = null;
-            }
-            //return TaskDone.Done;
-            return Task.CompletedTask;
+            return this._onNext(item);
+        }
+
+        public Task OnNextBatchAsync(IEnumerable<T> batch, StreamSequenceToken token = null)
+        {
+            return Task.WhenAll(batch.Select(item => this._onNext(item)));
         }
     }
 }

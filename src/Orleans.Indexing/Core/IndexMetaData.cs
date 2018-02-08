@@ -1,4 +1,4 @@
-﻿using Orleans.Concurrency;
+using Orleans.Concurrency;
 using System;
 using System.Linq;
 
@@ -22,16 +22,16 @@ namespace Orleans.Indexing
         /// <param name="indexType">the type of the index</param>
         public IndexMetaData(Type indexType, bool isUniqueIndex, bool isEager, int maxEntriesPerBucket)
         {
-            _indexType = indexType;
-            _isUniqueIndex = isUniqueIndex;
-            _isEager = isEager;
-            _maxEntriesPerBucket = maxEntriesPerBucket;
+            this._indexType = indexType;
+            this._isUniqueIndex = isUniqueIndex;
+            this._isEager = isEager;
+            this._maxEntriesPerBucket = maxEntriesPerBucket;
         }
 
         /// <returns>the type of the index</returns>
-        public Type getIndexType()
+        public Type GetIndexType()
         {
-            return _indexType;
+            return this._indexType;
         }
 
         /// <summary>
@@ -43,7 +43,7 @@ namespace Orleans.Indexing
         /// a stateless worker or not</returns>
         public bool IsIndexStatelessWorker()
         {
-            return IsStatelessWorker(Type.GetType(TypeCodeMapper.GetImplementation(_indexType).GrainClass));
+            return IsStatelessWorker(Type.GetType(TypeCodeMapper.GetImplementation(this._indexType).GrainClass));
         }
 
         /// <summary>
@@ -62,27 +62,27 @@ namespace Orleans.Indexing
 
         public bool IsUniqueIndex()
         {
-            return _isUniqueIndex;
+            return this._isUniqueIndex;
         }
 
         public bool IsEager()
         {
-            return _isEager;
+            return this._isEager;
         }
 
         public int GetMaxEntriesPerBucket()
         {
-            return _maxEntriesPerBucket;
+            return this._maxEntriesPerBucket;
         }
 
         public bool IsChainedBuckets()
         {
-            return _maxEntriesPerBucket > 0;
+            return this._maxEntriesPerBucket > 0;
         }
 
         public bool IsCreatingANewBucketNecessary(int currentSize)
         {
-            return IsChainedBuckets() && currentSize >= _maxEntriesPerBucket;
+            return IsChainedBuckets() && currentSize >= this._maxEntriesPerBucket;
         }
     }
 }

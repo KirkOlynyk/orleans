@@ -20,11 +20,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Exceptions\" />
-    <Folder Include="Extensions\" />
-    <Folder Include="Indexes\StorageManagedIndexes\Interfaces\" />
-    <Folder Include="Indexes\TotalIndexes\Interfaces\" />
     <Folder Include="Properties\" />
-    <Folder Include="Scanners\Interfaces\" />
   </ItemGroup>
 </Project>

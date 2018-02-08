@@ -1,4 +1,4 @@
-﻿using Orleans.Runtime;
+using Orleans.Runtime;
 using System;
 
 namespace Orleans.Indexing
@@ -15,19 +15,18 @@ namespace Orleans.Indexing
             {
                 var loadedAssemblies = grainTypeResolver.GetLoadedGrainAssemblies();
                 throw new ArgumentException(
-                    String.Format("Cannot find an implementation class for grain interface: {0}{2}. Make sure the grain assembly was correctly deployed and loaded in the silo.{1}",
+                    string.Format("Cannot find an implementation class for grain interface: {0}{2}. Make sure the grain assembly was correctly deployed and loaded in the silo.{1}",
                                   interfaceType,
-                                  String.IsNullOrEmpty(loadedAssemblies) ? String.Empty : String.Format(" Loaded grain assemblies: {0}", loadedAssemblies),
-                                  String.IsNullOrEmpty(grainClassNamePrefix) ? String.Empty : ", grainClassNamePrefix=" + grainClassNamePrefix));
+                                  string.IsNullOrEmpty(loadedAssemblies) ? string.Empty : string.Format(" Loaded grain assemblies: {0}", loadedAssemblies),
+                                  string.IsNullOrEmpty(grainClassNamePrefix) ? string.Empty : ", grainClassNamePrefix=" + grainClassNamePrefix));
             }
             return implementation;
         }
 
         internal static GrainClassData GetImplementation(int interfaceId, string grainClassNamePrefix = null)
         {
-#if (!RUNTIMECLIENT)
             throw new NotImplementedException();
-#else
+#if false
             GrainClassData implementation;
             var grainTypeResolver = RuntimeClient.Current.GrainTypeResolver;
             if (grainTypeResolver.TryGetGrainClassData(interfaceId, out implementation, grainClassNamePrefix)) return implementation;
@@ -43,9 +42,8 @@ namespace Orleans.Indexing
 
         internal static GrainClassData GetImplementation(string grainImplementationClassName)
         {
-#if (!RUNTIMECLIENT)
             throw new NotImplementedException();
-#else
+#if false
             GrainClassData implementation;
             var grainTypeResolver = RuntimeClient.Current.GrainTypeResolver;
             if (!grainTypeResolver.TryGetGrainClassData(grainImplementationClassName, out implementation))
@@ -57,9 +55,8 @@ namespace Orleans.Indexing
 
         internal static GrainClassData GetImplementation(Type grainImplementationClass)
         {
-#if (!RUNTIMECLIENT)
             throw new NotImplementedException();
-#else
+#if false
             GrainClassData implementation;
             var grainTypeResolver = RuntimeClient.Current.GrainTypeResolver;
             if (!grainTypeResolver.TryGetGrainClassData(grainImplementationClass, out implementation, ""))
