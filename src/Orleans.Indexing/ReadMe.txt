@@ -88,6 +88,9 @@ Git Repositories
     V1: https://github.com/OrleansContrib/Orleans.Indexing.git
     V2: https://github.com/KirkOlynyk/orleans.git
 
+
+Work Item: Clone these repositories
+
 If you wish, in our porting job V1 is the source and V2 is
 the destination.
 
@@ -134,7 +137,7 @@ you must change the settings under
 Test -> Test Settings -> Default Processor Architecture
 to X64
 
-Compiling the Test Framwork
+Compiling the Test Framework
 ---------------------------
 
 This is the way that I do it. It works but I am not sure that
@@ -144,15 +147,15 @@ it is optimal.
 - Right Click on the Test Directory
 - Choose 'Rebuild'
 - After the build is successful, open the Team Explorer
-  by chosing 'Test -> Windows -> Test Explorer'
+  by choosing 'Test -> Windows -> Test Explorer'
 
-Because the tests have just been built the Test Exploer will
+Because the tests have just been built the Test Explorer will
 take some time scanning the tests for those annotated with
 [Fact]. You search for your test by typing the name of the
 test in the search box. The name of your test should be
 filtered to into the the list.
 
-- Right click on your test name in the Test Explorer windown
+- Right click on your test name in the Test Explorer window
   and choose to Run or Debug. If you choose to Debug make
   sure you have a break point set somewhere in your test
   code.
@@ -167,11 +170,11 @@ filtered to into the the list.
 
   orleans\test\Orleans.Indexing.Tests\bin\Debug\net461\win10-x64\logs
 
-  But yourse will appropriately different.
+  But your version will appropriately different.
 
 Adding your own test to the Test Framework
 ------------------------------------------
-Each test is marked with a [Fact] annontation.
+Each test is marked with a [Fact] annotation.
 
 
 Enable Code Generation in the Test Framework
