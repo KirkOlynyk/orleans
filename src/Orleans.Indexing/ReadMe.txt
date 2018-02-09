@@ -15,6 +15,8 @@ port of the code, which I am currently writing as V2. The V1
 code uses .NET 4.5.1 while V2 uses .NET Standard 2.0.
 In addition V1 is based on an old version of the Orleans runtime
 while V2 is based on the latest version of the Orleans runtime.
+In this document, I refer to the roots of the V1 and V2 clones
+of the Git repositories as <V1> and <V2> respectively.
 
 Status
 ------
@@ -198,7 +200,7 @@ Suggested Work
 When a grain is activated on the server side it calls the
 following code.
 
-[<root>\orleans\src\Orleans.Runtime\Catalog\Catalog.cs]
+[<V2>\orleans\src\Orleans.Runtime\Catalog\Catalog.cs]
 
 namespace Orleans.Runtime {
   internal class Catalog {
@@ -219,7 +221,7 @@ I have copied all the V1 files under the src\OrleansIndexing  directory
 to the V2 project under src\Orleans.Indexing. I changed the name
 in order to be more consistent with the naming conventions used
 in the V2 project. In addition to moving the files I have changed
-<root>\orleans.sln to include the new files in the build. There 
+<V2>\orleans.sln to include the new files in the build. There 
 are a total of 90 .cs files that were copied from V1 to V2, and 
 most of them compile with only minor modifications. These modifications 
 included putting "I" in front of interface definitions and 
@@ -283,7 +285,7 @@ I have created a number of tests in V2. One set of tests uses the
 larger test suite written by the Orleans team. My part of this suite is
 found in 
 
-  <root>\test\Orleans.Indexing.Tests
+  <V2>\test\Orleans.Indexing.Tests
     Develop.cs
     SimpleTests.cs
 
@@ -338,3 +340,13 @@ From that you right click on that test and choose to view, run or debug.
 If you wish to debug then make sure that you have set a break point
 somewhere in your code.
 
+Building V1
+-----------
+
+cd <V1>
+build.cmd
+
+or
+
+- cd <V1>\src
+- open Orleans.sln with Visual studio
