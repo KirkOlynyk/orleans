@@ -6,7 +6,6 @@ using Orleans.Concurrency;
 using Orleans.Runtime;
 using Orleans.Storage;
 
-#if false
 namespace Orleans.Indexing
 {
     /// <summary>
@@ -27,7 +26,10 @@ namespace Orleans.Indexing
         private string _indexedField;
         //private bool _isUnique; //TODO: missing support for the uniqueness feature
 
-        private static readonly Logger logger = LogManager.GetLogger(string.Format("HashIndexPartitionedPerKey<{0},{1}>", typeof(K).Name, typeof(V).Name), LoggerType.Grain);
+        internal IndexingManager IndexingManager { get { return IndexingManager.GetIndexingManager(ref __indexingManager, base.ServiceProvider); } }
+        private IndexingManager __indexingManager;
+
+        //vv2 private static readonly Logger logger = LogManager.GetLogger(string.Format("HashIndexPartitionedPerKey<{0},{1}>", typeof(K).Name, typeof(V).Name), LoggerType.Grain);
 
         public override Task OnActivateAsync()
         {
@@ -61,7 +63,7 @@ namespace Orleans.Indexing
             dynamic indexableStorageProvider = _storageProvider;
 
             List<GrainReference> resultReferences = await indexableStorageProvider.Lookup<K>(grainImplClass, _indexedField, key);
-            return resultReferences.Select(grain => InsideRuntimeClient.Current.InternalGrainFactory.Cast<V>(grain)).ToList();
+            return resultReferences.Select(grain => this.IndexingManager.RuntimeClient.InternalGrainFactory.Cast<V>(grain)).ToList();
         }
 
         public async Task<V> LookupUnique(K key)
@@ -77,7 +79,7 @@ namespace Orleans.Indexing
 
         public Task Dispose()
         {
-            return TaskDone.Done;
+            return Task.CompletedTask;
         }
 
         public Task<bool> IsAvailable()
@@ -85,7 +87,7 @@ namespace Orleans.Indexing
             return Task.FromResult(true);
         }
 
-        Task IndexInterface.Lookup(IOrleansQueryResultStream<IIndexableGrain> result, object key)
+        Task IIndexInterface.Lookup(IOrleansQueryResultStream<IIndexableGrain> result, object key)
         {
             return Lookup(result.Cast<V>(), (K)key);
         }
@@ -95,7 +97,7 @@ namespace Orleans.Indexing
             return new OrleansQueryResult<V>(await LookupGrainReferences(key));
         }
 
-        async Task<IOrleansQueryResult<IIndexableGrain>> IndexInterface.Lookup(object key)
+        async Task<IOrleansQueryResult<IIndexableGrain>> IIndexInterface.Lookup(object key)
         {
             return await Lookup((K)key);
         }
@@ -104,15 +106,15 @@ namespace Orleans.Indexing
         {
             if (_storageProvider == null)
             {
-                var implementation = TypeCodeMapper.GetImplementation(typeof(V));
+                var implementation = TypeCodeMapper.GetImplementation(this.IndexingManager.RuntimeClient, typeof(V));
                 Type implType;
-                if (implementation == null || (grainImplClass = implementation.GrainClass) == null || !TypeUtils.TryResolveType(grainImplClass, out implType))
+                if (implementation == null || (grainImplClass = implementation.GrainClass) == null ||
+                        !this.IndexingManager.CachedTypeResolver.TryResolveType(grainImplClass, out implType))
                 {
                     throw new Exception("The grain implementation class " + implementation.GrainClass + " for grain interface " + TypeUtils.GetFullName(typeof(V)) + " was not resolved.");
                 }
-                _storageProvider = InsideRuntimeClient.Current.Catalog.SetupStorageProvider(implType);
+                _storageProvider = null; //vv2err Catalog.SetupStorageProvider not implementable: this.IndexingManager.RuntimeClient.Catalog.SetupStorageProvider(implType);
             }
         }
     }
 }
-#endif

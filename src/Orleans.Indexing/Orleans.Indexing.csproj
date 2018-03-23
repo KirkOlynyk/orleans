@@ -12,14 +12,16 @@
   <PropertyGroup>
     <AssemblyName>Orleans.Indexing</AssemblyName>
     <RootNamespace>Orleans.Indexing</RootNamespace>
+    <OrleansBuildTimeCodeGen>true</OrleansBuildTimeCodeGen>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <NoWarn>;1591;IDE0006;IDE0009</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Orleans.Core.Legacy\Orleans.Core.Legacy.csproj" />
     <ProjectReference Include="..\Orleans.Core\Orleans.Core.csproj" />
     <ProjectReference Include="..\Orleans.Runtime\Orleans.Runtime.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Properties\" />
   </ItemGroup>
 </Project>

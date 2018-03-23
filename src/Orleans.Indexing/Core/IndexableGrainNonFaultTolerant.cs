@@ -6,6 +6,7 @@ using Orleans.Runtime;
 using System.Reflection;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Orleans.Indexing
 {
@@ -46,17 +47,27 @@ namespace Orleans.Indexing
 
         protected TProperties _props;
 
+        internal IndexingManager IndexingManager { get { return IndexingManager.GetIndexingManager(ref __indexingManager, base.ServiceProvider); } }
+        private IndexingManager __indexingManager;
+
         protected virtual TProperties Properties { get { return defaultCreatePropertiesFromState(); } }
 
-#if false
-        private static readonly Logger logger = LogManager.GetLogger(string.Format("IndexableGrainNonFaultTolerant<{0},{1}>", typeof(TState).Name, typeof(TProperties).Name), LoggerType.Grain);
+#if false   //vv2 logger
+        private static readonly Logger logger = LogManager.GetLogger(string.Format("IndexableGrainNonFaultTolerant<{0},{1}>",
+                                                                     typeof(TState).Name, typeof(TProperties).Name), LoggerType.Grain);
 #endif
 
         private TProperties defaultCreatePropertiesFromState()
         {
-            if (typeof(TProperties).IsAssignableFrom(typeof(TState))) return (TProperties)(object)this.State;
+            if (typeof(TProperties).IsAssignableFrom(typeof(TState)))
+            {
+                return (TProperties)(object)this.State;
+            }
 
-            if (this._props == null) this._props = new TProperties();
+            if (this._props == null)
+            {
+                this._props = new TProperties();
+            }
 
             foreach (PropertyInfo p in typeof(TProperties).GetProperties())
             {
@@ -79,9 +90,8 @@ namespace Orleans.Indexing
         /// </summary>
         public override Task OnActivateAsync()
         {
-#if false
-            if (logger.IsVerbose) logger.Verbose("Activating indexable grain {0} of type {1} in silo {2}.", Orleans.GrainExtensions.GetGrainId(this), GetIIndexableGrainTypes()[0], RuntimeAddress);
-#endif
+            //vv2 if (logger.IsVerbose) logger.Verbose("Activating indexable grain {0} of type {1} in silo {2}.", Orleans.GrainExtensions.GetGrainId(this), GetIIndexableGrainTypes()[0], RuntimeAddress);
+
             //load indexes
             this._iUpdateGens = IndexHandler.GetIndexes(GetIIndexableGrainTypes()[0]);
 
@@ -112,9 +122,7 @@ namespace Orleans.Indexing
 
         public override Task OnDeactivateAsync()
         {
-#if false
-            if (logger.IsVerbose) logger.Verbose("Deactivating indexable grain {0} of type {1} in silo {2}.", Orleans.GrainExtensions.GetGrainId(this), GetIIndexableGrainTypes()[0], RuntimeAddress);
-#endif
+            //vv2 if (logger.IsVerbose) logger.Verbose("Deactivating indexable grain {0} of type {1} in silo {2}.", Orleans.GrainExtensions.GetGrainId(this), GetIIndexableGrainTypes()[0], RuntimeAddress);
             return Task.WhenAll(RemoveFromActiveIndexes(), base.OnDeactivateAsync());
         }
 
@@ -125,14 +133,12 @@ namespace Orleans.Indexing
         protected Task InsertIntoActiveIndexes()
         {
             //check if it contains anything to be indexed
-            if (this._beforeImages.Value.Values.Any(e => e != null))
-            {
-                return UpdateIndexes(this.Properties,
+            return (this._beforeImages.Value.Values.Any(e => e != null))
+                ? UpdateIndexes(this.Properties,
                                      isOnActivate: true,
                                      onlyUpdateActiveIndexes: true,
-                                     writeStateIfConstraintsAreNotViolated: false);
-            }
-            return Task.CompletedTask;
+                                     writeStateIfConstraintsAreNotViolated: false)
+                : Task.CompletedTask;
         }
 
         /// <summary>
@@ -141,14 +147,12 @@ namespace Orleans.Indexing
         protected Task RemoveFromActiveIndexes()
         {
             //check if it has anything indexed
-            if (this._beforeImages.Value.Values.Any(e => e != null))
-            {
-                return UpdateIndexes(default(TProperties),
+            return (this._beforeImages.Value.Values.Any(e => e != null))
+                ? UpdateIndexes(default(TProperties),
                                      isOnActivate: false,
                                      onlyUpdateActiveIndexes: true,
-                                     writeStateIfConstraintsAreNotViolated: false);
-            }
-            return Task.CompletedTask;
+                                     writeStateIfConstraintsAreNotViolated: false)
+                : Task.CompletedTask;
         }
 
         /// <summary>
@@ -179,34 +183,19 @@ namespace Orleans.Indexing
                                      bool writeStateIfConstraintsAreNotViolated)
         {
             //if there are no indexes defined on this grain, then only the grain state
-            //should be written back to the storage (if requested, otherwise nothing
-            //should be done)
+            //should be written back to the storage (if requested, otherwise nothing should be done)
             if (this._iUpdateGens.Count == 0)
             {
-                if (writeStateIfConstraintsAreNotViolated)
-                {
-                    return WriteBaseStateAsync();
-                }
-                else
-                {
-                    return Task.CompletedTask;
-                }
+                return writeStateIfConstraintsAreNotViolated ? WriteBaseStateAsync() : Task.CompletedTask;
             }
-
-            //a flag to determine whether indexes should be updated eagerly
-            //(as opposed to being updated lazily)
-            bool updateIndexesEagerly;
 
             //a flag to determine whether only unique indexes were updated
             bool onlyUniqueIndexesWereUpdated = this._isThereAnyUniqueIndex;
 
-            //a flag to determine whether any unique index is updated or not
-            int numberOfUniqueIndexesUpdated;
-
             //gather the dictionary of indexes to their corresponding updates
             IDictionary<string, IMemberUpdate> updates =
                 GeneratMemberUpdates(indexableProperties, isOnActivate, onlyUpdateActiveIndexes,
-                out updateIndexesEagerly, ref onlyUniqueIndexesWereUpdated, out numberOfUniqueIndexesUpdated);
+                out bool updateIndexesEagerly, ref onlyUniqueIndexesWereUpdated, out int numberOfUniqueIndexesUpdated);
 
             //apply the updates to the indexes defined on this grain
             return ApplyIndexUpdates(updates, updateIndexesEagerly,
@@ -237,11 +226,7 @@ namespace Orleans.Indexing
             {
                 IList<Type> iGrainTypes = GetIIndexableGrainTypes();
 
-#if false
-                IIndexableGrain thisGrain = this.AsReference<IIndexableGrain>(this.GrainFactory);
-#else
-                IIndexableGrain thisGrain = null;
-#endif
+                IIndexableGrain thisGrain = this.AsReference<IIndexableGrain>(base.GrainFactory);
 
                 bool isThereAtMostOneUniqueIndex = numberOfUniqueIndexesUpdated <= 1;
 
@@ -369,14 +354,8 @@ namespace Orleans.Indexing
             }
             else
             {
-                Task[] tasks = new Task[iGrainTypes.Count];
-                int i = 0;
-                foreach (Type iGrainType in iGrainTypes)
-                {
-                    tasks[i++] = GetWorkflowQueue(iGrainType).AddToQueue(
-                        new IndexWorkflowRecord(workflowID, thisGrain, updates).AsImmutable()
-                    );
-                }
+                var tasks = iGrainTypes.Select(iGrainType => GetWorkflowQueue(iGrainType).AddToQueue(
+                                        new IndexWorkflowRecord(workflowID, thisGrain, updates).AsImmutable()));
                 return Task.WhenAll(tasks);
             }
         }
@@ -411,12 +390,8 @@ namespace Orleans.Indexing
             }
             else
             {
-                Task[] updateTasks = new Task[iGrainTypes.Count()];
-                int i = 0;
-                foreach (Type iGrainType in iGrainTypes)
-                {
-                    updateTasks[i++] = ApplyIndexUpdatesEagerly(iGrainType, updatedGrain, updates, onlyUpdateUniqueIndexes, onlyUpdateNonUniqueIndexes, updateIndexesTentatively);
-                }
+                var updateTasks = iGrainTypes.Select(iGrainType => ApplyIndexUpdatesEagerly(iGrainType, updatedGrain, updates, onlyUpdateUniqueIndexes,
+                                                                                            onlyUpdateNonUniqueIndexes, updateIndexesTentatively));
                 await Task.WhenAll(updateTasks);
             }
         }
@@ -470,9 +445,8 @@ namespace Orleans.Indexing
                         }
 
                         //the update task is added to the list of update tasks
-#if false
-                        updateIndexTasks.Add(((IIndexInterface)idxInfo.Item1).ApplyIndexUpdate(updatedGrain, updateToIndex.AsImmutable(), isUniqueIndex, (IndexMetaData)idxInfo.Item2, RuntimeAddress));
-#endif
+                        updateIndexTasks.Add(((IIndexInterface)idxInfo.Item1).ApplyIndexUpdate(this.IndexingManager.RuntimeClient,
+                                             updatedGrain, updateToIndex.AsImmutable(), isUniqueIndex, (IndexMetaData)idxInfo.Item2, base.SiloAddress));
                     }
                 }
             }
@@ -649,12 +623,10 @@ namespace Orleans.Indexing
             return base.WriteStateAsync();
         }
 
-#if false
         Task<object> IIndexableGrain.ExtractIndexImage(IIndexUpdateGenerator iUpdateGen)
         {
             return Task.FromResult(iUpdateGen.ExtractIndexImage(this.Properties));
         }
-#endif
 
         public virtual Task<Immutable<HashSet<Guid>>> GetActiveWorkflowIdsList()
         {
@@ -679,13 +651,11 @@ namespace Orleans.Indexing
                 this.WorkflowQueues = new Dictionary<Type, IIndexWorkflowQueue>();
             }
 
-            IIndexWorkflowQueue workflowQ;
-            if (!this.WorkflowQueues.TryGetValue(iGrainType, out workflowQ))
+            if (!this.WorkflowQueues.TryGetValue(iGrainType, out IIndexWorkflowQueue workflowQ))
             {
-#if false
-                workflowQ = IndexWorkflowQueueBase.GetIndexWorkflowQueueFromGrainHashCode(iGrainType, this.AsReference<IIndexableGrain>(this.GrainFactory, iGrainType).GetHashCode(), RuntimeAddress);
+                workflowQ = IndexWorkflowQueueBase.GetIndexWorkflowQueueFromGrainHashCode(this.IndexingManager, iGrainType,
+                        this.AsReference<IIndexableGrain>(this.GrainFactory, iGrainType).GetHashCode(), base.SiloAddress);
                 this.WorkflowQueues.Add(iGrainType, workflowQ);
-#endif
             }
             return workflowQ;
         }

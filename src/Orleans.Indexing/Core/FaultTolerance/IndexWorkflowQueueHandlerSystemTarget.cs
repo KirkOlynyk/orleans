@@ -3,7 +3,6 @@ using Orleans.Runtime;
 using System;
 using System.Threading.Tasks;
 
-#if false
 namespace Orleans.Indexing
 {
     [Reentrant]
@@ -11,9 +10,10 @@ namespace Orleans.Indexing
     {
         private IIndexWorkflowQueueHandler _base;
 
-        internal IndexWorkflowQueueHandlerSystemTarget(Type iGrainType, int queueSeqNum, SiloAddress silo, bool isDefinedAsFaultTolerantGrain) : base(IndexWorkflowQueueHandlerBase.CreateIndexWorkflowQueueHandlerGrainId(iGrainType, queueSeqNum), silo)
+        internal IndexWorkflowQueueHandlerSystemTarget(Type iGrainType, int queueSeqNum, SiloAddress silo, bool isDefinedAsFaultTolerantGrain)
+            : base(IndexWorkflowQueueHandlerBase.CreateIndexWorkflowQueueHandlerGrainId(iGrainType, queueSeqNum), silo, /*vv2err (ILoggerFactory) */ null)
         {
-            _base = new IndexWorkflowQueueHandlerBase(iGrainType, queueSeqNum, silo, isDefinedAsFaultTolerantGrain, this.AsWeaklyTypedReference());
+            _base = new IndexWorkflowQueueHandlerBase(base.RuntimeClient, iGrainType, queueSeqNum, silo, isDefinedAsFaultTolerantGrain, this.AsWeaklyTypedReference());
         }
 
         public Task HandleWorkflowsUntilPunctuation(Immutable<IndexWorkflowRecordNode> workflowRecordsHead)
@@ -27,4 +27,3 @@ namespace Orleans.Indexing
         }
     }
 }
-#endif

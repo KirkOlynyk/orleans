@@ -62,15 +62,8 @@ namespace Orleans.Indexing.Tests
         {
             public void Configure(IConfiguration configuration, IClientBuilder clientBuilder)
             {
-                clientBuilder.ConfigureLogging(
-                    builder =>
-                        builder.AddFile(
-                            TestingUtils.CreateTraceFileName(
-                                "client",
-                                configuration.GetTestClusterOptions().ClusterId
-                                )
-                            )
-                        );
+                clientBuilder.ConfigureLogging(builder =>
+                        builder.AddFile(TestingUtils.CreateTraceFileName("client",configuration.GetTestClusterOptions().ClusterId)));
             }
         }
         public class SiloBuilderConfigurator : ISiloBuilderConfigurator
@@ -78,18 +71,13 @@ namespace Orleans.Indexing.Tests
             public void Configure(ISiloHostBuilder hostBuilder)
             {
                 var siloName = GetSiloName(hostBuilder);
-                //add simpleGrain's assmebly to siloHost, so the grain assembly will be loaded to silo
+
+                //add simpleGrain's assembly to siloHost, so the grain assembly will be loaded to silo
                 //also configure logging using ConfigureLogging method
                 hostBuilder.ConfigureApplicationParts(parts =>
                     parts.AddApplicationPart(typeof(SimpleGrain).Assembly).WithReferences())
                     .ConfigureLogging(builder =>
-                        builder.AddFile(
-                            TestingUtils.CreateTraceFileName(
-                                (string)siloName,
-                                hostBuilder.GetTestClusterOptions().ClusterId
-                                )
-                            )
-                        );
+                        builder.AddFile(TestingUtils.CreateTraceFileName(siloName,hostBuilder.GetTestClusterOptions().ClusterId)));
             }
         }
 

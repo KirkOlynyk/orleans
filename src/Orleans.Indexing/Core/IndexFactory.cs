@@ -12,7 +12,7 @@ namespace Orleans.Indexing
     /// </summary>
     public static class IndexFactory
     {
-#if false
+#if false //vv2 unused? overloads of GetActiveGrains
         /// <summary>
         /// This method queries the active grains for the given
         /// grain interface and the filter expression. The filter
@@ -25,11 +25,12 @@ namespace Orleans.Indexing
         /// <param name="queryResultObserver">the observer object to be called
         /// on every grain found for the query</param>
         /// <returns>the result of the query</returns>
-        public static Task GetActiveGrains<TIGrain, TProperties>(this IGrainFactory gf, Expression<Func<TProperties, bool>> filterExpr, IAsyncBatchObserver<TIGrain> queryResultObserver) where TIGrain : IIndexableGrain
+        public static Task GetActiveGrains<TIGrain, TProperties>(this IGrainFactory gf, Expression<Func<TProperties, bool>> filterExpr,
+                                IAsyncBatchObserver<TIGrain> queryResultObserver) where TIGrain : IIndexableGrain
         {
-            return GrainClient.GrainFactory.GetActiveGrains<TIGrain, TProperties>()
-                                           .Where(filterExpr)
-                                           .ObserveResults(queryResultObserver);
+            return gf.GetActiveGrains<TIGrain, TProperties>()
+                     .Where(filterExpr)
+                     .ObserveResults(queryResultObserver);
         }
 
         /// <summary>
@@ -46,13 +47,16 @@ namespace Orleans.Indexing
         /// <param name="queryResultObserver">the observer object to be called
         /// on every grain found for the query</param>
         /// <returns>the result of the query</returns>
-        public static Task GetActiveGrains<TIGrain, TProperties>(this IGrainFactory gf, IStreamProvider streamProvider, Expression<Func<TProperties, bool>> filterExpr, IAsyncBatchObserver<TIGrain> queryResultObserver) where TIGrain : IIndexableGrain
+        public static Task GetActiveGrains<TIGrain, TProperties>(this IGrainFactory gf, IStreamProvider streamProvider,
+                                Expression<Func<TProperties, bool>> filterExpr, IAsyncBatchObserver<TIGrain> queryResultObserver) where TIGrain : IIndexableGrain
         {
-            return GrainClient.GrainFactory.GetActiveGrains<TIGrain, TProperties>(streamProvider)
-                                           .Where(filterExpr)
-                                           .ObserveResults(queryResultObserver);
+            return gf.GetActiveGrains<TIGrain, TProperties>(streamProvider)
+                     .Where(filterExpr)
+                     .ObserveResults(queryResultObserver);
         }
+#endif
 
+#if false //vv2 unused? GetActiveGrains overload with no IStreamProvider
         /// <summary>
         /// This method queries the active grains for the given
         /// grain interface.
@@ -63,8 +67,9 @@ namespace Orleans.Indexing
         /// <returns>the query to lookup all active grains of a given type</returns>
         public static IOrleansQueryable<TIGrain, TProperty> GetActiveGrains<TIGrain, TProperty>(this IGrainFactory gf) where TIGrain : IIndexableGrain
         {
-            return GetActiveGrains<TIGrain, TProperty>(gf, GrainClient.GetStreamProvider(Constants.INDEXING_STREAM_PROVIDER_NAME));
+            return GetActiveGrains<TIGrain, TProperty>(gf, GrainClient.GetStreamProvider(IndexingConstants.INDEXING_STREAM_PROVIDER_NAME));
         }
+#endif
 
         /// <summary>
         /// This method queries the active grains for the given
@@ -126,7 +131,8 @@ namespace Orleans.Indexing
         /// 3) the IndexUpdateGenerator instance for this index.
         /// This triple is untyped, because IndexInterface, IndexMetaData
         /// and IndexUpdateGenerator types are not visible in the core project.</returns>
-        internal static Tuple<object, object, object> CreateIndex(this IGrainFactory gf, Type idxType, string indexName, bool isUniqueIndex, bool isEager, int maxEntriesPerBucket, PropertyInfo indexedProperty)
+        internal static Tuple<object, object, object> CreateIndex(IndexingManager indexingManager, Type idxType,
+                    string indexName, bool isUniqueIndex, bool isEager, int maxEntriesPerBucket, PropertyInfo indexedProperty)
         {
             Type iIndexType = idxType.GetGenericType(typeof(IIndexInterface<,>));
             if (iIndexType != null)
@@ -138,20 +144,21 @@ namespace Orleans.Indexing
                 IIndexInterface index;
                 if (typeof(IGrain).IsAssignableFrom(idxType))
                 {
-                    index = (IIndexInterface)gf.GetGrain(IndexUtils.GetIndexGrainID(grainType, indexName), idxType, idxType);
+                    index = (IIndexInterface)indexingManager.GrainFactory.GetGrain(indexingManager.GrainTypeResolver,
+                                                                                   IndexUtils.GetIndexGrainID(grainType, indexName), idxType, idxType);
 
-                    Type idxImplType = TypeUtils.ResolveType(TypeCodeMapper.GetImplementation(idxType).GrainClass);
+                    Type idxImplType = indexingManager.CachedTypeResolver.ResolveType(TypeCodeMapper.GetImplementation(indexingManager.RuntimeClient, idxType).GrainClass);
 
                     if (idxImplType.IsGenericTypeDefinition)
                         idxImplType = idxImplType.MakeGenericType(iIndexType.GetGenericArguments());
 
-                    MethodInfo initPerSilo;
+                    MethodInfo initPerSilo; //vv2: Change to an interface
                     if ((initPerSilo = idxImplType.GetMethod("InitPerSilo", BindingFlags.Static | BindingFlags.Public)) != null)
                     {
                         var initPerSiloMethod = (Action<Silo, string, bool>)Delegate.CreateDelegate(
                                                 typeof(Action<Silo, string, bool>),
                                                 initPerSilo);
-                        initPerSiloMethod(Silo.CurrentSilo, indexName, isUniqueIndex);
+                        initPerSiloMethod(indexingManager.Silo, indexName, isUniqueIndex);
                     }
                 }
                 else if (idxType.IsClass)
@@ -176,9 +183,8 @@ namespace Orleans.Indexing
             return new IndexUpdateGenerator(indexedProperty);
         }
 
-        internal static void RegisterIndexWorkflowQueues(Type iGrainType, Type grainImplType)
+        internal static void RegisterIndexWorkflowQueues(Silo silo, Type iGrainType, Type grainImplType)
         {
-            Silo silo = Silo.CurrentSilo;
             for (int i = 0; i < IndexWorkflowQueueBase.NUM_AVAILABLE_INDEX_WORKFLOW_QUEUES; ++i)
             {
                 silo.RegisterSystemTarget(new IndexWorkflowQueueSystemTarget(
@@ -196,6 +202,5 @@ namespace Orleans.Indexing
                 ));
             }
         }
-#endif
     }
 }

@@ -50,6 +50,7 @@ namespace Orleans.Indexing
             }
         }
 
+#if false //vv2 unused? GetIndexUpdateGenerator
         /// <summary>
         /// This method find the index update generator of a given index
         /// identified by the indexed grain interface type and the name of the index
@@ -60,11 +61,11 @@ namespace Orleans.Indexing
         /// <returns>the index update generator of the index</returns>
         public static IIndexUpdateGenerator GetIndexUpdateGenerator<T>(this IGrainFactory gf, string indexName) where T : IIndexableGrain
         {
-            Tuple<object, object, object> output;
-            if (!(IndexHandler.GetIndexes<T>()).TryGetValue(indexName, out output))
+            if (!(IndexHandler.GetIndexes<T>()).TryGetValue(indexName, out Tuple<object, object, object> output))
                 throw new Exception(string.Format("Index \"{0}\" does not exist on {1}.", indexName, typeof(T)));
             return ((IIndexUpdateGenerator)output.Item3);
         }
+#endif
 
         /// <summary>
         /// This method is a central place for finding the

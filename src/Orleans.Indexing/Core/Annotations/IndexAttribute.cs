@@ -7,7 +7,7 @@ namespace Orleans.Indexing
     /// indexed grain interface to have an index.
     /// 
     /// This property should only be used for the index-types introduced
-    /// by third-party libraries. Otherwise, we suggest to use on of the
+    /// by third-party libraries. Otherwise, we suggest to use one of the
     /// following descendants of the IndexAttribute based on your requirements:
     ///  - ActiveIndexAttribute
     ///  - TotalIndexAttribute
@@ -16,9 +16,9 @@ namespace Orleans.Indexing
     [AttributeUsage(AttributeTargets.Property)]
     public class IndexAttribute : Attribute
     {
-        public Type IndexType { get; protected set; }
-        public bool IsUnique { get; protected set; }
-        public bool IsEager { get; protected set; }
+        public Type IndexType { get; set; }
+        public bool IsUnique { get; set; }
+        public bool IsEager { get; set; }
         public int MaxEntriesPerBucket { get; protected set; }
 
         /// <summary>

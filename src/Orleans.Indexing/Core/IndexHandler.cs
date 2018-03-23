@@ -5,7 +5,7 @@ namespace Orleans.Indexing
 {
     /// <summary>
     /// IndexHandler is responsible for updating the indexes defined
-    /// for a grain interface type. It  also communicates with the grain
+    /// for a grain interface type. It also communicates with the grain
     /// instances by telling them about the list of available indexes.
     /// 
     /// The fact that IndexHandler is a StatelessWorker makes it
@@ -31,10 +31,10 @@ namespace Orleans.Indexing
         /// project is not available.</returns>
         internal static IDictionary<string, Tuple<object, object, object>> GetIndexes(Type iGrainType)
         {
-            return null;
-            //return IndexRegistry.GetIndexes(iGrainType);
+            return IndexRegistry.GetIndexes(iGrainType);
         }
 
+#if false //vv2 unused? overload of GetIndexes
         /// <summary>
         /// Provides the index information for a given grain interface type.
         /// </summary>
@@ -50,11 +50,11 @@ namespace Orleans.Indexing
         /// 
         /// This method returns an empty dictionary if the OrleansIndexing 
         /// project is not available.</returns>
-        internal static IDictionary<string, Tuple<object, object, object>> GetIndexes<T>() where T : IIndexableGrain
+        internal static IDictionary<string, Tuple<object, object, object>> GetIndexes<T>() where T : IIndexableGrain    //vv2: consolidate with the non-Generic form
         {
-            return null;
-            // return IndexRegistry.GetIndexes<T>();
+            return IndexRegistry.GetIndexes<T>();
         }
+#endif
 
         /// <summary>
         /// Retrieves the index object for a given indexed field on a indexed grain interface
@@ -64,8 +64,7 @@ namespace Orleans.Indexing
         /// <returns>the index object that implements IndexInterface</returns>
         internal static IIndexInterface GetIndex(Type iGrainType, string indexName)
         {
-            Tuple<object, object, object> index;
-            if (GetIndexes(iGrainType).TryGetValue(indexName, out index))
+            if (GetIndexes(iGrainType).TryGetValue(indexName, out Tuple<object, object, object> index))
             {
                 return (IIndexInterface)index.Item1;
             }
@@ -74,10 +73,10 @@ namespace Orleans.Indexing
                 //it should never happen that the indexes are not loaded if the
                 //index is registered in the index registry
                 throw new Exception(string.Format("Index \"{0}\" does not exist for {1}.", indexName, iGrainType));
-                //}
             }
         }
 
+#if false //vv2 unused? overload of GetIndex
         /// <summary>
         /// Retrieves the index object for a given indexed field on a indexed grain interface
         /// </summary>
@@ -88,6 +87,7 @@ namespace Orleans.Indexing
         {
             return GetIndex(typeof(T), indexName);
         }
+#endif
 
         /// <summary>
         /// Retrieves the index object for a given indexed field on a indexed grain interface

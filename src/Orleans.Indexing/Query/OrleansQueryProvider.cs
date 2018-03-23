@@ -30,7 +30,6 @@ namespace Orleans.Indexing
 
         private IQueryable CreateQuery(Expression expression, Type iGrainType, Type iPropertiesType)
         {
-#if false
             if (expression.NodeType == ExpressionType.Call)
             {
                 var methodCall = ((MethodCallExpression)expression);
@@ -50,7 +49,6 @@ namespace Orleans.Indexing
                     }
                 }
             }
-#endif
             throw new NotSupportedException();
         }
 

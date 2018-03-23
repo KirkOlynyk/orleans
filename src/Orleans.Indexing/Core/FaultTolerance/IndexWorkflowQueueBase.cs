@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using Orleans.Concurrency;
 using Orleans.Runtime;
 using Orleans.Storage;
@@ -6,7 +7,9 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-#if false
+#pragma warning disable IDE0006 //vv2 - note: these are suppressed in the project build settings.
+#pragma warning disable IDE0009 //vv2
+
 namespace Orleans.Indexing
 {
     /// <summary>
@@ -41,7 +44,7 @@ namespace Orleans.Indexing
 
         //the storage provider for index work-flow queue
         private IStorageProvider _storageProvider;
-        private IStorageProvider StorageProvider { get { return _storageProvider == null ? InitStorageProvider() : _storageProvider; } }
+        private IStorageProvider StorageProvider { get { return _storageProvider ?? InitStorageProvider(); } }
 
         private int _queueSeqNum;
         private Type _iGrainType;
@@ -52,7 +55,7 @@ namespace Orleans.Indexing
         private bool IsFaultTolerant { get { return _isDefinedAsFaultTolerantGrain && HasAnyTotalIndex; } }
 
         private IIndexWorkflowQueueHandler __handler;
-        private IIndexWorkflowQueueHandler Handler { get { return __handler == null ? InitWorkflowQueueHandler() : __handler; } }
+        private IIndexWorkflowQueueHandler Handler { get { return __handler ?? InitWorkflowQueueHandler(); } }
 
         private int _isHandlerWorkerIdle;
 
@@ -82,10 +85,11 @@ namespace Orleans.Indexing
         public static int NUM_AVAILABLE_INDEX_WORKFLOW_QUEUES { get { return Environment.ProcessorCount; } }
 
         private SiloAddress _silo;
+        private IRuntimeClient _runtimeClient;
 
         private GrainReference _parent;
 
-        internal IndexWorkflowQueueBase(Type grainInterfaceType, int queueSequenceNumber, SiloAddress silo, bool isDefinedAsFaultTolerantGrain, GrainId grainId, GrainReference parent)
+        internal IndexWorkflowQueueBase(IRuntimeClient runtimeClient, Type grainInterfaceType, int queueSequenceNumber, SiloAddress silo, bool isDefinedAsFaultTolerantGrain, GrainId grainId, GrainReference parent)
         {
             State = new IndexWorkflowQueueState(grainId, silo);
             _iGrainType = grainInterfaceType;
@@ -104,15 +108,17 @@ namespace Orleans.Indexing
             _pendingWriteRequests = new HashSet<int>();
 
             _silo = silo;
+            _runtimeClient = runtimeClient;
             _parent = parent;
         }
 
         private IIndexWorkflowQueueHandler InitWorkflowQueueHandler()
         {
-            if (_parent.IsSystemTarget)
-                return __handler = InsideRuntimeClient.Current.InternalGrainFactory.GetSystemTarget<IIndexWorkflowQueueHandler>(IndexWorkflowQueueHandlerBase.CreateIndexWorkflowQueueHandlerGrainId(_iGrainType, _queueSeqNum), _silo);
-            else
-                return __handler = InsideRuntimeClient.Current.InternalGrainFactory.GetGrain<IIndexWorkflowQueueHandler>(CreateIndexWorkflowQueuePrimaryKey(_iGrainType, _queueSeqNum));
+            __handler = _parent.IsSystemTarget
+                ? _runtimeClient.InternalGrainFactory.GetSystemTarget<IIndexWorkflowQueueHandler>(
+                        IndexWorkflowQueueHandlerBase.CreateIndexWorkflowQueueHandlerGrainId(_iGrainType, _queueSeqNum), _silo)
+                : _runtimeClient.InternalGrainFactory.GetGrain<IIndexWorkflowQueueHandler>(CreateIndexWorkflowQueuePrimaryKey(_iGrainType, _queueSeqNum));
+            return __handler;
         }
 
         public Task AddAllToQueue(Immutable<List<IndexWorkflowRecord>> workflowRecords)
@@ -125,11 +131,7 @@ namespace Orleans.Indexing
             }
 
             InitiateWorkerThread();
-            if (IsFaultTolerant)
-            {
-                return PersistState();
-            }
-            return TaskDone.Done;
+            return IsFaultTolerant ? PersistState() : Task.CompletedTask;
         }
 
         public Task AddToQueue(Immutable<IndexWorkflowRecord> workflow)
@@ -139,11 +141,7 @@ namespace Orleans.Indexing
             AddToQueueNonPersistent(newWorkflow);
 
             InitiateWorkerThread();
-            if (IsFaultTolerant)
-            {
-                return PersistState();
-            }
-            return TaskDone.Done;
+            return IsFaultTolerant ? PersistState() : Task.CompletedTask;
         }
 
         private void AddToQueueNonPersistent(IndexWorkflowRecord newWorkflow)
@@ -169,11 +167,7 @@ namespace Orleans.Indexing
                 RemoveFromQueueNonPersistent(newWorkflow);
             }
 
-            if (IsFaultTolerant)
-            {
-                return PersistState();
-            }
-            return TaskDone.Done;
+            return IsFaultTolerant ? PersistState() : Task.CompletedTask;
         }
 
         private void RemoveFromQueueNonPersistent(IndexWorkflowRecord newWorkflow)
@@ -269,11 +263,14 @@ namespace Orleans.Indexing
                     //clear all pending write requests, as this attempt will do them all.
                     _pendingWriteRequests.Clear();
                     //write the state back to the storage
+#if false //vv2err In v1 IExtendedStorageProvider/.WriteStateWithoutEtagCheckAsync was added to Corleans in support of indexing
                     IExtendedStorageProvider extendedSP = StorageProvider as IExtendedStorageProvider;
-                    if (extendedSP == null)
-                        await StorageProvider.WriteStateAsync("Orleans.Indexing.IndexWorkflowQueue-" + TypeUtils.GetFullName(_iGrainType), _parent, State);
-                    else
-                        await extendedSP.WriteStateWithoutEtagCheckAsync("Orleans.Indexing.IndexWorkflowQueue-" + TypeUtils.GetFullName(_iGrainType), _parent, State);
+                    await (extendedSP == null
+                        ? StorageProvider.WriteStateAsync("Orleans.Indexing.IndexWorkflowQueue-" + TypeUtils.GetFullName(_iGrainType), _parent, State)
+                        : extendedSP.WriteStateWithoutEtagCheckAsync("Orleans.Indexing.IndexWorkflowQueue-" + TypeUtils.GetFullName(_iGrainType), _parent, State));
+#else
+                    await StorageProvider.WriteStateAsync("Orleans.Indexing.IndexWorkflowQueue-" + TypeUtils.GetFullName(_iGrainType), _parent, State);
+#endif
                 }
                 //else
                 //{
@@ -320,7 +317,7 @@ namespace Orleans.Indexing
             var indexes = IndexHandler.GetIndexes(_iGrainType);
             foreach (var idxInfo in indexes.Values)
             {
-                if (idxInfo.Item1 is TotalIndex)
+                if (idxInfo.Item1 is ITotalIndex)
                 {
                     __hasAnyTotalIndex = 1;
                     return true;
@@ -332,7 +329,8 @@ namespace Orleans.Indexing
 
         private IStorageProvider InitStorageProvider()
         {
-            return _storageProvider = InsideRuntimeClient.Current.Catalog.SetupStorageProvider(typeof(IndexWorkflowQueueSystemTarget));
+            //vv2err return _storageProvider = _runtimeClient.Catalog.SetupStorageProvider(typeof(IndexWorkflowQueueSystemTarget));    // vv2 Catalog.SetupStorageProvider not implementable
+            return null;
         }
 
         public Task<Immutable<List<IndexWorkflowRecord>>> GetRemainingWorkflowsIn(HashSet<Guid> activeWorkflowsSet)
@@ -358,8 +356,8 @@ namespace Orleans.Indexing
 #region STATIC HELPER FUNCTIONS
         public static GrainId CreateIndexWorkflowQueueGrainId(Type grainInterfaceType, int queueSeqNum)
         {
-            return GrainId.GetSystemTargetGrainId(Constants.INDEX_WORKFLOW_QUEUE_SYSTEM_TARGET_TYPE_CODE,
-                                                  CreateIndexWorkflowQueuePrimaryKey(grainInterfaceType, queueSeqNum));
+            return IndexExtensions.GetSystemTargetGrainId(IndexingConstants.INDEX_WORKFLOW_QUEUE_SYSTEM_TARGET_TYPE_CODE,
+                                          CreateIndexWorkflowQueuePrimaryKey(grainInterfaceType, queueSeqNum));
         }
 
         public static string CreateIndexWorkflowQueuePrimaryKey(Type grainInterfaceType, int queueSeqNum)
@@ -369,13 +367,14 @@ namespace Orleans.Indexing
 
         public static GrainId GetIndexWorkflowQueueGrainIdFromGrainHashCode(Type grainInterfaceType, int grainHashCode)
         {
-            return GrainId.GetSystemTargetGrainId(Constants.INDEX_WORKFLOW_QUEUE_SYSTEM_TARGET_TYPE_CODE,
-                                                  CreateIndexWorkflowQueuePrimaryKey(grainInterfaceType, StorageProviderUtils.PositiveHash(grainHashCode, NUM_AVAILABLE_INDEX_WORKFLOW_QUEUES)));
+            int queueSeqNum = StorageProviderUtils.PositiveHash(grainHashCode, NUM_AVAILABLE_INDEX_WORKFLOW_QUEUES);
+            return IndexExtensions.GetSystemTargetGrainId(IndexingConstants.INDEX_WORKFLOW_QUEUE_SYSTEM_TARGET_TYPE_CODE,
+                                          CreateIndexWorkflowQueuePrimaryKey(grainInterfaceType, queueSeqNum));
         }
 
-        public static IIndexWorkflowQueue GetIndexWorkflowQueueFromGrainHashCode(Type grainInterfaceType, int grainHashCode, SiloAddress siloAddress)
+        public static IIndexWorkflowQueue GetIndexWorkflowQueueFromGrainHashCode(IndexingManager indexingManager, Type grainInterfaceType, int grainHashCode, SiloAddress siloAddress)
         {
-            return InsideRuntimeClient.Current.InternalGrainFactory.GetSystemTarget<IIndexWorkflowQueue>(
+            return indexingManager.GetSystemTarget<IIndexWorkflowQueue>(
                 GetIndexWorkflowQueueGrainIdFromGrainHashCode(grainInterfaceType, grainHashCode),
                 siloAddress
             );
@@ -383,4 +382,3 @@ namespace Orleans.Indexing
 #endregion STATIC HELPER FUNCTIONS
     }
 }
-#endif

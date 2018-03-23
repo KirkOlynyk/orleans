@@ -30,7 +30,8 @@ namespace Orleans.Indexing
     ///    [grain-type-name + sequence number], identifies the IndexWorkflowQueueSystemTarget grain
     ///    that processes index updates on G's behalf.
     /// </summary>
-    public abstract class IndexableGrain<TState, TProperties> : IndexableGrainNonFaultTolerant<IndexableExtendedState<TState>, TProperties>, IIndexableGrainFaultTolerant where TProperties : new()
+    public abstract class IndexableGrain<TState, TProperties> : IndexableGrainNonFaultTolerant<IndexableExtendedState<TState>, TProperties>, IIndexableGrainFaultTolerant
+        where TProperties : new()
     {
         protected new TState State
         {
@@ -42,8 +43,8 @@ namespace Orleans.Indexing
 
         internal override IDictionary<Type, IIndexWorkflowQueue> WorkflowQueues
         {
-            get { return base.State.workflowQueues; }
-            set { base.State.workflowQueues = value; }
+            get { return base.State.WorkflowQueues; }
+            set { base.State.WorkflowQueues = value; }
         }
 
         //0: uninitialized, 1: has some Total Indexes, 2: does not have any Total Index
@@ -251,15 +252,11 @@ namespace Orleans.Indexing
 
         private async Task<IIndexWorkflowQueue> GetReincarnatedWorkflowQueue(IIndexWorkflowQueue workflowQ)
         {
-#if false
             string primaryKey = workflowQ.GetPrimaryKeyString();
-            IIndexWorkflowQueue reincarnatedQ = InsideRuntimeClient.Current.InternalGrainFactory.GetGrain<IIndexWorkflowQueue>(primaryKey);
-            IIndexWorkflowQueueHandler reincarnatedQHandler = InsideRuntimeClient.Current.InternalGrainFactory.GetGrain<IIndexWorkflowQueueHandler>(primaryKey);
+            IIndexWorkflowQueue reincarnatedQ = base.GrainFactory.GetGrain<IIndexWorkflowQueue>(primaryKey);
+            IIndexWorkflowQueueHandler reincarnatedQHandler = base.GrainFactory.GetGrain<IIndexWorkflowQueueHandler>(primaryKey);
             await Task.WhenAll(reincarnatedQ.Initialize(workflowQ), reincarnatedQHandler.Initialize(workflowQ));
             return reincarnatedQ;
-#else
-            return await Task.FromResult<IIndexWorkflowQueue>(null);
-#endif
         }
 
         private Task PruneActiveWorkflowsSetFromAlreadyHandledWorkflows(IEnumerable<Guid> workflowsInProgress)
@@ -304,7 +301,7 @@ namespace Orleans.Indexing
             if (base.State.ActiveWorkflowsSet != null && base.State.ActiveWorkflowsSet.RemoveWhere(g => removedWorkflowId.Contains(g)) > 0)
             {
                 //TODO: decide whether we need to actually write the state
-                //back to the storage or we can leave it for the net WriteStateAsync
+                //back to the storage or we can leave it for the next WriteStateAsync
                 //on the grain itself
                 //return WriteBaseStateAsync();
                 return Task.CompletedTask;
@@ -403,7 +400,7 @@ namespace Orleans.Indexing
     public class IndexableExtendedState<TState>
     {
         internal HashSet<Guid> ActiveWorkflowsSet = null;
-        internal IDictionary<Type, IIndexWorkflowQueue> workflowQueues = null;
+        internal IDictionary<Type, IIndexWorkflowQueue> WorkflowQueues = null;
 
         public TState UserState = (TState)Activator.CreateInstance(typeof(TState));
     }

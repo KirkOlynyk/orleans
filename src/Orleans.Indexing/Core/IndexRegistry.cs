@@ -2,7 +2,6 @@ using Orleans.Runtime;
 using System;
 using System.Collections.Generic;
 
-#if false
 namespace Orleans.Indexing
 {
     public static class IndexRegistry
@@ -24,12 +23,9 @@ namespace Orleans.Indexing
         /// project is not available.</returns>
         internal static IDictionary<string, Tuple<object, object, object>> GetIndexes(Type iGrainType)
         {
-             IDictionary<string, Tuple<object, object, object>> indexes;
-             if (!RuntimeClient.Current.Indexes.TryGetValue(iGrainType, out indexes))
-             {
-                 return new Dictionary<string, Tuple<object, object, object>>();
-             }
-             return indexes;
+            return /* vv2err RuntimeClient.Current.Indexes.TryGetValue(iGrainType, out IDictionary<string, Tuple<object, object, object>> indexes)
+                ? indexes
+                : */ new Dictionary<string, Tuple<object, object, object>>();
         }
 
         /// <summary>
@@ -47,10 +43,9 @@ namespace Orleans.Indexing
         /// 
         /// This method returns an empty dictionary if the OrleansIndexing 
         /// project is not available.</returns>
-        internal static IDictionary<string, Tuple<object, object, object>> GetIndexes<T>() where T : IIndexableGrain
+        internal static IDictionary<string, Tuple<object, object, object>> GetIndexes<T>() where T : IIndexableGrain    //vv2: consolidate with the non-Generic form
         {
             return GetIndexes(typeof(T));
         }
     }
 }
-#endif

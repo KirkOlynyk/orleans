@@ -5,13 +5,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-#if false
 namespace Orleans.Indexing
 {
     internal class IndexWorkflowQueueHandlerBase : IIndexWorkflowQueueHandler
     {
         private IIndexWorkflowQueue __workflowQueue;
-        private IIndexWorkflowQueue WorkflowQueue { get { return __workflowQueue == null ? InitIndexWorkflowQueue() : __workflowQueue; } }
+        private IIndexWorkflowQueue WorkflowQueue { get { return __workflowQueue ?? InitIndexWorkflowQueue(); } }
 
         private int _queueSeqNum;
         private Type _iGrainType;
@@ -23,12 +22,13 @@ namespace Orleans.Indexing
 
         private IDictionary<string, Tuple<object, object, object>> __indexes;
 
-        private IDictionary<string, Tuple<object, object, object>> Indexes { get { return __indexes == null ? InitIndexes() : __indexes; } }
+        private IDictionary<string, Tuple<object, object, object>> Indexes { get { return __indexes ?? InitIndexes(); } }
 
         private SiloAddress _silo;
+        private IRuntimeClient _runtimeClient;
         private GrainReference _parent;
 
-        internal IndexWorkflowQueueHandlerBase(Type iGrainType, int queueSeqNum, SiloAddress silo, bool isDefinedAsFaultTolerantGrain, GrainReference parent)
+        internal IndexWorkflowQueueHandlerBase(IRuntimeClient runtimeClient, Type iGrainType, int queueSeqNum, SiloAddress silo, bool isDefinedAsFaultTolerantGrain, GrainReference parent)
         {
             _iGrainType = iGrainType;
             _queueSeqNum = queueSeqNum;
@@ -37,6 +37,7 @@ namespace Orleans.Indexing
             __indexes = null;
             __workflowQueue = null;
             _silo = silo;
+            _runtimeClient = runtimeClient;
             _parent = parent;
         }
 
@@ -87,14 +88,17 @@ namespace Orleans.Indexing
                 var updatesToIndex = updatesToIndexes[indexEntry.Key];
                 if (updatesToIndex.Count() > 0)
                 {
-                    updateIndexTasks.Add(((IndexInterface)idxInfo.Item1).ApplyIndexUpdateBatch(updatesToIndex.AsImmutable(), ((IndexMetaData)idxInfo.Item2).IsUniqueIndex(), (IndexMetaData)idxInfo.Item2, _silo));
+                    updateIndexTasks.Add(((IIndexInterface)idxInfo.Item1).ApplyIndexUpdateBatch(
+                                                _runtimeClient, updatesToIndex.AsImmutable(),
+                                                ((IndexMetaData)idxInfo.Item2).IsUniqueIndex(), (IndexMetaData)idxInfo.Item2, _silo));
                 }
             }
 
             return updateIndexTasks;
         }
 
-        private void PopulateUpdatesToIndexes(IndexWorkflowRecordNode currentWorkflow, Dictionary<string, IDictionary<IIndexableGrain, IList<IMemberUpdate>>> updatesToIndexes, Dictionary<IIndexableGrain, HashSet<Guid>> grainsToActiveWorkflows)
+        private void PopulateUpdatesToIndexes(IndexWorkflowRecordNode currentWorkflow, Dictionary<string, IDictionary<IIndexableGrain,
+                                              IList<IMemberUpdate>>> updatesToIndexes, Dictionary<IIndexableGrain, HashSet<Guid>> grainsToActiveWorkflows)
         {
             bool faultTolerant = IsFaultTolerant;
             while (!currentWorkflow.IsPunctuation())
@@ -104,8 +108,7 @@ namespace Orleans.Indexing
                 bool existsInActiveWorkflows = false;
                 if (faultTolerant)
                 {
-                    HashSet<Guid> activeWorkflowRecs = null;
-                    if (grainsToActiveWorkflows.TryGetValue(g, out activeWorkflowRecs))
+                    if (grainsToActiveWorkflows.TryGetValue(g, out HashSet<Guid> activeWorkflowRecs))
                     {
                         if (activeWorkflowRecs.Contains(workflowRec.WorkflowId))
                         {
@@ -121,8 +124,7 @@ namespace Orleans.Indexing
                     {
                         string index = updates.Key;
                         var updatesToIndex = updatesToIndexes[index];
-                        IList<IMemberUpdate> updatesList;
-                        if (!updatesToIndex.TryGetValue(g, out updatesList))
+                        if (!updatesToIndex.TryGetValue(g, out IList<IMemberUpdate> updatesList))
                         {
                             updatesList = new List<IMemberUpdate>();
                             updatesToIndex.Add(g, updatesList);
@@ -163,7 +165,7 @@ namespace Orleans.Indexing
                     {
                         result.Add(g, EMPTY_HASHSET);
                         grains.Add(g);
-                        activeWorkflowsSetsTasks.Add(g.AsReference<IIndexableGrain>(InsideRuntimeClient.Current.ConcreteGrainFactory, _iGrainType).GetActiveWorkflowIdsList());
+                        activeWorkflowsSetsTasks.Add(g.AsReference<IIndexableGrain>(_runtimeClient.InternalGrainFactory, _iGrainType).GetActiveWorkflowIdsList());
                     }
                 }
                 currentWorkflow = currentWorkflow.Next;
@@ -197,7 +199,7 @@ namespace Orleans.Indexing
             __indexes = IndexHandler.GetIndexes(_iGrainType);
             foreach (var idxInfo in __indexes.Values)
             {
-                if (idxInfo.Item1 is TotalIndex)
+                if (idxInfo.Item1 is ITotalIndex)
                 {
                     _hasAnyTotalIndex = true;
                     return __indexes;
@@ -208,21 +210,21 @@ namespace Orleans.Indexing
 
         private IIndexWorkflowQueue InitIndexWorkflowQueue()
         {
-            if (_parent.IsSystemTarget)
-                return __workflowQueue = InsideRuntimeClient.Current.InternalGrainFactory.GetSystemTarget<IIndexWorkflowQueue>(IndexWorkflowQueueBase.CreateIndexWorkflowQueueGrainId(_iGrainType, _queueSeqNum), _silo);
-            else
-                return __workflowQueue = InsideRuntimeClient.Current.InternalGrainFactory.GetGrain<IIndexWorkflowQueue>(IndexWorkflowQueueBase.CreateIndexWorkflowQueuePrimaryKey(_iGrainType, _queueSeqNum));
+            __workflowQueue = _parent.IsSystemTarget
+                ? _runtimeClient.InternalGrainFactory.GetSystemTarget<IIndexWorkflowQueue>(IndexWorkflowQueueBase.CreateIndexWorkflowQueueGrainId(_iGrainType, _queueSeqNum), _silo)
+                : _runtimeClient.InternalGrainFactory.GetGrain<IIndexWorkflowQueue>(IndexWorkflowQueueBase.CreateIndexWorkflowQueuePrimaryKey(_iGrainType, _queueSeqNum));
+            return __workflowQueue;
         }
 
         public static GrainId CreateIndexWorkflowQueueHandlerGrainId(Type grainInterfaceType, int queueSeqNum)
         {
-            return GrainId.GetSystemTargetGrainId(Constants.INDEX_WORKFLOW_QUEUE_HANDLER_SYSTEM_TARGET_TYPE_CODE,
-                                                  IndexWorkflowQueueBase.CreateIndexWorkflowQueuePrimaryKey(grainInterfaceType, queueSeqNum));
+            return IndexExtensions.GetSystemTargetGrainId(IndexingConstants.INDEX_WORKFLOW_QUEUE_HANDLER_SYSTEM_TARGET_TYPE_CODE,
+                                                          IndexWorkflowQueueBase.CreateIndexWorkflowQueuePrimaryKey(grainInterfaceType, queueSeqNum));
         }
 
-        public static IIndexWorkflowQueueHandler GetIndexWorkflowQueueFromGrainHashCode(Type grainInterfaceType, int grainHashCode, SiloAddress siloAddress)
+        public IIndexWorkflowQueueHandler GetIndexWorkflowQueueFromGrainHashCode(Type grainInterfaceType, int grainHashCode, SiloAddress siloAddress)   //vv2 TODO--is this used?
         {
-            return InsideRuntimeClient.Current.InternalGrainFactory.GetSystemTarget<IIndexWorkflowQueueHandler>(
+            return _runtimeClient.InternalGrainFactory.GetSystemTarget<IIndexWorkflowQueueHandler>(
                 CreateIndexWorkflowQueueHandlerGrainId(grainInterfaceType, grainHashCode),
                 siloAddress
             );
@@ -234,4 +236,3 @@ namespace Orleans.Indexing
         }
     }
 }
-#endif

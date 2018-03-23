@@ -6,7 +6,6 @@ using Orleans.Concurrency;
 using Orleans.Runtime;
 using System.Runtime.CompilerServices;
 
-#if false
 namespace Orleans.Indexing
 {
     /// <summary>
@@ -17,26 +16,28 @@ namespace Orleans.Indexing
     [Reentrant]
     public abstract class HashIndexSingleBucket<K, V> : Grain<HashIndexBucketState<K, V>>, IHashIndexSingleBucketInterface<K, V> where V : class, IIndexableGrain
     {
+#if false //vv2 logger
         private static readonly Logger logger = LogManager.GetLogger(string.Format("HashIndexPartitionedPerKeyBucket<{0},{1}>", typeof(K).Name, typeof(V).Name), LoggerType.Grain);
 
         Logger getLogger()
         {
             return logger;
         }
+#endif
 
         public override Task OnActivateAsync()
         {
-            if (State.IndexMap == null) State.IndexMap = new Dictionary<K, HashIndexSingleBucketEntry<V>>();
-            State.IndexStatus = IndexStatus.Available;
+            if (this.State.IndexMap == null) this.State.IndexMap = new Dictionary<K, HashIndexSingleBucketEntry<V>>();
+            this.State.IndexStatus = IndexStatus.Available;
             //TODO: support for index construction should be added.
             //Currently the Total indexes can only be defined in advance.
-            //if (State.IndexStatus == IndexStatus.UnderConstruction)
+            //if (this.State.IndexStatus == IndexStatus.UnderConstruction)
             //{
             //    //Build the index!
             //}
-            write_lock = new AsyncLock();
-            writeRequestIdGen = 0;
-            pendingWriteRequests = new HashSet<int>();
+            this.write_lock = new AsyncLock();
+            this.writeRequestIdGen = 0;
+            this.pendingWriteRequests = new HashSet<int>();
             return base.OnActivateAsync();
         }
 
@@ -68,7 +69,7 @@ namespace Orleans.Indexing
 
         public async Task<bool> DirectApplyIndexUpdateBatch(Immutable<IDictionary<IIndexableGrain, IList<IMemberUpdate>>> iUpdates, bool isUnique, IndexMetaData idxMetaData, SiloAddress siloAddress = null)
         {
-            if (getLogger().IsVerbose) getLogger().Verbose("Started calling DirectApplyIndexUpdateBatch with the following parameters: isUnique = {0}, siloAddress = {1}, iUpdates = {2}", isUnique, siloAddress, MemberUpdate.UpdatesToString(iUpdates.Value));
+            //vv2 if (getLogger().IsVerbose) getLogger().Verbose("Started calling DirectApplyIndexUpdateBatch with the following parameters: isUnique = {0}, siloAddress = {1}, iUpdates = {2}", isUnique, siloAddress, MemberUpdate.UpdatesToString(iUpdates.Value));
 
             IDictionary<IIndexableGrain, IList<IMemberUpdate>> updates = iUpdates.Value;
             Task[] updateTasks = new Task[updates.Count()];
@@ -81,19 +82,19 @@ namespace Orleans.Indexing
             await Task.WhenAll(updateTasks);
             await PersistIndex();
 
-            if (getLogger().IsVerbose) getLogger().Verbose("Finished calling DirectApplyIndexUpdateBatch with the following parameters: isUnique = {0}, siloAddress = {1}, iUpdates = {2}", isUnique, siloAddress, MemberUpdate.UpdatesToString(iUpdates.Value));
+            //vv2 if (getLogger().IsVerbose) getLogger().Verbose("Finished calling DirectApplyIndexUpdateBatch with the following parameters: isUnique = {0}, siloAddress = {1}, iUpdates = {2}", isUnique, siloAddress, MemberUpdate.UpdatesToString(iUpdates.Value));
 
             return true;
         }
 
-        private async Task<IndexInterface<K, V>> GetNextBucketAndPersist()
+        private async Task<IIndexInterface<K, V>> GetNextBucketAndPersist()
         {
-            IndexInterface<K, V> nextBucket = GetNextBucket();
+            IIndexInterface<K, V> nextBucket = GetNextBucket();
             await PersistIndex();
             return nextBucket;
         }
 
-        internal abstract IndexInterface<K, V> GetNextBucket();
+        internal abstract IIndexInterface<K, V> GetNextBucket();
 
         /// <summary>
         /// This method applies a given update to the current index.
@@ -128,7 +129,7 @@ namespace Orleans.Indexing
             bool fixIndexUnavailableOnDelete = false;
 
             //the target grain that is updated
-            V updatedGrain = g.AsReference<V>(GrainFactory);
+            V updatedGrain = g.AsReference<V>(this.GrainFactory);
 
             K befImg;
             HashIndexSingleBucketEntry<V> befEntry;
@@ -137,7 +138,7 @@ namespace Orleans.Indexing
             //(note that no other thread can run concurrently
             //before we reach an await operation, so no concurrency
             //control mechanism (e.g., locking) is required)
-            if (!HashIndexBucketUtils.UpdateBucket(updatedGrain, updt, State, isUniqueIndex, idxMetaData, out befImg, out befEntry, out fixIndexUnavailableOnDelete))
+            if (!HashIndexBucketUtils.UpdateBucket(updatedGrain, updt, this.State, isUniqueIndex, idxMetaData, out befImg, out befEntry, out fixIndexUnavailableOnDelete))
             {
                 await (await GetNextBucketAndPersist()).DirectApplyIndexUpdate(g, updt.AsImmutable(), isUniqueIndex, idxMetaData, siloAddress);
             }
@@ -157,20 +158,20 @@ namespace Orleans.Indexing
         private async Task PersistIndex()
         {
             //create a write-request ID, which is used for group commit
-            int writeRequestId = ++writeRequestIdGen;
+            int writeRequestId = ++this.writeRequestIdGen;
 
             //add the write-request ID to the pending write requests
-            pendingWriteRequests.Add(writeRequestId);
+            this.pendingWriteRequests.Add(writeRequestId);
 
             //wait before any previous write is done
-            using (await write_lock.LockAsync())
+            using (await this.write_lock.LockAsync())
             {
                 //if the write request was not already handled
                 //by a previous group write attempt
-                if (pendingWriteRequests.Contains(writeRequestId))
+                if (this.pendingWriteRequests.Contains(writeRequestId))
                 {
                     //clear all pending write requests, as this attempt will do them all.
-                    pendingWriteRequests.Clear();
+                    this.pendingWriteRequests.Clear();
                     //write the index state back to the storage
                     //TODO: What is the best way to handle an index write error?
                     int numRetries = 0;
@@ -198,21 +199,20 @@ namespace Orleans.Indexing
 
         public async Task Lookup(IOrleansQueryResultStream<V> result, K key)
         {
-            if (getLogger().IsVerbose) getLogger().Verbose("Streamed index lookup called for key = {0}", key);
+            //vv2 if (getLogger().IsVerbose) getLogger().Verbose("Streamed index lookup called for key = {0}", key);
 
-            if (!(State.IndexStatus == IndexStatus.Available))
+            if (!(this.State.IndexStatus == IndexStatus.Available))
             {
                 var e = new Exception(string.Format("Index is not still available."));
-                GetLogger().Error((int)ErrorCode.IndexingIndexIsNotReadyYet_GrainBucket1, "Index is not still available.", e);
+                //vv2 GetLogger().Error((int)ErrorCode.IndexingIndexIsNotReadyYet_GrainBucket1, "Index is not still available.", e);
                 throw e;
             }
-            HashIndexSingleBucketEntry<V> entry;
-            if (State.IndexMap.TryGetValue(key, out entry) && !entry.isTentative())
+            if (this.State.IndexMap.TryGetValue(key, out HashIndexSingleBucketEntry<V> entry) && !entry.IsTentative())
             {
                 await result.OnNextBatchAsync(entry.Values);
                 await result.OnCompletedAsync();
             }
-            else if (State.NextBucket != null)
+            else if (this.State.NextBucket != null)
             {
                 await GetNextBucket().Lookup(result, key);
             }
@@ -224,14 +224,13 @@ namespace Orleans.Indexing
 
         public async Task<V> LookupUnique(K key)
         {
-            if (!(State.IndexStatus == IndexStatus.Available))
+            if (!(this.State.IndexStatus == IndexStatus.Available))
             {
                 var e = new Exception(string.Format("Index is not still available."));
-                GetLogger().Error((int)ErrorCode.IndexingIndexIsNotReadyYet_GrainBucket2, e.Message, e);
+                //vv2 GetLogger().Error((int)ErrorCode.IndexingIndexIsNotReadyYet_GrainBucket2, e.Message, e);
                 throw e;
             }
-            HashIndexSingleBucketEntry<V> entry;
-            if (State.IndexMap.TryGetValue(key, out entry) && !entry.isTentative())
+            if (this.State.IndexMap.TryGetValue(key, out HashIndexSingleBucketEntry<V> entry) && !entry.IsTentative())
             {
                 if (entry.Values.Count() == 1)
                 {
@@ -240,56 +239,55 @@ namespace Orleans.Indexing
                 else
                 {
                     var e = new Exception(string.Format("There are {0} values for the unique lookup key \"{1}\" does not exist on index \"{2}\".", entry.Values.Count(), key, IndexUtils.GetIndexNameFromIndexGrain(this)));
-                    GetLogger().Error((int)ErrorCode.IndexingIndexIsNotReadyYet_GrainBucket3, e.Message, e);
+                    //vv2 GetLogger().Error((int)ErrorCode.IndexingIndexIsNotReadyYet_GrainBucket3, e.Message, e);
                     throw e;
                 }
             }
-            else if (State.NextBucket != null)
+            else if (this.State.NextBucket != null)
             {
-                return await ((HashIndexInterface<K, V>)GetNextBucket()).LookupUnique(key);
+                return await ((IHashIndexInterface<K, V>)GetNextBucket()).LookupUnique(key);
             }
             else
             {
                 var e = new Exception(string.Format("The lookup key \"{0}\" does not exist on index \"{1}\".", key, IndexUtils.GetIndexNameFromIndexGrain(this)));
-                GetLogger().Error((int)ErrorCode.IndexingIndexIsNotReadyYet_GrainBucket4, e.Message, e);
+                //vv2 GetLogger().Error((int)ErrorCode.IndexingIndexIsNotReadyYet_GrainBucket4, e.Message, e);
                 throw e;
             }
         }
 
         public Task Dispose()
         {
-            State.IndexStatus = IndexStatus.Disposed;
-            State.IndexMap.Clear();
-            Runtime.DeactivateOnIdle(this);
-            return TaskDone.Done;
+            this.State.IndexStatus = IndexStatus.Disposed;
+            this.State.IndexMap.Clear();
+            this.Runtime.DeactivateOnIdle(this);
+            return Task.CompletedTask;
         }
 
         public Task<bool> IsAvailable()
         {
-            return Task.FromResult(State.IndexStatus == IndexStatus.Available);
+            return Task.FromResult(this.State.IndexStatus == IndexStatus.Available);
         }
 
-        Task IndexInterface.Lookup(IOrleansQueryResultStream<IIndexableGrain> result, object key)
+        Task IIndexInterface.Lookup(IOrleansQueryResultStream<IIndexableGrain> result, object key)
         {
             return Lookup(result.Cast<V>(), (K)key);
         }
 
         public async Task<IOrleansQueryResult<V>> Lookup(K key)
         {
-            if (getLogger().IsVerbose) getLogger().Verbose("Eager index lookup called for key = {0}", key);
+            //vv2 if (getLogger().IsVerbose) getLogger().Verbose("Eager index lookup called for key = {0}", key);
 
-            if (!(State.IndexStatus == IndexStatus.Available))
+            if (!(this.State.IndexStatus == IndexStatus.Available))
             {
                 var e = new Exception(string.Format("Index is not still available."));
-                GetLogger().Error((int)ErrorCode.IndexingIndexIsNotReadyYet_GrainBucket5, "Index is not still available.", e);
+                //vv2 GetLogger().Error((int)ErrorCode.IndexingIndexIsNotReadyYet_GrainBucket5, "Index is not still available.", e);
                 throw e;
             }
-            HashIndexSingleBucketEntry<V> entry;
-            if (State.IndexMap.TryGetValue(key, out entry) && !entry.isTentative())
+            if (this.State.IndexMap.TryGetValue(key, out HashIndexSingleBucketEntry<V> entry) && !entry.IsTentative())
             {
                 return new OrleansQueryResult<V>(entry.Values);
             }
-            else if (State.NextBucket != null)
+            else if (this.State.NextBucket != null)
             {
                 return await GetNextBucket().Lookup(key);
             }
@@ -299,10 +297,9 @@ namespace Orleans.Indexing
             }
         }
 
-        async Task<IOrleansQueryResult<IIndexableGrain>> IndexInterface.Lookup(object key)
+        async Task<IOrleansQueryResult<IIndexableGrain>> IIndexInterface.Lookup(object key)
         {
             return await Lookup((K)key);
         }
     }
 }
-#endif

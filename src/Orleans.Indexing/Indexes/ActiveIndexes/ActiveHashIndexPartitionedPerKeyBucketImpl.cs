@@ -2,7 +2,6 @@ using Orleans.Concurrency;
 using Orleans.Runtime;
 using Orleans.Providers;
 
-#if false
 namespace Orleans.Indexing
 {
     /// <summary>
@@ -15,7 +14,8 @@ namespace Orleans.Indexing
     /// <typeparam name="V">type of grain that is being indexed</typeparam>
     [StorageProvider(ProviderName = Constants.MEMORY_STORAGE_PROVIDER_NAME)]
     [Reentrant]
-    public class ActiveHashIndexPartitionedPerKeyBucketImpl<K, V> : IHashIndexPartitionedPerKeyBucket<K, V>, IActiveHashIndexPartitionedPerKeyBucket<K, V> where V : class, IIndexableGrain
+    public class ActiveHashIndexPartitionedPerKeyBucketImpl<K, V> : HashIndexPartitionedPerKeyBucket<K, V>, IActiveHashIndexPartitionedPerKeyBucket<K, V>
+        where V : class, IIndexableGrain
     {
         internal override IIndexInterface<K, V> GetNextBucket()
         {
@@ -25,4 +25,3 @@ namespace Orleans.Indexing
         }
     }
 }
-#endif

@@ -4,20 +4,21 @@ using System.Threading.Tasks;
 using Orleans.Runtime;
 using Orleans.Concurrency;
 
-#if false
 namespace Orleans.Indexing
 {
-    public static class IndexExtensions
+    internal static class IndexExtensions
     {
         /// <summary>
         /// An extension method to intercept the calls to DirectApplyIndexUpdateBatch
         /// on an Index
         /// </summary>
-        public static Task<bool> ApplyIndexUpdateBatch(this IIndexInterface index, Immutable<IDictionary<IIndexableGrain, IList<IMemberUpdate>>> iUpdates, bool isUniqueIndex, IndexMetaData idxMetaData, SiloAddress siloAddress = null)
+        public static Task<bool> ApplyIndexUpdateBatch(this IIndexInterface index, IRuntimeClient runtimeClient,
+                                                        Immutable<IDictionary<IIndexableGrain, IList<IMemberUpdate>>> iUpdates,
+                                                        bool isUniqueIndex, IndexMetaData idxMetaData, SiloAddress siloAddress = null)
         {
             if (index is IActiveHashIndexPartitionedPerSilo)
             {
-                ActiveHashIndexPartitionedPerSiloBucket bucketInCurrentSilo = InsideRuntimeClient.Current.InternalGrainFactory.GetSystemTarget<ActiveHashIndexPartitionedPerSiloBucket>(
+                var bucketInCurrentSilo = runtimeClient.InternalGrainFactory.GetSystemTarget<IActiveHashIndexPartitionedPerSiloBucket>(
                     GetAHashIndexPartitionedPerSiloGrainID(IndexUtils.GetIndexNameFromIndexGrain((IAddressable)index), index.GetType().GetGenericArguments()[1]),
                     siloAddress
                 );
@@ -30,11 +31,13 @@ namespace Orleans.Indexing
         /// An extension method to intercept the calls to DirectApplyIndexUpdate
         /// on an Index
         /// </summary>
-        internal static Task<bool> ApplyIndexUpdate(this IIndexInterface index, IIndexableGrain updatedGrain, Immutable<IMemberUpdate> update, bool isUniqueIndex, IndexMetaData idxMetaData, SiloAddress siloAddress = null)
+        internal static Task<bool> ApplyIndexUpdate(this IIndexInterface index, IRuntimeClient runtimeClient,
+                                                    IIndexableGrain updatedGrain, Immutable<IMemberUpdate> update,
+                                                    bool isUniqueIndex, IndexMetaData idxMetaData, SiloAddress siloAddress = null)
         {
             if (index is IActiveHashIndexPartitionedPerSilo)
             {
-                ActiveHashIndexPartitionedPerSiloBucket bucketInCurrentSilo = InsideRuntimeClient.Current.InternalGrainFactory.GetSystemTarget<ActiveHashIndexPartitionedPerSiloBucket>(
+                var bucketInCurrentSilo = runtimeClient.InternalGrainFactory.GetSystemTarget<IActiveHashIndexPartitionedPerSiloBucket>(
                     GetAHashIndexPartitionedPerSiloGrainID(IndexUtils.GetIndexNameFromIndexGrain((IAddressable)index), index.GetType().GetGenericArguments()[1]),
                     siloAddress
                 );
@@ -46,9 +49,16 @@ namespace Orleans.Indexing
 
         private static GrainId GetAHashIndexPartitionedPerSiloGrainID(string indexName, Type iGrainType)
         {
-            return GrainId.GetSystemTargetGrainId(Constants.HASH_INDEX_PARTITIONED_PER_SILO_BUCKET_SYSTEM_TARGET_TYPE_CODE,
-                                               IndexUtils.GetIndexGrainID(iGrainType, indexName));
+            return GetSystemTargetGrainId(IndexingConstants.HASH_INDEX_PARTITIONED_PER_SILO_BUCKET_SYSTEM_TARGET_TYPE_CODE,
+                                          IndexUtils.GetIndexGrainID(iGrainType, indexName));
+        }
+
+        internal static GrainId GetSystemTargetGrainId(int typeData, string systemGrainId)
+        {
+            //vv2err UniqueKey: In v1 there was an overload of GrainId.GetSystemTargetGrainId added to Corleans that takes (int, string)
+            //      and creates the UniqueKey using an also-added Category.KeyExtSystemTarget.
+            var key = UniqueKey.NewKey(0, UniqueKey.Category.SystemTarget, typeData, systemGrainId);
+            return GrainId.GetGrainId(key);
         }
     }
 }
-#endif

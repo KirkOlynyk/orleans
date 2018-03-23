@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-#if false
 namespace Orleans.Indexing
 {
     /// <summary>
@@ -28,16 +27,17 @@ namespace Orleans.Indexing
     ///   in-memory dictionary that maps each grain G to the workflowRecords for G
     ///   that are waiting for be updated
     /// </summary>
-    [StorageProvider(ProviderName = Constants.INDEXING_WORKFLOWQUEUE_STORAGE_PROVIDER_NAME)]
+    [StorageProvider(ProviderName = IndexingConstants.INDEXING_WORKFLOWQUEUE_STORAGE_PROVIDER_NAME)]
     [Reentrant]
     internal class IndexWorkflowQueueSystemTarget : SystemTarget, IIndexWorkflowQueue
     {
         private IndexWorkflowQueueBase _base;
 
-        internal IndexWorkflowQueueSystemTarget(Type grainInterfaceType, int queueSequenceNumber, SiloAddress silo, bool isDefinedAsFaultTolerantGrain) : base(IndexWorkflowQueueBase.CreateIndexWorkflowQueueGrainId(grainInterfaceType, queueSequenceNumber), silo)
+        internal IndexWorkflowQueueSystemTarget(Type grainInterfaceType, int queueSequenceNumber, SiloAddress silo, bool isDefinedAsFaultTolerantGrain)
+            : base(IndexWorkflowQueueBase.CreateIndexWorkflowQueueGrainId(grainInterfaceType, queueSequenceNumber), silo, /*vv2err (ILoggerFactory) */ null)
         {
             GrainReference thisRef = this.AsWeaklyTypedReference();
-            _base = new IndexWorkflowQueueBase(grainInterfaceType, queueSequenceNumber, silo, isDefinedAsFaultTolerantGrain, ((ISystemTargetBase)this).GrainId, thisRef);
+            _base = new IndexWorkflowQueueBase(base.RuntimeClient, grainInterfaceType, queueSequenceNumber, silo, isDefinedAsFaultTolerantGrain, ((ISystemTargetBase)this).GrainId, thisRef);
         }
 
         public Task AddAllToQueue(Immutable<List<IndexWorkflowRecord>> workflowRecords)
@@ -71,4 +71,3 @@ namespace Orleans.Indexing
         }
     }
 }
-#endif

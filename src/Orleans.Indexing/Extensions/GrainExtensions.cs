@@ -52,8 +52,7 @@ namespace Orleans.Indexing
             // When called against an instance of a grain reference class, do nothing
             if (reference != null) return reference;
 
-            var grainBase = grain as Grain;
-            if (grainBase != null)
+            if (grain is Grain grainBase)
             {
                 if (grainBase.Data == null || grainBase.Data.GrainReference == null)
                 {
@@ -62,11 +61,9 @@ namespace Orleans.Indexing
                 return grainBase.Data.GrainReference;
             }
 
-#if false
             var systemTarget = grain as ISystemTargetBase;
             if (systemTarget != null)
-                return GrainReference.FromGrainId(systemTarget.GrainId, null, systemTarget.Silo);
-#endif
+                return GrainReference.FromGrainId(systemTarget.GrainId, /*vv2err IGrainReferenceRuntime*/ null, null, systemTarget.Silo);
 
             throw new ArgumentException(string.Format("AsWeaklyTypedReference has been called on an unexpected type: {0}.", grain.GetType().FullName), "grain");
         }

@@ -1,9 +1,7 @@
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using Orleans.Runtime;
 
-#if false
 namespace Orleans.Indexing
 {
     /// <summary>
@@ -11,30 +9,23 @@ namespace Orleans.Indexing
     /// </summary>
     internal static class SiloUtils
     {
-#region copy & paste from ManagementGrain.cs
-
-        internal static Task<Dictionary<SiloAddress, SiloStatus>> GetHosts(bool onlyActive = false)
+#region copy & paste from ManagementGrain.cs    // vv2 clean up to direct callthrough to IndexingManager if no longer needed
+        internal static Task<Dictionary<SiloAddress, SiloStatus>> GetHosts(IGrainFactory grainFactory, bool onlyActive = false)
         {
-            var mgmtGrain = InsideRuntimeClient.Current.InternalGrainFactory.GetGrain<IManagementGrain>(0);
-
+            var mgmtGrain = grainFactory.GetGrain<IManagementGrain>(0);
             return mgmtGrain.GetHosts(onlyActive);
         }
 
-        internal static SiloAddress[] GetSiloAddresses(SiloAddress[] silos)
+        internal static SiloAddress[] GetSiloAddresses(IndexingManager indexingManager, SiloAddress[] silos)
         {
-            if (silos != null && silos.Length > 0)
-                return silos;
-
-            return InsideRuntimeClient.Current.Catalog.SiloStatusOracle
-                .GetApproximateSiloStatuses(true).Select(s => s.Key).ToArray();
+            return indexingManager.GetSiloAddresses(silos);
         }
 
-        internal static ISiloControl GetSiloControlReference(SiloAddress silo)
+        internal static ISiloControl GetSiloControlReference(IndexingManager indexingManager, SiloAddress silo)
         {
-            return InsideRuntimeClient.Current.InternalGrainFactory.GetSystemTarget<ISiloControl>(Constants.SiloControlId, silo);
+            return indexingManager.GetSiloControlReference(silo);
         }
 
 #endregion
     }
 }
-#endif

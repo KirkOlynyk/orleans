@@ -12,12 +12,13 @@ using Orleans.TestingHost;
 using Orleans.TestingHost.Utils;
 using Orleans.Indexing;
 using TestExtensions;
+using UnitTests.GrainInterfaces;
 using Xunit;
 using Xunit.Abstractions;
 
 namespace Orleans.Indexing.Tests
 {
-
+#if false //vv2 to remove
     public class Develop : OrleansTestingBase, IClassFixture<Develop.Fixture>
     {
         private readonly Fixture fixture;
@@ -76,7 +77,7 @@ namespace Orleans.Indexing.Tests
                 //add simpleGrain's assmebly to siloHost, so the grain assembly will be loaded to silo
                 //also configure logging using ConfigureLogging method
                 hostBuilder.ConfigureApplicationParts(parts =>
-                    parts.AddApplicationPart(typeof(Player1GrainNonFaultTolerant).Assembly).WithReferences())
+                    parts.AddApplicationPart(typeof(IPlayer1GrainNonFaultTolerant).Assembly).WithReferences())
                     .ConfigureLogging(
                         builder =>
                         builder.AddFile(
@@ -279,6 +280,7 @@ namespace Orleans.Indexing.Tests
         }
     }
 
+#if false  //vv2 remove; superseded by classes added to TestGrainInterfaces\Indexing
     public interface IPlayerProperties
     {
         string Location { get; set; }
@@ -324,6 +326,7 @@ namespace Orleans.Indexing.Tests
             return Task.Run(() => this.location = _location);
         }
     }
+#endif //vv2
 
     public class Class1
     {
@@ -351,4 +354,5 @@ namespace Orleans.Indexing.Tests
             Assert.Equal(1, 1);
         }
     }
+#endif
 }

@@ -2,7 +2,6 @@ using System;
 using System.Threading.Tasks;
 using Orleans.Streams;
 
-#if false
 namespace Orleans.Indexing
 {
     /// <summary>
@@ -43,4 +42,3 @@ namespace Orleans.Indexing
         }
     }
 }
-#endif

@@ -2,7 +2,6 @@ using Orleans.Concurrency;
 using Orleans.Runtime;
 using Orleans.Providers;
 
-#if false
 namespace Orleans.Indexing
 {
     /// <summary>
@@ -10,11 +9,11 @@ namespace Orleans.Indexing
     /// </summary>
     /// <typeparam name="K">type of hash-index key</typeparam>
     /// <typeparam name="V">type of grain that is being indexed</typeparam>
-    [StorageProvider(ProviderName = Constants.INDEXING_STORAGE_PROVIDER_NAME)]
+    [StorageProvider(ProviderName = IndexingConstants.INDEXING_STORAGE_PROVIDER_NAME)]
     [Reentrant]
-    public class TotalHashIndexSingleBucketImpl<K, V> : HashIndexSingleBucket<K, V>, TotalHashIndexSingleBucket<K, V> where V : class, IIndexableGrain
+    public class TotalHashIndexSingleBucketImpl<K, V> : HashIndexSingleBucket<K, V>, ITotalHashIndexSingleBucket<K, V> where V : class, IIndexableGrain
     {
-        internal override IndexInterface<K, V> GetNextBucket()
+        internal override IIndexInterface<K, V> GetNextBucket()
         {
             var NextBucket = GrainFactory.GetGrain<TotalHashIndexSingleBucketImpl<K, V>>(IndexUtils.GetNextIndexBucketIdInChain(this.AsWeaklyTypedReference()));
             State.NextBucket = NextBucket.AsWeaklyTypedReference();
@@ -22,4 +21,3 @@ namespace Orleans.Indexing
         }
     }
 }
-#endif

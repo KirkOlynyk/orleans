@@ -34,6 +34,7 @@ namespace Orleans.Indexing
             return this._indexType;
         }
 
+#if false //vv2 not used?   IsIndexStatelessWorker... can an index be a stateless worker?
         /// <summary>
         /// Determines whether the index grain is a stateless worker
         /// or not. This piece of information can impact the relationship
@@ -45,6 +46,7 @@ namespace Orleans.Indexing
         {
             return IsStatelessWorker(Type.GetType(TypeCodeMapper.GetImplementation(this._indexType).GrainClass));
         }
+#endif
 
         /// <summary>
         /// A helper function that determines whether a given grain type
