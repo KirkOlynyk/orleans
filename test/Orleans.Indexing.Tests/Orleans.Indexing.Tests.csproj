@@ -7,6 +7,7 @@
 
   <ItemGroup>
     <PackageReference Include="FluentAssertions" Version="$(FluentAssertionsVersion)" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="2.0.0" />
     <PackageReference Include="xunit" Version="$(xUnitVersion)" />
     <PackageReference Include="Xunit.SkippableFact" Version="$(XunitSkippableFactVersion)" />
     <DotNetCliToolReference Include="dotnet-xunit" Version="$(xUnitVersion)" />
@@ -20,6 +21,5 @@
     <ProjectReference Include="..\..\src\Orleans.TestingHost\Orleans.TestingHost.csproj" />
     <ProjectReference Include="..\Tester\Tester.csproj" />
     <ProjectReference Include="..\TestExtensions\TestExtensions.csproj" />
-    <ProjectReference Include="..\TestGrainInterfaces\TestGrainInterfaces.csproj" />
   </ItemGroup>
 </Project>

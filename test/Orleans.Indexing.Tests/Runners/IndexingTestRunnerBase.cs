@@ -1,35 +1,36 @@
 using Orleans.Streams;
 using Orleans.Runtime;
-using Orleans.Indexing;
 using Xunit.Abstractions;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Orleans.Indexing.Tests
 {
     public class IndexingTestRunnerBase
     {
+        private BaseIndexingFixture fixture;
+
         internal readonly ITestOutputHelper Output;
-        private IClusterClient clusterClient;
+        internal IClusterClient ClusterClient => this.fixture.Client;
 
-        internal IGrainFactory GrainFactory { get; private set; }
+        internal IGrainFactory GrainFactory => this.fixture.GrainFactory;
 
-        internal IStreamProvider IndexingStreamProvider
-                => this.clusterClient.ServiceProvider.GetRequiredServiceByName<IStreamProvider>(IndexingConstants.INDEXING_STREAM_PROVIDER_NAME);
+        internal IStreamProvider IndexingStreamProvider;
 
-        protected IndexingTestRunnerBase(IGrainFactory grainFactory, IClusterClient clusterClient, ITestOutputHelper output)
+        internal ILoggerFactory LoggerFactory { get; }
+
+        protected IndexingTestRunnerBase(BaseIndexingFixture fixture, ITestOutputHelper output)
         {
+            this.fixture = fixture;
             this.Output = output;
-            this.GrainFactory = grainFactory;
-            this.clusterClient = clusterClient;
+            this.LoggerFactory = this.ClusterClient.ServiceProvider.GetRequiredService<ILoggerFactory>();
+            this.IndexingStreamProvider = this.ClusterClient.ServiceProvider.GetRequiredServiceByName<IStreamProvider>(IndexingConstants.INDEXING_STREAM_PROVIDER_NAME);
         }
 
         protected T GetGrain<T>(long primaryKey) where T: IGrainWithIntegerKey
-        {
-            return this.GrainFactory.GetGrain<T>(primaryKey);
-        }
+            => this.GrainFactory.GetGrain<T>(primaryKey);
 
         protected IIndexInterface<TKey, TValue> GetIndex<TKey, TValue>(string indexName) where TValue: IIndexableGrain
-        {
-            return this.GrainFactory.GetIndex<TKey, TValue>(indexName);
-        }
+            => this.GrainFactory.GetIndex<TKey, TValue>(indexName);
     }
 }

@@ -11,13 +11,5 @@ namespace Orleans.Indexing
     [Reentrant]
     public abstract class HashIndexPartitionedPerKeyBucket<K, V> : HashIndexSingleBucket<K, V>, IHashIndexPartitionedPerKeyBucketInterface<K, V> where V : class, IIndexableGrain
     {
-#if false // vv2 logger
-        private static readonly Logger logger = LogManager.GetLogger(string.Format("HashIndexPartitionedPerKeyBucket<{0},{1}>", typeof(K).Name, typeof(V).Name), LoggerType.Grain);
-
-        Logger getLogger()
-        {
-            return logger;
-        }
-#endif
     }
 }

@@ -8,11 +8,12 @@ using K = System.Object;
 using V = Orleans.Indexing.IIndexableGrain;
 using Orleans.Providers;
 using System.Runtime.CompilerServices;
+using Microsoft.Extensions.Logging;
 
 namespace Orleans.Indexing
 {
     /// <summary>
-    /// A simple implementation of a single-grain in-memory hash-index
+    /// A simple implementation of a single-grain in-memory hash-index.
     /// 
     /// Generic SystemTargets are not supported yet, and that's why the
     /// implementation is non-generic.
@@ -24,38 +25,40 @@ namespace Orleans.Indexing
     internal class ActiveHashIndexPartitionedPerSiloBucketImpl/*<K, V>*/ : SystemTarget, IActiveHashIndexPartitionedPerSiloBucket/*<K, V> where V : IIndexableGrain*/
     {
         private HashIndexBucketState<K, V> state;
-        //vv2err private readonly Logger logger;
+        private readonly IndexingManager indexingManager;
+        private readonly ILogger logger;
         private readonly string _parentIndexName;
 
-        public ActiveHashIndexPartitionedPerSiloBucketImpl(string parentIndexName, GrainId grainId, SiloAddress silo)
-            : base(grainId, silo, /*vv2err ILoggerFactory*/ null)
+        public ActiveHashIndexPartitionedPerSiloBucketImpl(IndexingManager indexingManager, string parentIndexName, GrainId grainId)
+            : base(grainId, indexingManager.SiloAddress, indexingManager.LoggerFactory)
         {
             state = new HashIndexBucketState<K, V>
             {
                 IndexMap = new Dictionary<K, HashIndexSingleBucketEntry<V>>(),
                 IndexStatus = IndexStatus.Available
+                //, IsUnique = false; //a per-silo index cannot check for uniqueness
             };
-            //State.IsUnique = false; //a per-silo index cannot check for uniqueness
-            _parentIndexName = parentIndexName;
 
-            //vv2 logger = LogManager.GetLogger(string.Format("{0}.ActiveHashIndexPartitionedPerSiloBucketImpl<{1},{2}>", parentIndexName, typeof(K), typeof(V)), LoggerType.Grain);
+            _parentIndexName = parentIndexName;
+            this.indexingManager = indexingManager;
+            this.logger = indexingManager.LoggerFactory.CreateLoggerWithFullCategoryName<ActiveHashIndexPartitionedPerSiloBucketImpl>();
         }
 
         public async Task<bool> DirectApplyIndexUpdateBatch(Immutable<IDictionary<IIndexableGrain, IList<IMemberUpdate>>> iUpdates, bool isUnique, IndexMetaData idxMetaData, SiloAddress siloAddress = null)
         {
-            //vv2 if (logger.IsVerbose) logger.Verbose("Started calling DirectApplyIndexUpdateBatch with the following parameters: isUnique = {0}, siloAddress = {1}, iUpdates = {2}", isUnique, siloAddress, MemberUpdate.UpdatesToString(iUpdates.Value));
+            logger.Trace($"ParentIndex {_parentIndexName}: Started calling DirectApplyIndexUpdateBatch with the following parameters: isUnique = {isUnique}, siloAddress = {siloAddress}, iUpdates = {MemberUpdate.UpdatesToString(iUpdates.Value)}", isUnique, siloAddress);
 
             IDictionary<IIndexableGrain, IList<IMemberUpdate>> updates = iUpdates.Value;
             Task[] updateTasks = new Task[updates.Count()];
             int i = 0;
-            foreach (var kv in updates)
+            foreach (var kv in updates) // vv2:  updates.Select(kv => DirectApplyIndexUpdates(kv.Key, kv.Value, isUnique, idxMetaData, siloAddress));
             {
                 updateTasks[i] = DirectApplyIndexUpdates(kv.Key, kv.Value, isUnique, idxMetaData, siloAddress);
                 ++i;
             }
             await Task.WhenAll(updateTasks);
 
-            //vv2 if (logger.IsVerbose) logger.Verbose("Finished calling DirectApplyIndexUpdateBatch with the following parameters: isUnique = {0}, siloAddress = {1}, iUpdates = {2}", isUnique, siloAddress, MemberUpdate.UpdatesToString(iUpdates.Value));
+            logger.Trace($"Finished calling DirectApplyIndexUpdateBatch with the following parameters: isUnique = {isUnique}, siloAddress = {siloAddress}, iUpdates = {MemberUpdate.UpdatesToString(iUpdates.Value)}");
 
             return true;
         }
@@ -84,16 +87,15 @@ namespace Orleans.Indexing
 
         public async Task Lookup(IOrleansQueryResultStream<V> result, K key)
         {
-            //vv2 if (logger.IsVerbose) logger.Verbose("Streamed index lookup called for key = {0}", key);
+            logger.Trace($"Streamed index lookup called for key = {key}");
 
             if (!(state.IndexStatus == IndexStatus.Available))
             {
                 var e = new Exception(string.Format("Index is not still available."));
-                //vv2 logger.Error((int)ErrorCode.IndexingIndexIsNotReadyYet_SystemTargetBucket1, "Index is not still available.", e);
+                logger.Error(IndexingErrorCode.IndexingIndexIsNotReadyYet_SystemTargetBucket1, $"ParentIndex {_parentIndexName}: Index is not still available.", e);
                 throw e;
             }
-            HashIndexSingleBucketEntry<V> entry;
-            if (state.IndexMap.TryGetValue(key, out entry) && !entry.IsTentative())
+            if (state.IndexMap.TryGetValue(key, out HashIndexSingleBucketEntry<V> entry) && !entry.IsTentative())
             {
                 await result.OnNextBatchAsync(entry.Values);
                 await result.OnCompletedAsync();
@@ -106,23 +108,16 @@ namespace Orleans.Indexing
 
         public Task<IOrleansQueryResult<V>> Lookup(K key)
         {
-            //vv2 if (logger.IsVerbose) logger.Verbose("Eager index lookup called for key = {0}", key);
+            logger.Trace($"ParentIndex {_parentIndexName}: Eager index lookup called for key = {key}");
 
             if (!(state.IndexStatus == IndexStatus.Available))
             {
                 var e = new Exception(string.Format("Index is not still available."));
-                //vv2 logger.Error((int)ErrorCode.IndexingIndexIsNotReadyYet_SystemTargetBucket2, "Index is not still available.", e);
+                logger.Error(IndexingErrorCode.IndexingIndexIsNotReadyYet_SystemTargetBucket2, $"ParentIndex {_parentIndexName}: Index is not still available.", e);
                 throw e;
             }
-            HashIndexSingleBucketEntry<V> entry;
-            if (state.IndexMap.TryGetValue(key, out entry) && !entry.IsTentative())
-            {
-                return Task.FromResult((IOrleansQueryResult<V>)new OrleansQueryResult<V>(entry.Values));
-            }
-            else
-            {
-                return Task.FromResult((IOrleansQueryResult<V>)new OrleansQueryResult<V>(Enumerable.Empty<V>()));
-            }
+            var entryValues = (state.IndexMap.TryGetValue(key, out HashIndexSingleBucketEntry<V> entry) && !entry.IsTentative()) ? entry.Values : Enumerable.Empty<V>();
+            return Task.FromResult((IOrleansQueryResult<V>)new OrleansQueryResult<V>(entryValues));
         }
 
         public Task<V> LookupUnique(K key)
@@ -130,7 +125,7 @@ namespace Orleans.Indexing
             if (!(state.IndexStatus == IndexStatus.Available))
             {
                 var e = new Exception(string.Format("Index is not still available."));
-                //vv2 logger.Error((int)ErrorCode.IndexingIndexIsNotReadyYet_SystemTargetBucket3, e.Message, e);
+                logger.Error(IndexingErrorCode.IndexingIndexIsNotReadyYet_SystemTargetBucket3, $"ParentIndex {_parentIndexName}: {e.Message}", e);
                 throw e;
             }
             if (state.IndexMap.TryGetValue(key, out HashIndexSingleBucketEntry<V> entry) && !entry.IsTentative())
@@ -142,14 +137,14 @@ namespace Orleans.Indexing
                 else
                 {
                     var e = new Exception(string.Format("There are {0} values for the unique lookup key \"{1}\" does not exist on index \"{2}->{3}\".", entry.Values.Count(), key, _parentIndexName, IndexUtils.GetIndexNameFromIndexGrain(this)));
-                    //vv2 logger.Error((int)ErrorCode.IndexingIndexIsNotReadyYet_SystemTargetBucket4, e.Message, e);
+                    logger.Error(IndexingErrorCode.IndexingIndexIsNotReadyYet_SystemTargetBucket4, $"ParentIndex {_parentIndexName}: {e.Message}", e);
                     throw e;
                 }
             }
             else
             {
                 var e = new Exception(string.Format("The lookup key \"{0}\" does not exist on index \"{1}->{2}\".", key, _parentIndexName, IndexUtils.GetIndexNameFromIndexGrain(this)));
-                //vv2 logger.Error((int)ErrorCode.IndexingIndexIsNotReadyYet_SystemTargetBucket5, e.Message, e);
+                logger.Error(IndexingErrorCode.IndexingIndexIsNotReadyYet_SystemTargetBucket5, $"ParentIndex {_parentIndexName}: {e.Message}", e);
                 throw e;
             }
         }
@@ -158,7 +153,7 @@ namespace Orleans.Indexing
         {
             state.IndexStatus = IndexStatus.Disposed;
             state.IndexMap.Clear();
-            //vv2err Runtime.Silo.CurrentSilo.UnregisterSystemTarget(this);
+            //vv2err UnregisterSystemTarget not available     this.indexingManager.Silo.UnregisterSystemTarget(this);
             return Task.CompletedTask;
         }
 

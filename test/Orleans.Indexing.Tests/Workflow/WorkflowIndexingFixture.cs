@@ -1,5 +1,6 @@
 using Orleans.TestingHost;
 using Orleans.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace Orleans.Indexing.Tests
 {
@@ -16,6 +17,10 @@ namespace Orleans.Indexing.Tests
             public void Configure(ISiloHostBuilder hostBuilder)
             {
                 hostBuilder.UseIndexing(indexingOptions => indexingOptions.UseTransactions = false)
+                           .ConfigureLogging(loggingBuilder => {
+                               loggingBuilder.SetMinimumLevel(LogLevel.Information);
+                               loggingBuilder.AddDebug();
+                           })
                            .ConfigureApplicationParts(parts => parts.AddApplicationPart(typeof(WorkflowIndexingFixture).Assembly));
             }
         }

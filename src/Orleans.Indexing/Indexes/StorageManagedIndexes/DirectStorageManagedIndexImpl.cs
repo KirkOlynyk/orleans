@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Orleans.Concurrency;
 using Orleans.Runtime;
 using Orleans.Storage;
@@ -26,10 +27,14 @@ namespace Orleans.Indexing
         private string _indexedField;
         //private bool _isUnique; //TODO: missing support for the uniqueness feature
 
-        internal IndexingManager IndexingManager { get { return IndexingManager.GetIndexingManager(ref __indexingManager, base.ServiceProvider); } }
-        private IndexingManager __indexingManager;
+        private readonly IndexingManager indexingManager;
+        private readonly ILogger logger;
 
-        //vv2 private static readonly Logger logger = LogManager.GetLogger(string.Format("HashIndexPartitionedPerKey<{0},{1}>", typeof(K).Name, typeof(V).Name), LoggerType.Grain);
+        DirectStorageManagedIndexImpl()
+        {
+            this.indexingManager = IndexingManager.GetIndexingManager(base.ServiceProvider);
+            this.logger = this.indexingManager.LoggerFactory.CreateLoggerWithFullCategoryName<DirectStorageManagedIndexImpl<K, V>>();
+        }
 
         public override Task OnActivateAsync()
         {
@@ -39,15 +44,13 @@ namespace Orleans.Indexing
             return base.OnActivateAsync();
         }
 
-        public Task<bool> DirectApplyIndexUpdateBatch(Immutable<IDictionary<IIndexableGrain, IList<IMemberUpdate>>> iUpdates, bool isUnique, IndexMetaData idxMetaData, SiloAddress siloAddress = null)
-        {
-            return Task.FromResult(true);
-        }
+        public Task<bool> DirectApplyIndexUpdateBatch(Immutable<IDictionary<IIndexableGrain, IList<IMemberUpdate>>> iUpdates,
+                                                        bool isUnique, IndexMetaData idxMetaData, SiloAddress siloAddress = null)
+            => Task.FromResult(true);
 
-        public Task<bool> DirectApplyIndexUpdate(IIndexableGrain g, Immutable<IMemberUpdate> iUpdate, bool isUniqueIndex, IndexMetaData idxMetaData, SiloAddress siloAddress)
-        {
-            return Task.FromResult(true);
-        }
+        public Task<bool> DirectApplyIndexUpdate(IIndexableGrain g, Immutable<IMemberUpdate> iUpdate, bool isUniqueIndex,
+                                                 IndexMetaData idxMetaData, SiloAddress siloAddress)
+            => Task.FromResult(true);
 
         public async Task Lookup(IOrleansQueryResultStream<V> result, K key)
         {
@@ -59,11 +62,10 @@ namespace Orleans.Indexing
         private async Task<List<V>> LookupGrainReferences(K key)
         {
             EnsureStorageProvider();
-
             dynamic indexableStorageProvider = _storageProvider;
 
             List<GrainReference> resultReferences = await indexableStorageProvider.Lookup<K>(grainImplClass, _indexedField, key);
-            return resultReferences.Select(grain => this.IndexingManager.RuntimeClient.InternalGrainFactory.Cast<V>(grain)).ToList();
+            return resultReferences.Select(grain => this.indexingManager.RuntimeClient.InternalGrainFactory.Cast<V>(grain)).ToList();
         }
 
         public async Task<V> LookupUnique(K key)
@@ -77,39 +79,23 @@ namespace Orleans.Indexing
             return await tsk;
         }
 
-        public Task Dispose()
-        {
-            return Task.CompletedTask;
-        }
+        public Task Dispose() => Task.CompletedTask;
 
-        public Task<bool> IsAvailable()
-        {
-            return Task.FromResult(true);
-        }
+        public Task<bool> IsAvailable() => Task.FromResult(true);
 
-        Task IIndexInterface.Lookup(IOrleansQueryResultStream<IIndexableGrain> result, object key)
-        {
-            return Lookup(result.Cast<V>(), (K)key);
-        }
+        Task IIndexInterface.Lookup(IOrleansQueryResultStream<IIndexableGrain> result, object key) => Lookup(result.Cast<V>(), (K)key);
 
-        public async Task<IOrleansQueryResult<V>> Lookup(K key)
-        {
-            return new OrleansQueryResult<V>(await LookupGrainReferences(key));
-        }
+        public async Task<IOrleansQueryResult<V>> Lookup(K key) => new OrleansQueryResult<V>(await LookupGrainReferences(key));
 
-        async Task<IOrleansQueryResult<IIndexableGrain>> IIndexInterface.Lookup(object key)
-        {
-            return await Lookup((K)key);
-        }
+        async Task<IOrleansQueryResult<IIndexableGrain>> IIndexInterface.Lookup(object key) => await Lookup((K)key);
 
         private void EnsureStorageProvider()
         {
             if (_storageProvider == null)
             {
-                var implementation = TypeCodeMapper.GetImplementation(this.IndexingManager.RuntimeClient, typeof(V));
-                Type implType;
+                var implementation = TypeCodeMapper.GetImplementation(this.indexingManager.RuntimeClient, typeof(V));
                 if (implementation == null || (grainImplClass = implementation.GrainClass) == null ||
-                        !this.IndexingManager.CachedTypeResolver.TryResolveType(grainImplClass, out implType))
+                        !this.indexingManager.CachedTypeResolver.TryResolveType(grainImplClass, out Type implType))
                 {
                     throw new Exception("The grain implementation class " + implementation.GrainClass + " for grain interface " + TypeUtils.GetFullName(typeof(V)) + " was not resolved.");
                 }

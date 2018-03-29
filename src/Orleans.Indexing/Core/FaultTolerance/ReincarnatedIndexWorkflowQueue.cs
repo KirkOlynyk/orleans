@@ -12,7 +12,7 @@ namespace Orleans.Indexing
         internal static TimeSpan ACTIVE_FOR_A_DAY = TimeSpan.FromDays(1);
         private IndexWorkflowQueueBase _base;
 
-        internal IndexingManager IndexingManager { get { return IndexingManager.GetIndexingManager(ref __indexingManager, base.ServiceProvider); } }
+        internal IndexingManager IndexingManager => IndexingManager.GetIndexingManager(ref __indexingManager, base.ServiceProvider);
         private IndexingManager __indexingManager;
 
         public override Task OnActivateAsync()

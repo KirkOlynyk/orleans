@@ -5,13 +5,14 @@ using Orleans.Indexing;
 using Xunit.Abstractions;
 using System.Threading;
 using TestExtensions;
+using Microsoft.Extensions.Logging;
 
 namespace Orleans.Indexing.Tests
 {
     public abstract class SimpleSingleSiloIndexingRunner : IndexingTestRunnerBase
     {
-        protected SimpleSingleSiloIndexingRunner(IGrainFactory grainFactory, IClusterClient clusterClient, ITestOutputHelper output)
-            : base(grainFactory, clusterClient, output)
+        protected SimpleSingleSiloIndexingRunner(BaseIndexingFixture fixture, ITestOutputHelper output)
+            : base(fixture, output)
         {
         }
 
@@ -22,15 +23,15 @@ namespace Orleans.Indexing.Tests
         //    Assert.IsTrue(isLocIndexCreated);
         //}
 
-//[Fact, TestCategory("BVT"), TestCategory("Indexing")]
-//public async Task Test_Indexing_AddTwoIndexes()
-//{
-//    bool isLocIndexCreated = await GrainClient.GrainFactory.CreateAndRegisterIndex<HashIndexSingleBucketInterface<string, IPlayerGrain>, PlayerLocIndexGen>("locIdx2");
-//    bool isScoreIndexCreated = await GrainClient.GrainFactory.CreateAndRegisterIndex<HashIndexSingleBucketInterface<int, IPlayerGrain>, PlayerScoreIndexGen>("scoreIdx2");
+        //[Fact, TestCategory("BVT"), TestCategory("Indexing")]
+        //public async Task Test_Indexing_AddTwoIndexes()
+        //{
+        //    bool isLocIndexCreated = await GrainClient.GrainFactory.CreateAndRegisterIndex<HashIndexSingleBucketInterface<string, IPlayerGrain>, PlayerLocIndexGen>("locIdx2");
+        //    bool isScoreIndexCreated = await GrainClient.GrainFactory.CreateAndRegisterIndex<HashIndexSingleBucketInterface<int, IPlayerGrain>, PlayerScoreIndexGen>("scoreIdx2");
 
-//    Assert.IsTrue(isLocIndexCreated);
-//    Assert.IsTrue(isScoreIndexCreated);
-//}
+        //    Assert.IsTrue(isLocIndexCreated);
+        //    Assert.IsTrue(isScoreIndexCreated);
+        //}
 
         /// <summary>
         /// Tests basic functionality of HashIndexSingleBucket

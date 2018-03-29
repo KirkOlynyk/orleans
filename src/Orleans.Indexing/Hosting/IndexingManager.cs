@@ -16,20 +16,12 @@ namespace Orleans.Indexing
 
         internal CachedTypeResolver CachedTypeResolver { get; private set; }
 
-        internal Silo Silo {
-            get {
-                // Note: This must not be called until the Silo ctor has returned to the ServiceProvider which then
-                // sets the Singleton; if called during the Silo ctor, the Singleton is not found so another Silo is
-                // constructed. Thus we cannot have the Silo on the IndexingManager ctor params, because ISiloLifecycle
-                // participants are constructed during the Silo ctor.
-                this.silo = this.silo ?? this.ServiceProvider.GetRequiredService<Silo>();
-                return this.silo;
-            }
-        }
-        private Silo silo;
+        internal SiloAddress SiloAddress => this.Silo.SiloAddress;
 
         internal IDictionary<Type, IDictionary<string, Tuple<object, object, object>>> Indexes { get; private set; }
 
+        // Explicit dependency on ServiceProvider is needed so we can retrieve Silo after ctor returns; see comments on Silo property.
+        // Also, in some cases this is passed through non-injected interfaces such as Hash classes.
         internal IServiceProvider ServiceProvider { get; private set; }
 
         internal ICatalog Catalog => this.Silo.Catalog;
@@ -38,36 +30,26 @@ namespace Orleans.Indexing
 
         internal IGrainTypeResolver GrainTypeResolver => this.RuntimeClient.GrainTypeResolver;
 
-        internal IRuntimeClient RuntimeClient {     // vv2err This is an internal interface
-            get {
-                this.runtimeClient = this.runtimeClient ?? this.ServiceProvider.GetRequiredService<IRuntimeClient>();
-                return this.runtimeClient;
-            }
-        }
-        private IRuntimeClient runtimeClient;
+        // Note: this.Silo must not be called until the Silo ctor has returned to the ServiceProvider which then
+        // sets the Singleton; if called during the Silo ctor, the Singleton is not found so another Silo is
+        // constructed. Thus we cannot have the Silo on the IndexingManager ctor params or retrieve it during
+        // IndexingManager ctor, because ISiloLifecycle participants are constructed during the Silo ctor.
+        internal Silo Silo => this.__silo ?? (this.__silo = this.ServiceProvider.GetRequiredService<Silo>());
+        private Silo __silo;
 
-        internal ISiloStatusOracle SiloStatusOracle {
-            get {
-                this.siloStatusOracle = this.siloStatusOracle ?? this.ServiceProvider.GetRequiredService<ISiloStatusOracle>();
-                return this.siloStatusOracle;
-            }
-        }
-        private ISiloStatusOracle siloStatusOracle;
+        internal IRuntimeClient RuntimeClient { get; private set; }     // vv2err IRuntimeClient is an internal interface
 
-        internal ILoggerFactory LoggerFactory
+        internal ISiloStatusOracle SiloStatusOracle { get; private set; }
+
+        internal ILoggerFactory LoggerFactory { get; private set; }
+
+        public IndexingManager(IServiceProvider sp, IApplicationPartManager apm, IRuntimeClient rc, ISiloStatusOracle sso, ILoggerFactory lf)
         {
-            get
-            {
-                this.loggerFactory = this.LoggerFactory ?? this.ServiceProvider.GetRequiredService<ILoggerFactory>();
-                return this.LoggerFactory;
-            }
-        }
-        private ILoggerFactory loggerFactory;
-
-        public IndexingManager(IApplicationPartManager applicationPartManager, IServiceProvider serviceProvider)
-        {
-            this.ApplicationPartManager = applicationPartManager;
-            this.ServiceProvider = serviceProvider;
+            this.ServiceProvider = sp;
+            this.ApplicationPartManager = apm;
+            this.RuntimeClient = rc;
+            this.SiloStatusOracle = sso;
+            this.LoggerFactory = lf;
             this.CachedTypeResolver = new CachedTypeResolver();
         }
 
@@ -81,8 +63,9 @@ namespace Orleans.Indexing
         /// </summary>
         public virtual Task OnStartAsync(CancellationToken ct)
         {
-            this.Indexes = this.Indexes ?? new ApplicationPartsIndexableGrainLoader(this).GetGrainClassIndexes();
-            return Task.CompletedTask;  //vv2 Load app parts and get info
+            return (this.Indexes == null)
+                ? Task.Run(() => this.Indexes = new ApplicationPartsIndexableGrainLoader(this).GetGrainClassIndexes())
+                : Task.CompletedTask;
         }
 
         /// <summary>
@@ -94,26 +77,20 @@ namespace Orleans.Indexing
         }
 
         internal static IndexingManager GetIndexingManager(ref IndexingManager indexingManager, IServiceProvider serviceProvider)
-        {
-            indexingManager = indexingManager ?? serviceProvider.GetRequiredService<IndexingManager>();
-            return indexingManager;
-        }
+            => indexingManager ?? (indexingManager = GetIndexingManager(serviceProvider));
+
+        internal static IndexingManager GetIndexingManager(IServiceProvider serviceProvider)
+            => serviceProvider.GetRequiredService<IndexingManager>();
 
         internal SiloAddress[] GetSiloAddresses(SiloAddress[] silos)
-        {
-            return (silos != null && silos.Length > 0)
+            => (silos != null && silos.Length > 0)
                 ? silos
                 : this.SiloStatusOracle.GetApproximateSiloStatuses(true).Select(s => s.Key).ToArray();
-        }
 
         internal ISiloControl GetSiloControlReference(SiloAddress siloAddress)
-        {
-            return this.GetSystemTarget<ISiloControl>(Constants.SiloControlId, siloAddress);
-        }
+            => this.GetSystemTarget<ISiloControl>(Constants.SiloControlId, siloAddress);
 
         internal T GetSystemTarget<T>(GrainId grainId, SiloAddress siloAddress) where T: ISystemTarget
-        {
-            return this.RuntimeClient.InternalGrainFactory.GetSystemTarget<T>(grainId, siloAddress);
-        }
+            => this.RuntimeClient.InternalGrainFactory.GetSystemTarget<T>(grainId, siloAddress);
     }
 }

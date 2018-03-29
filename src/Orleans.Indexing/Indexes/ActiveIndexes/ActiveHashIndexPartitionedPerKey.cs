@@ -10,7 +10,7 @@ namespace Orleans.Indexing
     [Serializable]
     public class ActiveHashIndexPartitionedPerKey<K, V> : HashIndexPartitionedPerKey<K, V, IActiveHashIndexPartitionedPerKeyBucket<K, V>> where V : class, IIndexableGrain
     {
-        public ActiveHashIndexPartitionedPerKey(string indexName, bool isUniqueIndex) : base(indexName, isUniqueIndex)
+        public ActiveHashIndexPartitionedPerKey(IServiceProvider serviceProvider, string indexName, bool isUniqueIndex) : base(serviceProvider, indexName, isUniqueIndex)
         {
         }
     }

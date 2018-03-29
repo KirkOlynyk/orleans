@@ -49,9 +49,11 @@ namespace Orleans.Indexing
         private int _queueSeqNum;
         private Type _iGrainType;
 
-        private bool _isDefinedAsFaultTolerantGrain;
+        //0: uninitialized, 1: has some Total Indexes, -1: does not have any Total Index
         private sbyte __hasAnyTotalIndex;
         private bool HasAnyTotalIndex { get { return __hasAnyTotalIndex == 0 ? InitHasAnyTotalIndex() : __hasAnyTotalIndex > 0; } }
+
+        private bool _isDefinedAsFaultTolerantGrain;
         private bool IsFaultTolerant { get { return _isDefinedAsFaultTolerantGrain && HasAnyTotalIndex; } }
 
         private IIndexWorkflowQueueHandler __handler;
@@ -89,7 +91,8 @@ namespace Orleans.Indexing
 
         private GrainReference _parent;
 
-        internal IndexWorkflowQueueBase(IRuntimeClient runtimeClient, Type grainInterfaceType, int queueSequenceNumber, SiloAddress silo, bool isDefinedAsFaultTolerantGrain, GrainId grainId, GrainReference parent)
+        internal IndexWorkflowQueueBase(IRuntimeClient runtimeClient, Type grainInterfaceType, int queueSequenceNumber, SiloAddress silo,
+                                        bool isDefinedAsFaultTolerantGrain, GrainId grainId, GrainReference parent)
         {
             State = new IndexWorkflowQueueState(grainId, silo);
             _iGrainType = grainInterfaceType;
@@ -312,7 +315,7 @@ namespace Orleans.Indexing
             }
         }
 
-        private bool InitHasAnyTotalIndex()
+        private bool InitHasAnyTotalIndex() // vv2 convert to bool? and LINQ
         {
             var indexes = IndexHandler.GetIndexes(_iGrainType);
             foreach (var idxInfo in indexes.Values)

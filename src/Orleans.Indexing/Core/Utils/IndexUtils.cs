@@ -1,4 +1,6 @@
 using System;
+using System.Linq;
+using Microsoft.Extensions.Logging;
 using Orleans.Runtime;
 
 namespace Orleans.Indexing
@@ -91,6 +93,18 @@ namespace Orleans.Indexing
         public static string GetIndexNameOnInterfaceGetter(Type grainType, string grainInterfaceMethod)
         {
             return "__" + grainInterfaceMethod;
+        }
+
+        // The ILoggerFactory implementation creates the category without generic type arguments.
+        internal static ILogger CreateLoggerWithFullCategoryName<T>(this ILoggerFactory lf) where T: class
+            => lf.CreateLogger(CategoryName(typeof(T)));
+
+        internal static string CategoryName(Type type)
+        {
+            var genericArgs = type.GetGenericArguments();
+            return (genericArgs.Length == 0)
+                ? type.Name
+                : $"{type.Name.Substring(0, type.Name.IndexOf("`"))}<{string.Join(",", genericArgs.Select(CategoryName))}>";
         }
     }
 }

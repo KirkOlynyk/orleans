@@ -10,7 +10,7 @@ namespace Orleans.Indexing
     {
         private IIndexWorkflowQueueHandler _base;
 
-        internal IndexingManager IndexingManager { get { return IndexingManager.GetIndexingManager(ref __indexingManager, base.ServiceProvider); } }
+        internal IndexingManager IndexingManager => IndexingManager.GetIndexingManager(ref __indexingManager, base.ServiceProvider);
         private IndexingManager __indexingManager;
 
         public override Task OnActivateAsync()

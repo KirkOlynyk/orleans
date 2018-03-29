@@ -11,9 +11,7 @@ namespace Orleans.Indexing
     /// </summary>
     public class ActiveGrainEnumeratorGrain : Grain, IActiveGrainEnumeratorGrain
     {
-        //vv2 TODO unused? private IMembershipTable membershipTable;
-
-        internal IndexingManager IndexingManager { get { return IndexingManager.GetIndexingManager(ref __indexingManager, base.ServiceProvider); } }
+        internal IndexingManager IndexingManager => IndexingManager.GetIndexingManager(ref __indexingManager, base.ServiceProvider);
         private IndexingManager __indexingManager;
 
         public async Task<IEnumerable<Guid>> GetActiveGrains(string grainTypeName)

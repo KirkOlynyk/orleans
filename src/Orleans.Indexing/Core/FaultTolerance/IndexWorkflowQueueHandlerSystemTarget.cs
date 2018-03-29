@@ -10,10 +10,11 @@ namespace Orleans.Indexing
     {
         private IIndexWorkflowQueueHandler _base;
 
-        internal IndexWorkflowQueueHandlerSystemTarget(Type iGrainType, int queueSeqNum, SiloAddress silo, bool isDefinedAsFaultTolerantGrain)
-            : base(IndexWorkflowQueueHandlerBase.CreateIndexWorkflowQueueHandlerGrainId(iGrainType, queueSeqNum), silo, /*vv2err (ILoggerFactory) */ null)
+        internal IndexWorkflowQueueHandlerSystemTarget(IndexingManager indexingManager, Type iGrainType, int queueSeqNum, bool isDefinedAsFaultTolerantGrain)
+            : base(IndexWorkflowQueueHandlerBase.CreateIndexWorkflowQueueHandlerGrainId(iGrainType, queueSeqNum), indexingManager.SiloAddress, indexingManager.LoggerFactory)
         {
-            _base = new IndexWorkflowQueueHandlerBase(base.RuntimeClient, iGrainType, queueSeqNum, silo, isDefinedAsFaultTolerantGrain, this.AsWeaklyTypedReference());
+            _base = new IndexWorkflowQueueHandlerBase(base.RuntimeClient, iGrainType, queueSeqNum, indexingManager.SiloAddress,
+                                                      isDefinedAsFaultTolerantGrain, this.AsWeaklyTypedReference());
         }
 
         public Task HandleWorkflowsUntilPunctuation(Immutable<IndexWorkflowRecordNode> workflowRecordsHead)

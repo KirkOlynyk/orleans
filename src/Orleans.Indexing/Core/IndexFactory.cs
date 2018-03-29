@@ -148,22 +148,20 @@ namespace Orleans.Indexing
                                                                                    IndexUtils.GetIndexGrainID(grainType, indexName), idxType, idxType);
 
                     Type idxImplType = indexingManager.CachedTypeResolver.ResolveType(TypeCodeMapper.GetImplementation(indexingManager.RuntimeClient, idxType).GrainClass);
-
                     if (idxImplType.IsGenericTypeDefinition)
                         idxImplType = idxImplType.MakeGenericType(iIndexType.GetGenericArguments());
 
-                    MethodInfo initPerSilo; //vv2: Change to an interface
-                    if ((initPerSilo = idxImplType.GetMethod("InitPerSilo", BindingFlags.Static | BindingFlags.Public)) != null)
+                    MethodInfo initPerSiloMethodInfo = idxImplType.GetMethod("InitPerSilo", BindingFlags.Static | BindingFlags.Public);
+                    if (initPerSiloMethodInfo != null)  // Static method so cannot use an interface
                     {
-                        var initPerSiloMethod = (Action<Silo, string, bool>)Delegate.CreateDelegate(
-                                                typeof(Action<Silo, string, bool>),
-                                                initPerSilo);
-                        initPerSiloMethod(indexingManager.Silo, indexName, isUniqueIndex);
+                        var initPerSiloMethod = (Action<IndexingManager, string, bool>)Delegate.CreateDelegate(
+                                                typeof(Action<IndexingManager, string, bool>), initPerSiloMethodInfo);
+                        initPerSiloMethod(indexingManager, indexName, isUniqueIndex);
                     }
                 }
                 else if (idxType.IsClass)
                 {
-                    index = (IIndexInterface)Activator.CreateInstance(idxType, indexName, isUniqueIndex);
+                    index = (IIndexInterface)Activator.CreateInstance(idxType, indexingManager.ServiceProvider, indexName, isUniqueIndex);
                 }
                 else
                 {
@@ -183,23 +181,13 @@ namespace Orleans.Indexing
             return new IndexUpdateGenerator(indexedProperty);
         }
 
-        internal static void RegisterIndexWorkflowQueues(Silo silo, Type iGrainType, Type grainImplType)
+        internal static void RegisterIndexWorkflowQueues(IndexingManager indexingManager, Type iGrainType, Type grainImplType)
         {
             for (int i = 0; i < IndexWorkflowQueueBase.NUM_AVAILABLE_INDEX_WORKFLOW_QUEUES; ++i)
             {
-                silo.RegisterSystemTarget(new IndexWorkflowQueueSystemTarget(
-                    iGrainType,
-                    i,
-                    silo.SiloAddress,
-                    typeof(IIndexableGrainFaultTolerant).IsAssignableFrom(grainImplType)
-                ));
-
-                silo.RegisterSystemTarget(new IndexWorkflowQueueHandlerSystemTarget(
-                    iGrainType,
-                    i,
-                    silo.SiloAddress,
-                    typeof(IIndexableGrainFaultTolerant).IsAssignableFrom(grainImplType)
-                ));
+                bool isAssignable = typeof(IIndexableGrainFaultTolerant).IsAssignableFrom(grainImplType);
+                indexingManager.Silo.RegisterSystemTarget(new IndexWorkflowQueueSystemTarget(indexingManager, iGrainType, i, isAssignable));
+                indexingManager.Silo.RegisterSystemTarget(new IndexWorkflowQueueHandlerSystemTarget(indexingManager, iGrainType, i, isAssignable));
             }
         }
     }

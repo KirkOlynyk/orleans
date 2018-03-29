@@ -6,7 +6,7 @@ using Orleans.Runtime;
 using System.Reflection;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Orleans.Indexing
 {
@@ -40,31 +40,30 @@ namespace Orleans.Indexing
         protected Immutable<IDictionary<string, object>> _beforeImages;
 
         /// <summary>
-        /// a cached grain interface type, which
-        /// is cached on the first call to getIGrainType()
+        /// a cached grain interface type, which is cached on the first call to getIGrainType()
         /// </summary>
         protected IList<Type> _iGrainTypes = null;
 
+        protected virtual TProperties Properties { get { return DefaultCreatePropertiesFromState(); } }
         protected TProperties _props;
 
-        internal IndexingManager IndexingManager { get { return IndexingManager.GetIndexingManager(ref __indexingManager, base.ServiceProvider); } }
-        private IndexingManager __indexingManager;
+        private readonly IndexingManager indexingManager;
+        private readonly ILogger logger;
 
-        protected virtual TProperties Properties { get { return defaultCreatePropertiesFromState(); } }
+        public IndexableGrainNonFaultTolerant()
+        {
+            this.indexingManager = IndexingManager.GetIndexingManager(base.ServiceProvider);
+            this.logger = this.indexingManager.LoggerFactory.CreateLoggerWithFullCategoryName<IndexableGrainNonFaultTolerant<TState, TProperties>>();
+        }
 
-#if false   //vv2 logger
-        private static readonly Logger logger = LogManager.GetLogger(string.Format("IndexableGrainNonFaultTolerant<{0},{1}>",
-                                                                     typeof(TState).Name, typeof(TProperties).Name), LoggerType.Grain);
-#endif
-
-        private TProperties defaultCreatePropertiesFromState()
+        private TProperties DefaultCreatePropertiesFromState()
         {
             if (typeof(TProperties).IsAssignableFrom(typeof(TState)))
             {
                 return (TProperties)(object)this.State;
             }
 
-            if (this._props == null)
+            if (this._props == null)    // vv2 TODO: return if this is not null?
             {
                 this._props = new TProperties();
             }
@@ -90,7 +89,7 @@ namespace Orleans.Indexing
         /// </summary>
         public override Task OnActivateAsync()
         {
-            //vv2 if (logger.IsVerbose) logger.Verbose("Activating indexable grain {0} of type {1} in silo {2}.", Orleans.GrainExtensions.GetGrainId(this), GetIIndexableGrainTypes()[0], RuntimeAddress);
+            this.logger.Trace($"Activating indexable grain {Orleans.GrainExtensions.GetGrainId(this)} of type {this.GetIIndexableGrainTypes()[0]} in silo {this.indexingManager.SiloAddress}.");
 
             //load indexes
             this._iUpdateGens = IndexHandler.GetIndexes(GetIIndexableGrainTypes()[0]);
@@ -122,7 +121,7 @@ namespace Orleans.Indexing
 
         public override Task OnDeactivateAsync()
         {
-            //vv2 if (logger.IsVerbose) logger.Verbose("Deactivating indexable grain {0} of type {1} in silo {2}.", Orleans.GrainExtensions.GetGrainId(this), GetIIndexableGrainTypes()[0], RuntimeAddress);
+            this.logger.Trace($"Deactivating indexable grain {Orleans.GrainExtensions.GetGrainId(this)} of type {this.GetIIndexableGrainTypes()[0]} in silo {this.indexingManager.SiloAddress}.");
             return Task.WhenAll(RemoveFromActiveIndexes(), base.OnDeactivateAsync());
         }
 
@@ -445,7 +444,7 @@ namespace Orleans.Indexing
                         }
 
                         //the update task is added to the list of update tasks
-                        updateIndexTasks.Add(((IIndexInterface)idxInfo.Item1).ApplyIndexUpdate(this.IndexingManager.RuntimeClient,
+                        updateIndexTasks.Add(((IIndexInterface)idxInfo.Item1).ApplyIndexUpdate(this.indexingManager.RuntimeClient,
                                              updatedGrain, updateToIndex.AsImmutable(), isUniqueIndex, (IndexMetaData)idxInfo.Item2, base.SiloAddress));
                     }
                 }
@@ -653,7 +652,7 @@ namespace Orleans.Indexing
 
             if (!this.WorkflowQueues.TryGetValue(iGrainType, out IIndexWorkflowQueue workflowQ))
             {
-                workflowQ = IndexWorkflowQueueBase.GetIndexWorkflowQueueFromGrainHashCode(this.IndexingManager, iGrainType,
+                workflowQ = IndexWorkflowQueueBase.GetIndexWorkflowQueueFromGrainHashCode(this.indexingManager, iGrainType,
                         this.AsReference<IIndexableGrain>(this.GrainFactory, iGrainType).GetHashCode(), base.SiloAddress);
                 this.WorkflowQueues.Add(iGrainType, workflowQ);
             }

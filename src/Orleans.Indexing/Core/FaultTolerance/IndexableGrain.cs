@@ -39,7 +39,7 @@ namespace Orleans.Indexing
             set { base.State.UserState = value; }
         }
 
-        protected override TProperties Properties { get { return defaultCreatePropertiesFromState(); } }
+        protected override TProperties Properties { get { return DefaultCreatePropertiesFromState(); } }
 
         internal override IDictionary<Type, IIndexWorkflowQueue> WorkflowQueues
         {
@@ -47,7 +47,7 @@ namespace Orleans.Indexing
             set { base.State.WorkflowQueues = value; }
         }
 
-        //0: uninitialized, 1: has some Total Indexes, 2: does not have any Total Index
+        //0: uninitialized, 1: has some Total Indexes, -1: does not have any Total Index
         private sbyte __hasAnyTotalIndex;
         private bool HasAnyTotalIndex { get { return this.__hasAnyTotalIndex == 0 ? InitHasAnyTotalIndex() : this.__hasAnyTotalIndex > 0; } }
 
@@ -107,16 +107,13 @@ namespace Orleans.Indexing
                     {
                         throw new InvalidOperationException("Fault tolerant indexes cannot be updated eagerly. This misconfiguration should have been cur on silo startup. Check SiloAssemblyLoader for the reason.");
                     }
-                    //Otherwise, if indexes are updated lazily
-                    else
-                    {
-                        //update the indexes lazily
-                        //updating indexes lazily is the first step, because
-                        //workflow record should be persisted in the workflow-queue first.
-                        //The reason for waiting here is to make sure that the workflow record
-                        //in the workflow queue is correctly persisted.
-                        await ApplyIndexUpdatesLazily(updates, iGrainTypes, thisGrain, workflowId);
-                    }
+
+                    //update the indexes lazily
+                    //updating indexes lazily is the first step, because
+                    //workflow record should be persisted in the workflow-queue first.
+                    //The reason for waiting here is to make sure that the workflow record
+                    //in the workflow queue is correctly persisted.
+                    await ApplyIndexUpdatesLazily(updates, iGrainTypes, thisGrain, workflowId);
 
                     //if any unique index is defined on this grain and at least one of them is updated
                     if (numberOfUniqueIndexesUpdated > 0)
@@ -267,11 +264,9 @@ namespace Orleans.Indexing
             {
                 base.State.ActiveWorkflowsSet.Add(workflowId);
             }
-            if (base.State.ActiveWorkflowsSet.Count() != initialSize)
-            {
-                return WriteBaseStateAsync();
-            }
-            return Task.CompletedTask;
+            return (base.State.ActiveWorkflowsSet.Count() != initialSize) //vv2 should we be checking that the members are the same too?
+                ? WriteBaseStateAsync()
+                : Task.CompletedTask;
         }
 
         private void PruneWorkflowQueuesForMissingTypes()
@@ -279,10 +274,9 @@ namespace Orleans.Indexing
             var oldQueues = this.WorkflowQueues;
             this.WorkflowQueues = new Dictionary<Type, IIndexWorkflowQueue>();
             IList<Type> iGrainTypes = GetIIndexableGrainTypes();
-            IIndexWorkflowQueue q;
             foreach (var grainType in iGrainTypes)
             {
-                if (oldQueues.TryGetValue(grainType, out q))
+                if (oldQueues.TryGetValue(grainType, out IIndexWorkflowQueue q))
                 {
                     this.WorkflowQueues.Add(grainType, q);
                 }
@@ -292,8 +286,9 @@ namespace Orleans.Indexing
         public override Task<Immutable<HashSet<Guid>>> GetActiveWorkflowIdsList()
         {
             var workflows = base.State.ActiveWorkflowsSet;
-            if (workflows == null) return Task.FromResult(new HashSet<Guid>().AsImmutable());
-            return Task.FromResult(workflows.AsImmutable());
+            return (workflows == null)
+                ? Task.FromResult(new HashSet<Guid>().AsImmutable())
+                : Task.FromResult(workflows.AsImmutable());
         }
 
         public override Task RemoveFromActiveWorkflowIds(HashSet<Guid> removedWorkflowId)
@@ -357,11 +352,11 @@ namespace Orleans.Indexing
             return workflowId;
         }
 
-        private TProperties defaultCreatePropertiesFromState()
+        private TProperties DefaultCreatePropertiesFromState()
         {
             if (typeof(TProperties).IsAssignableFrom(typeof(TState))) return (TProperties)(object)(base.State.UserState);
 
-            if (this._props == null) this._props = new TProperties();
+            if (this._props == null) this._props = new TProperties(); // vv2 return if _props != null? 
 
             foreach (PropertyInfo p in typeof(TProperties).GetProperties())
             {
@@ -370,7 +365,7 @@ namespace Orleans.Indexing
             return this._props;
         }
 
-        private bool InitHasAnyTotalIndex()
+        private bool InitHasAnyTotalIndex() // vv2 convert to bool? and LINQ
         {
             IList<Type> iGrainTypes = GetIIndexableGrainTypes();
             foreach (var iGrainType in iGrainTypes)

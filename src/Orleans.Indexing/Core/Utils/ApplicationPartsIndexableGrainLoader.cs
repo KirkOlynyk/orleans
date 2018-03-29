@@ -11,21 +11,19 @@ namespace Orleans.Indexing
 {
     internal class ApplicationPartsIndexableGrainLoader
     {
-        private IndexingManager indexingManager;
+        private readonly IndexingManager indexingManager;
+        private readonly ILogger logger;
 
-        private Type indexAttrType = typeof(IndexAttribute);
-        private PropertyInfo indexTypeProperty = typeof(IndexAttribute).GetProperty(nameof(IndexAttribute.IndexType));
-        private PropertyInfo isEagerProperty = typeof(IndexAttribute).GetProperty(nameof(IndexAttribute.IsEager));
-        private PropertyInfo isUniqueProperty = typeof(IndexAttribute).GetProperty(nameof(IndexAttribute.IsUnique));
-        private PropertyInfo maxEntriesPerBucketProperty = typeof(IndexAttribute).GetProperty(nameof(IndexAttribute.MaxEntriesPerBucket));
+        private readonly Type indexAttrType = typeof(IndexAttribute);
+        private readonly PropertyInfo indexTypeProperty = typeof(IndexAttribute).GetProperty(nameof(IndexAttribute.IndexType));
+        private readonly PropertyInfo isEagerProperty = typeof(IndexAttribute).GetProperty(nameof(IndexAttribute.IsEager));
+        private readonly PropertyInfo isUniqueProperty = typeof(IndexAttribute).GetProperty(nameof(IndexAttribute.IsUnique));
+        private readonly PropertyInfo maxEntriesPerBucketProperty = typeof(IndexAttribute).GetProperty(nameof(IndexAttribute.MaxEntriesPerBucket));
 
-        private ILogger logger;
-
-        //vv2 LoggerImpl logger = LogManager.GetLogger("ApplicationPartsIndexableGrainLoader.Silo");
         internal ApplicationPartsIndexableGrainLoader(IndexingManager indexingManager)
         {
             this.indexingManager = indexingManager;
-            this.logger = this.indexingManager.LoggerFactory.CreateLogger<ApplicationPartsIndexableGrainLoader>();
+            this.logger = this.indexingManager.LoggerFactory.CreateLoggerWithFullCategoryName<ApplicationPartsIndexableGrainLoader>();
         }
 
         /// <summary>
@@ -50,10 +48,10 @@ namespace Orleans.Indexing
         /// This method returns an empty dictionary if the OrleansIndexing 
         /// project is not available.
         /// </returns>
-        public IDictionary<Type, IDictionary<string, Tuple<object, object, object>>> GetGrainClassIndexes()   //vv2 awaitable?
+        public IDictionary<Type, IDictionary<string, Tuple<object, object, object>>> GetGrainClassIndexes()
         {
             Type[] grainTypes = this.indexingManager.ApplicationPartManager.ApplicationParts.OfType<AssemblyPart>()
-                                    .SelectMany(part => TypeUtils.GetTypes(part.Assembly, TypeUtils.IsConcreteGrainClass, /*vv2err logger*/ null))
+                                    .SelectMany(part => TypeUtils.GetTypes(part.Assembly, TypeUtils.IsConcreteGrainClass, this.logger))
                                     .ToArray();
 
             var result = new Dictionary<Type, IDictionary<string, Tuple<object, object, object>>>();
@@ -132,13 +130,13 @@ namespace Orleans.Indexing
                         int maxEntriesPerBucket = (int)maxEntriesPerBucketProperty.GetValue(indexAttr);
                         var index = IndexFactory.CreateIndex(this.indexingManager, indexType, indexName, isUnique, isEager, maxEntriesPerBucket, p);
                         indexesOnGrain.Add(indexName, index);
-                        this.logger.Info("Interface: {interface")
+                        this.logger.Info($"Index created: Interface = {userDefinedIGrain.Name}, property = {propertiesArg.Name}, index = {indexName}");
                     }
                 }
                 result.Add(userDefinedIGrain, indexesOnGrain);
                 if (hasNonEagerIndex)
                 {
-                    IndexFactory.RegisterIndexWorkflowQueues(this.indexingManager.Silo, userDefinedIGrain, userDefinedGrainImpl);
+                    IndexFactory.RegisterIndexWorkflowQueues(this.indexingManager, userDefinedIGrain, userDefinedGrainImpl);
                 }
             }
         }
@@ -185,48 +183,5 @@ namespace Orleans.Indexing
             }
             return false;
         }
-
-#if false //vv2 LogGrainTypesFound
-        private void LogGrainTypesFound(Dictionary<string, GrainTypeData> grainTypeData)
-        {
-            var sb = new StringBuilder();
-            sb.AppendLine(String.Format("Loaded grain type summary for {0} types: ", grainTypeData.Count));
-
-            foreach (var grainType in grainTypeData.Values.OrderBy(gtd => gtd.Type.FullName))
-            {
-                // Skip system targets and Orleans grains
-                var assemblyName = grainType.Type.GetTypeInfo().Assembly.FullName.Split(',')[0];
-                if (!typeof(ISystemTarget).IsAssignableFrom(grainType.Type))
-                {
-                    int grainClassTypeCode = CodeGeneration.GrainInterfaceUtils.GetGrainClassTypeCode(grainType.Type);
-                    sb.AppendFormat("Grain class {0}.{1} [{2} (0x{3})] from {4}.dll implementing interfaces: ",
-                        grainType.Type.Namespace,
-                        TypeUtils.GetTemplatedName(grainType.Type),
-                        grainClassTypeCode,
-                        grainClassTypeCode.ToString("X"),
-                        assemblyName);
-                    bool first = true;
-
-                    foreach (var iface in grainType.RemoteInterfaceTypes)
-                    {
-                        if (!first)
-                            sb.Append(", ");
-
-                        sb.Append(iface.Namespace).Append(".").Append(TypeUtils.GetTemplatedName(iface));
-
-                        if (CodeGeneration.GrainInterfaceUtils.IsGrainType(iface))
-                        {
-                            int ifaceTypeCode = CodeGeneration.GrainInterfaceUtils.GetGrainInterfaceId(iface);
-                            sb.AppendFormat(" [{0} (0x{1})]", ifaceTypeCode, ifaceTypeCode.ToString("X"));
-                        }
-                        first = false;
-                    }
-                    sb.AppendLine();
-                }
-            }
-            var report = sb.ToString();
-            logger.LogWithoutBulkingAndTruncating(Severity.Info, ErrorCode.Loader_GrainTypeFullList, report);
-        }
-#endif
     }
 }
