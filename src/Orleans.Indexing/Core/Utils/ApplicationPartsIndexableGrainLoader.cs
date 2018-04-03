@@ -128,7 +128,7 @@ namespace Orleans.Indexing
                         if (!isEager) hasNonEagerIndex = true;
                         bool isUnique = (bool)isUniqueProperty.GetValue(indexAttr);
                         int maxEntriesPerBucket = (int)maxEntriesPerBucketProperty.GetValue(indexAttr);
-                        var index = IndexFactory.CreateIndex(this.indexingManager, indexType, indexName, isUnique, isEager, maxEntriesPerBucket, p);
+                        var index = this.indexingManager.IndexFactory.CreateIndex(indexType, indexName, isUnique, isEager, maxEntriesPerBucket, p);
                         indexesOnGrain.Add(indexName, index);
                         this.logger.Info($"Index created: Interface = {userDefinedIGrain.Name}, property = {propertiesArg.Name}, index = {indexName}");
                     }

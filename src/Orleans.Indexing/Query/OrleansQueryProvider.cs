@@ -18,59 +18,51 @@ namespace Orleans.Indexing
                 var genericArgs = ((MethodCallExpression)expression).Arguments[0].Type.GetGenericArguments();
                 return CreateQuery(expression, genericArgs[0], genericArgs[1]);
             }
-            else
-            {
-                throw new NotSupportedException();
-            }
+            throw new NotSupportedException();
         }
+
         public IQueryable<TElement> CreateQuery<TElement>(Expression expression)
-        {
-            return (IQueryable<TElement>)((IQueryProvider)this).CreateQuery(expression);
-        }
+            => (IQueryable<TElement>)((IQueryProvider)this).CreateQuery(expression);
 
         private IQueryable CreateQuery(Expression expression, Type iGrainType, Type iPropertiesType)
         {
             if (expression.NodeType == ExpressionType.Call)
             {
                 var methodCall = ((MethodCallExpression)expression);
-                IGrainFactory gf;
-                IStreamProvider streamProvider;
                 if (IsWhereClause(methodCall)
-                    && CheckIsOrleansIndex(methodCall.Arguments[0], iGrainType, iPropertiesType, out gf, out streamProvider)
+                    && CheckIsOrleansIndex(methodCall.Arguments[0], iGrainType, iPropertiesType, out IIndexFactory indexFactory, out IStreamProvider streamProvider)
                     && methodCall.Arguments[1].NodeType == ExpressionType.Quote
                     && ((UnaryExpression)methodCall.Arguments[1]).Operand.NodeType == ExpressionType.Lambda)
                 {
                     var whereClause = (LambdaExpression)((UnaryExpression)methodCall.Arguments[1]).Operand;
-                    string indexName;
-                    object lookupValue;
-                    if (TryGetIndexNameAndLookupValue(whereClause, iGrainType, out indexName, out lookupValue))
+                    if (TryGetIndexNameAndLookupValue(whereClause, iGrainType, out string indexName, out object lookupValue))
                     {
-                        return (IQueryable)Activator.CreateInstance(typeof(QueryIndexedGrainsNode<,>).MakeGenericType(iGrainType, iPropertiesType), gf, streamProvider, indexName, lookupValue);
+                        return (IQueryable)Activator.CreateInstance(typeof(QueryIndexedGrainsNode<,>)
+                                                    .MakeGenericType(iGrainType, iPropertiesType), indexFactory, streamProvider, indexName, lookupValue);
                     }
                 }
             }
             throw new NotSupportedException();
         }
 
-        private bool CheckIsOrleansIndex(Expression e, Type iGrainType, Type iPropertiesType, out IGrainFactory gf, out IStreamProvider streamProvider)
+        private bool CheckIsOrleansIndex(Expression e, Type iGrainType, Type iPropertiesType, out IIndexFactory indexFactory, out IStreamProvider streamProvider)
         {
             if (e.NodeType == ExpressionType.Constant &&
-                typeof(QueryActiveGrainsNode<,>).MakeGenericType(iGrainType, iPropertiesType).IsAssignableFrom(((ConstantExpression)e).Value.GetType().GetGenericTypeDefinition().MakeGenericType(iGrainType, iPropertiesType)))
+                typeof(QueryActiveGrainsNode<,>).MakeGenericType(iGrainType, iPropertiesType)
+                                                .IsAssignableFrom(((ConstantExpression)e).Value.GetType().GetGenericTypeDefinition().MakeGenericType(iGrainType, iPropertiesType)))
             {
                 var qNode = ((QueryGrainsNode)((ConstantExpression)e).Value);
-                gf = qNode.GetGrainFactory();
-                streamProvider = qNode.GetStreamProvider();
+                indexFactory = qNode.IndexFactory;
+                streamProvider = qNode.StreamProvider;
                 return true;
             }
-            gf = null;
+            indexFactory = null;
             streamProvider = null;
             return false;
         }
 
         private bool IsWhereClause(MethodCallExpression call)
-        {
-            return call.Arguments.Count() == 2 && call.Method.ReflectedType.Equals(typeof(Queryable)) && call.Method.Name == "Where";
-        }
+            => call.Arguments.Count() == 2 && call.Method.ReflectedType.Equals(typeof(Queryable)) && call.Method.Name == "Where";
 
         /// <summary>
         /// This method tries to pull out the index name and
@@ -146,11 +138,12 @@ namespace Orleans.Indexing
             throw new NotSupportedException(string.Format("The provided expression is not supported yet: {0}", exprTree));
         }
 
+        #region IOrleansQueryProvider
+
         public object Execute(Expression expression)
         {
             throw new NotImplementedException();
         }
-
 
         /// <summary>
         /// Executes the query represented by a specified expression tree.
@@ -159,9 +152,8 @@ namespace Orleans.Indexing
         /// <returns>
         /// The value that results from executing the specified query.
         /// </returns>
-        public TResult Execute<TResult>(Expression expression)
-        {
-            return (TResult)Execute(expression);
-        }
+        public TResult Execute<TResult>(Expression expression) => (TResult)Execute(expression);
+
+        #endregion IOrleansQueryProvider
     }
 }

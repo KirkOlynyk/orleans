@@ -2,7 +2,6 @@ using Orleans.Concurrency;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System;
-using Orleans.Runtime;
 using System.Reflection;
 using System.Linq;
 
@@ -63,12 +62,10 @@ namespace Orleans.Indexing
             {
                 this.WorkflowQueues = null;
             }
-            //if there are some remaining active work-flows
-            //they should be handled first
             else
             {
+                // If there are some remaining active work-flows they should be handled first
                 PruneWorkflowQueuesForMissingTypes();
-
                 return HandleRemainingWorkflows().ContinueWith(t => Task.WhenAll(PruneActiveWorkflowsSetFromAlreadyHandledWorkflows(t.Result), base.OnActivateAsync()));
             }
             return base.OnActivateAsync();
@@ -314,7 +311,7 @@ namespace Orleans.Indexing
         /// <param name="workflowId">the workflow ID to be added</param>
         private void AddWorkdlowIdToActiveWorkflows(Guid workflowId)
         {
-            if (base.State.ActiveWorkflowsSet == null)
+            if (base.State.ActiveWorkflowsSet == null) // vv2 make this a singleton on the accessor
             {
                 base.State.ActiveWorkflowsSet = new HashSet<Guid>();
             }
@@ -370,7 +367,7 @@ namespace Orleans.Indexing
             IList<Type> iGrainTypes = GetIIndexableGrainTypes();
             foreach (var iGrainType in iGrainTypes)
             {
-                var indexes = IndexHandler.GetIndexes(iGrainType);
+                var indexes = base.IndexingManager.IndexFactory.GetIndexes(iGrainType);
                 foreach (var idxInfo in indexes.Values)
                 {
                     if (idxInfo.Item1 is ITotalIndex)

@@ -1,9 +1,8 @@
 using System;
 using System.Threading.Tasks;
-using Orleans;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Orleans.Providers;
-using Orleans.Runtime;
-using Orleans.Indexing;
 
 namespace Orleans.Indexing.Tests
 {
@@ -13,30 +12,27 @@ namespace Orleans.Indexing.Tests
     [StorageProvider(ProviderName = "MemoryStore")]
     public abstract class PlayerGrain<TState, TProps> : IndexableGrain<TState, TProps>, IPlayerGrain where TState : IPlayerState where TProps : new()
     {
-        private object logger; //vv2 Logger logger;
+        protected ILogger Logger { get; private set; }
         
-        public string Email { get { return this.State.Email; } }
-        public string Location { get { return this.State.Location; } }
-        public int Score { get { return this.State.Score; } }
+        public string Email => this.State.Email;
+        public string Location => this.State.Location;
+        public int Score => this.State.Score;
 
         public override Task OnActivateAsync()
         {
-            this.logger = this.GetLogger("PlayerGrain-" + this.IdentityString);
+            this.Logger = this.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("PlayerGrain-" + this.IdentityString);
             return base.OnActivateAsync();
         }
 
-        public Task<string> GetLocation()
-        {
-            return Task.FromResult(this.Location);
-        }
+        public Task<string> GetLocation() => Task.FromResult(this.Location);
 
         public async Task SetLocation(string location)
         {
             int counter = 0;
             while (true)
             {
-                this.State.Location = location;
-                //return TaskDone.Done;
+                base.State.Location = location;
+                //return Task.CompletedTask;
                 try
                 {
                     await base.WriteStateAsync();
@@ -51,27 +47,21 @@ namespace Orleans.Indexing.Tests
             }
         }
 
-        public Task<int> GetScore()
-        {
-            return Task.FromResult(this.Score);
-        }
+        public Task<int> GetScore() => Task.FromResult(this.Score);
 
         public Task SetScore(int score)
         {
             this.State.Score = score;
-            //return TaskDone.Done;
+            //return Task.CompletedTask;
             return base.WriteStateAsync();
         }
 
-        public Task<string> GetEmail()
-        {
-            return Task.FromResult(this.Email);
-        }
+        public Task<string> GetEmail() => Task.FromResult(this.Email);
 
         public Task SetEmail(string email)
         {
             this.State.Email = email;
-            //return TaskDone.Done;
+            //return Task.CompletedTask;
             return base.WriteStateAsync();
         }
 

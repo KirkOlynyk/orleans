@@ -17,6 +17,7 @@ using Xunit.Abstractions;
 
 namespace Orleans.Indexing.Tests
 {
+#if false //vv2 to remove
     public interface ISimpleGrain : IGrainWithIntegerKey
     {
         Task<string> GetName();
@@ -124,4 +125,5 @@ namespace Orleans.Indexing.Tests
             return null;
         }
     }
+#endif
 }

@@ -1,11 +1,7 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
-using Orleans;
-using Orleans.Indexing;
-using UnitTests.GrainInterfaces;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace Orleans.Indexing.Tests
 {
@@ -24,7 +20,7 @@ namespace Orleans.Indexing.Tests
             Task<int> tsk = taskCompletionSource.Task;
             Action<int> responseHandler = taskCompletionSource.SetResult;
 
-            IOrleansQueryable<TIGrain, TProperties> q = from player in runner.GrainFactory.GetActiveGrains<TIGrain, TProperties>(runner.IndexingStreamProvider)
+            IOrleansQueryable<TIGrain, TProperties> q = from player in runner.IndexFactory.GetActiveGrains<TIGrain, TProperties>()
                                                         where player.Location == city
                                                         select player;
             

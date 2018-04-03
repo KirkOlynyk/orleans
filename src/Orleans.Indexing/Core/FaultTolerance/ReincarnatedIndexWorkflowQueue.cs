@@ -36,7 +36,7 @@ namespace Orleans.Indexing
                 int queueSequenceNumber = int.Parse(parts[1]);
 
                 GrainReference thisRef = this.AsWeaklyTypedReference();
-                _base = new IndexWorkflowQueueBase(this.IndexingManager.RuntimeClient, grainInterfaceType, queueSequenceNumber,
+                _base = new IndexWorkflowQueueBase(this.IndexingManager, grainInterfaceType, queueSequenceNumber,
                                                    oldParentSystemTargetRef.SystemTargetSilo, true, thisRef.GrainId, thisRef);
             }
             return Task.CompletedTask;

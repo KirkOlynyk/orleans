@@ -37,11 +37,13 @@ namespace Orleans.Indexing
         internal Silo Silo => this.__silo ?? (this.__silo = this.ServiceProvider.GetRequiredService<Silo>());
         private Silo __silo;
 
-        internal IRuntimeClient RuntimeClient { get; private set; }     // vv2err IRuntimeClient is an internal interface
+        internal IRuntimeClient RuntimeClient { get; private set; }
 
         internal ISiloStatusOracle SiloStatusOracle { get; private set; }
 
         internal ILoggerFactory LoggerFactory { get; private set; }
+
+        internal IndexFactory IndexFactory { get; private set; }
 
         public IndexingManager(IServiceProvider sp, IApplicationPartManager apm, IRuntimeClient rc, ISiloStatusOracle sso, ILoggerFactory lf)
         {
@@ -51,6 +53,7 @@ namespace Orleans.Indexing
             this.SiloStatusOracle = sso;
             this.LoggerFactory = lf;
             this.CachedTypeResolver = new CachedTypeResolver();
+            this.IndexFactory = new IndexFactory(this, this.GrainFactory, this.RuntimeClient);  // vv2 this vs. singleton: is singleton ever used?
         }
 
         public void Participate(ISiloLifecycle lifecycle)

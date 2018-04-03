@@ -9,7 +9,7 @@ namespace Orleans.Indexing
     /// </summary>
     public class QueryActiveGrainsNode<TIGrain, TProperties> : QueryGrainsNode<TIGrain, TProperties> where TIGrain : IIndexableGrain
     {
-        public QueryActiveGrainsNode(IGrainFactory gf, IStreamProvider streamProvider) : base(gf, streamProvider)
+        public QueryActiveGrainsNode(IIndexFactory indexFactory, IStreamProvider streamProvider) : base(indexFactory, streamProvider)
         {
         }
 

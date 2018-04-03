@@ -13,58 +13,31 @@ namespace Orleans.Indexing
     /// </summary>
     public abstract class QueryGrainsNode
     {
-        private IGrainFactory _grainFactory;
-        private IStreamProvider _streamProvider;
+        public IIndexFactory IndexFactory { get; private set; }
 
-        public QueryGrainsNode(IGrainFactory gf, IStreamProvider streamProvider)
-        {
-            this._grainFactory = gf;
-            this._streamProvider = streamProvider;
-        }
+        public IStreamProvider StreamProvider { get; private set; }
 
-        public IGrainFactory GetGrainFactory()
+        public QueryGrainsNode(IIndexFactory indexFactory, IStreamProvider streamProvider)
         {
-            return this._grainFactory;
-        }
-
-        public IStreamProvider GetStreamProvider()
-        {
-            return this._streamProvider;
+            this.IndexFactory = indexFactory;
+            this.StreamProvider = streamProvider;
         }
     }
+
     /// <summary>
     /// The top-level class for query objects, which implements <see cref="IOrleansQueryable{T}"/>
     /// </summary>
     public abstract class QueryGrainsNode<TIGrain, TProperties> : QueryGrainsNode, IOrleansQueryable<TIGrain, TProperties> where TIGrain : IIndexableGrain
     {
-
-        public QueryGrainsNode(IGrainFactory gf, IStreamProvider streamProvider) : base(gf, streamProvider)
+        public QueryGrainsNode(IIndexFactory indexFactory, IStreamProvider streamProvider) : base(indexFactory, streamProvider)
         {
         }
 
-        public virtual Type ElementType
-        {
-            get
-            {
-                return typeof(TIGrain);
-            }
-        }
+        public virtual Type ElementType => typeof(TIGrain);
 
-        public virtual Expression Expression
-        {
-            get
-            {
-                return Expression.Constant(this);
-            }
-        }
+        public virtual Expression Expression => Expression.Constant(this);
 
-        public virtual IQueryProvider Provider
-        {
-            get
-            {
-                return new OrleansQueryProvider<TIGrain, TProperties>();
-            }
-        }
+        public virtual IQueryProvider Provider => new OrleansQueryProvider<TIGrain, TProperties>();
 
         /// <summary>
         /// This method gets the result of executing the query
@@ -80,9 +53,6 @@ namespace Orleans.Indexing
             throw new NotSupportedException("GetEnumerator is not supported on QueryGrainsNode.");
         }
 
-        IEnumerator IEnumerable.GetEnumerator()
-        {
-            return GetEnumerator();
-        }
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
     }
 }

@@ -8,7 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 #pragma warning disable IDE0006 //vv2 - note: these are suppressed in the project build settings.
-#pragma warning disable IDE0009 //vv2
+#pragma warning disable IDE0009
 
 namespace Orleans.Indexing
 {
@@ -37,7 +37,7 @@ namespace Orleans.Indexing
         //the persistent state of IndexWorkflowQueue, including:
         // - doubly linked list of workflowRecordds
         // - the identity of the IndexWorkflowQueue system target
-        protected IndexWorkflowQueueState State;
+        protected IndexWorkflowQueueState queueState;
 
         //the tail of workflowRecords doubly linked list
         internal IndexWorkflowRecordNode _workflowRecordsTail;
@@ -87,14 +87,14 @@ namespace Orleans.Indexing
         public static int NUM_AVAILABLE_INDEX_WORKFLOW_QUEUES { get { return Environment.ProcessorCount; } }
 
         private SiloAddress _silo;
-        private IRuntimeClient _runtimeClient;
+        private IndexingManager _indexingManager;
 
         private GrainReference _parent;
 
-        internal IndexWorkflowQueueBase(IRuntimeClient runtimeClient, Type grainInterfaceType, int queueSequenceNumber, SiloAddress silo,
+        internal IndexWorkflowQueueBase(IndexingManager indexingManager, Type grainInterfaceType, int queueSequenceNumber, SiloAddress silo,
                                         bool isDefinedAsFaultTolerantGrain, GrainId grainId, GrainReference parent)
         {
-            State = new IndexWorkflowQueueState(grainId, silo);
+            queueState = new IndexWorkflowQueueState(grainId, silo);
             _iGrainType = grainInterfaceType;
             _queueSeqNum = queueSequenceNumber;
 
@@ -111,16 +111,16 @@ namespace Orleans.Indexing
             _pendingWriteRequests = new HashSet<int>();
 
             _silo = silo;
-            _runtimeClient = runtimeClient;
+            _indexingManager = indexingManager;
             _parent = parent;
         }
 
         private IIndexWorkflowQueueHandler InitWorkflowQueueHandler()
         {
             __handler = _parent.IsSystemTarget
-                ? _runtimeClient.InternalGrainFactory.GetSystemTarget<IIndexWorkflowQueueHandler>(
+                ? _indexingManager.RuntimeClient.InternalGrainFactory.GetSystemTarget<IIndexWorkflowQueueHandler>(
                         IndexWorkflowQueueHandlerBase.CreateIndexWorkflowQueueHandlerGrainId(_iGrainType, _queueSeqNum), _silo)
-                : _runtimeClient.InternalGrainFactory.GetGrain<IIndexWorkflowQueueHandler>(CreateIndexWorkflowQueuePrimaryKey(_iGrainType, _queueSeqNum));
+                : _indexingManager.GrainFactory.GetGrain<IIndexWorkflowQueueHandler>(CreateIndexWorkflowQueuePrimaryKey(_iGrainType, _queueSeqNum));
             return __handler;
         }
 
@@ -153,7 +153,7 @@ namespace Orleans.Indexing
             if (_workflowRecordsTail == null) //if the list is empty
             {
                 _workflowRecordsTail = newWorkflowNode;
-                State.State.WorkflowRecordsHead = newWorkflowNode;
+                queueState.State.WorkflowRecordsHead = newWorkflowNode;
             }
             else // otherwise append to the end of the list
             {
@@ -175,12 +175,12 @@ namespace Orleans.Indexing
 
         private void RemoveFromQueueNonPersistent(IndexWorkflowRecord newWorkflow)
         {
-            IndexWorkflowRecordNode current = State.State.WorkflowRecordsHead;
+            IndexWorkflowRecordNode current = queueState.State.WorkflowRecordsHead;
             while (current != null)
             {
                 if (newWorkflow.Equals(current.WorkflowRecord))
                 {
-                    current.Remove(ref State.State.WorkflowRecordsHead, ref _workflowRecordsTail);
+                    current.Remove(ref queueState.State.WorkflowRecordsHead, ref _workflowRecordsTail);
                     return;
                 }
                 current = current.Next;
@@ -200,7 +200,7 @@ namespace Orleans.Indexing
         {
             if (_workflowRecordsTail == null) throw new Exception("Adding a punctuation to an empty work-flow queue is not possible.");
 
-            var punctutationHead = State.State.WorkflowRecordsHead;
+            var punctutationHead = queueState.State.WorkflowRecordsHead;
             if (punctutationHead.IsPunctuation()) throw new Exception("The element at the head of work-flow queue cannot be a punctuation.");
 
             if (batchSize == int.MaxValue)
@@ -236,13 +236,13 @@ namespace Orleans.Indexing
                 tmp.Prev.Clean();
             }
 
-            if (tmp == null) from.Remove(ref State.State.WorkflowRecordsHead, ref _workflowRecordsTail);
+            if (tmp == null) from.Remove(ref queueState.State.WorkflowRecordsHead, ref _workflowRecordsTail);
             else
             {
                 from.Next = tmp;
                 tmp.Prev = from;
-                from.Remove(ref State.State.WorkflowRecordsHead, ref _workflowRecordsTail);
-                tmp.Remove(ref State.State.WorkflowRecordsHead, ref _workflowRecordsTail);
+                from.Remove(ref queueState.State.WorkflowRecordsHead, ref _workflowRecordsTail);
+                tmp.Remove(ref queueState.State.WorkflowRecordsHead, ref _workflowRecordsTail);
             }
 
             return workflowRecords;
@@ -272,7 +272,7 @@ namespace Orleans.Indexing
                         ? StorageProvider.WriteStateAsync("Orleans.Indexing.IndexWorkflowQueue-" + TypeUtils.GetFullName(_iGrainType), _parent, State)
                         : extendedSP.WriteStateWithoutEtagCheckAsync("Orleans.Indexing.IndexWorkflowQueue-" + TypeUtils.GetFullName(_iGrainType), _parent, State));
 #else
-                    await StorageProvider.WriteStateAsync("Orleans.Indexing.IndexWorkflowQueue-" + TypeUtils.GetFullName(_iGrainType), _parent, State);
+                    await StorageProvider.WriteStateAsync("Orleans.Indexing.IndexWorkflowQueue-" + TypeUtils.GetFullName(_iGrainType), _parent, queueState);
 #endif
                 }
                 //else
@@ -284,7 +284,7 @@ namespace Orleans.Indexing
 
         public Task<Immutable<IndexWorkflowRecordNode>> GiveMoreWorkflowsOrSetAsIdle()
         {
-            List<IndexWorkflowRecord> removedWorkflows = RemoveFromQueueUntilPunctuation(State.State.WorkflowRecordsHead);
+            List<IndexWorkflowRecord> removedWorkflows = RemoveFromQueueUntilPunctuation(queueState.State.WorkflowRecordsHead);
             if (IsFaultTolerant)
             {
                 //The task of removing the work-flow record IDs from the grain
@@ -317,7 +317,7 @@ namespace Orleans.Indexing
 
         private bool InitHasAnyTotalIndex() // vv2 convert to bool? and LINQ
         {
-            var indexes = IndexHandler.GetIndexes(_iGrainType);
+            var indexes = _indexingManager.IndexFactory.GetIndexes(_iGrainType);
             foreach (var idxInfo in indexes.Values)
             {
                 if (idxInfo.Item1 is ITotalIndex)
@@ -339,7 +339,7 @@ namespace Orleans.Indexing
         public Task<Immutable<List<IndexWorkflowRecord>>> GetRemainingWorkflowsIn(HashSet<Guid> activeWorkflowsSet)
         {
             var result = new List<IndexWorkflowRecord>();
-            IndexWorkflowRecordNode current = State.State.WorkflowRecordsHead;
+            IndexWorkflowRecordNode current = queueState.State.WorkflowRecordsHead;
             while (current != null)
             {
                 if (activeWorkflowsSet.Contains(current.WorkflowRecord.WorkflowId))

@@ -37,7 +37,7 @@ namespace Orleans.Indexing
             : base(IndexWorkflowQueueBase.CreateIndexWorkflowQueueGrainId(grainInterfaceType, queueSequenceNumber), indexingManager.SiloAddress, indexingManager.LoggerFactory)
         {
             GrainReference thisRef = this.AsWeaklyTypedReference();
-            _base = new IndexWorkflowQueueBase(base.RuntimeClient, grainInterfaceType, queueSequenceNumber, indexingManager.SiloAddress,
+            _base = new IndexWorkflowQueueBase(indexingManager, grainInterfaceType, queueSequenceNumber, indexingManager.SiloAddress,
                                                isDefinedAsFaultTolerantGrain, ((ISystemTargetBase)this).GrainId, thisRef);
         }
 

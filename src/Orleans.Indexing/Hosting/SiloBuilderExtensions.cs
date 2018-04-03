@@ -1,5 +1,6 @@
 using System;
 using Microsoft.Extensions.DependencyInjection;
+using Orleans.Configuration;
 using Orleans.Hosting;
 using Orleans.Runtime;
 
@@ -32,7 +33,10 @@ namespace Orleans.Indexing
         Action<OptionsBuilder<IndexingOptions>> configureOptions = null)
         {
             configureOptions?.Invoke(services.AddOptions<IndexingOptions>());
-            return services.AddSingleton<ILifecycleParticipant<ISiloLifecycle>, IndexingManager>();
+            services.AddSingleton<ILifecycleParticipant<ISiloLifecycle>, IndexingManager>()
+                    .AddSingleton<IndexFactory>()
+                    .AddFromExisting<IIndexFactory, IndexFactory>();
+            return services;
         }
     }
 }
