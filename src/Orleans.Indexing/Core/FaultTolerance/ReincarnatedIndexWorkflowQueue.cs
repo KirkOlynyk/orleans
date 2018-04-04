@@ -12,8 +12,8 @@ namespace Orleans.Indexing
         internal static TimeSpan ACTIVE_FOR_A_DAY = TimeSpan.FromDays(1);
         private IndexWorkflowQueueBase _base;
 
-        internal IndexingManager IndexingManager => IndexingManager.GetIndexingManager(ref __indexingManager, base.ServiceProvider);
-        private IndexingManager __indexingManager;
+        internal IndexManager IndexManager => IndexManager.GetIndexManager(ref __indexManager, base.ServiceProvider);
+        private IndexManager __indexManager;
 
         public override Task OnActivateAsync()
         {
@@ -32,11 +32,11 @@ namespace Orleans.Indexing
                     throw new Exception("The primary key for IndexWorkflowQueueSystemTarget should only contain a single special character '-', while it contains multiple. The primary key is '" + oldParentSystemTargetRef.GetPrimaryKeyString() + "'");
                 }
 
-                Type grainInterfaceType = this.IndexingManager.CachedTypeResolver.ResolveType(parts[0]);
+                Type grainInterfaceType = this.IndexManager.CachedTypeResolver.ResolveType(parts[0]);
                 int queueSequenceNumber = int.Parse(parts[1]);
 
                 GrainReference thisRef = this.AsWeaklyTypedReference();
-                _base = new IndexWorkflowQueueBase(this.IndexingManager, grainInterfaceType, queueSequenceNumber,
+                _base = new IndexWorkflowQueueBase(this.IndexManager, grainInterfaceType, queueSequenceNumber,
                                                    oldParentSystemTargetRef.SystemTargetSilo, true, thisRef.GrainId, thisRef);
             }
             return Task.CompletedTask;

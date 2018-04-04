@@ -33,11 +33,11 @@ namespace Orleans.Indexing
     {
         private IndexWorkflowQueueBase _base;
 
-        internal IndexWorkflowQueueSystemTarget(IndexingManager indexingManager, Type grainInterfaceType, int queueSequenceNumber, bool isDefinedAsFaultTolerantGrain)
-            : base(IndexWorkflowQueueBase.CreateIndexWorkflowQueueGrainId(grainInterfaceType, queueSequenceNumber), indexingManager.SiloAddress, indexingManager.LoggerFactory)
+        internal IndexWorkflowQueueSystemTarget(IndexManager indexManager, Type grainInterfaceType, int queueSequenceNumber, bool isDefinedAsFaultTolerantGrain)
+            : base(IndexWorkflowQueueBase.CreateIndexWorkflowQueueGrainId(grainInterfaceType, queueSequenceNumber), indexManager.SiloAddress, indexManager.LoggerFactory)
         {
             GrainReference thisRef = this.AsWeaklyTypedReference();
-            _base = new IndexWorkflowQueueBase(indexingManager, grainInterfaceType, queueSequenceNumber, indexingManager.SiloAddress,
+            _base = new IndexWorkflowQueueBase(indexManager, grainInterfaceType, queueSequenceNumber, indexManager.SiloAddress,
                                                isDefinedAsFaultTolerantGrain, ((ISystemTargetBase)this).GrainId, thisRef);
         }
 

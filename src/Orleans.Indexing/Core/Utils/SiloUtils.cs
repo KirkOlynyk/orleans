@@ -9,21 +9,21 @@ namespace Orleans.Indexing
     /// </summary>
     internal static class SiloUtils
     {
-#region copy & paste from ManagementGrain.cs    // vv2 clean up to direct callthrough to IndexingManager if no longer needed
+#region copy & paste from ManagementGrain.cs    // vv2 clean up to direct callthrough to IndexManager if no longer needed
         internal static Task<Dictionary<SiloAddress, SiloStatus>> GetHosts(IGrainFactory grainFactory, bool onlyActive = false)
         {
             var mgmtGrain = grainFactory.GetGrain<IManagementGrain>(0);
             return mgmtGrain.GetHosts(onlyActive);
         }
 
-        internal static SiloAddress[] GetSiloAddresses(IndexingManager indexingManager, SiloAddress[] silos)
+        internal static SiloAddress[] GetSiloAddresses(IndexManager indexManager, SiloAddress[] silos)
         {
-            return indexingManager.GetSiloAddresses(silos);
+            return indexManager.GetSiloAddresses(silos);
         }
 
-        internal static ISiloControl GetSiloControlReference(IndexingManager indexingManager, SiloAddress silo)
+        internal static ISiloControl GetSiloControlReference(IndexManager indexManager, SiloAddress silo)
         {
-            return indexingManager.GetSiloControlReference(silo);
+            return indexManager.GetSiloControlReference(silo);
         }
 
 #endregion

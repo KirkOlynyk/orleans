@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace Orleans.Indexing
 {
-    class IndexingManager : ILifecycleParticipant<ISiloLifecycle>
+    class IndexManager : ILifecycleParticipant<ISiloLifecycle>
     {
         internal IApplicationPartManager ApplicationPartManager;
 
@@ -32,8 +32,8 @@ namespace Orleans.Indexing
 
         // Note: this.Silo must not be called until the Silo ctor has returned to the ServiceProvider which then
         // sets the Singleton; if called during the Silo ctor, the Singleton is not found so another Silo is
-        // constructed. Thus we cannot have the Silo on the IndexingManager ctor params or retrieve it during
-        // IndexingManager ctor, because ISiloLifecycle participants are constructed during the Silo ctor.
+        // constructed. Thus we cannot have the Silo on the IndexManager ctor params or retrieve it during
+        // IndexManager ctor, because ISiloLifecycle participants are constructed during the Silo ctor.
         internal Silo Silo => this.__silo ?? (this.__silo = this.ServiceProvider.GetRequiredService<Silo>());
         private Silo __silo;
 
@@ -45,7 +45,7 @@ namespace Orleans.Indexing
 
         internal IndexFactory IndexFactory { get; private set; }
 
-        public IndexingManager(IServiceProvider sp, IApplicationPartManager apm, IRuntimeClient rc, ISiloStatusOracle sso, ILoggerFactory lf)
+        public IndexManager(IServiceProvider sp, IApplicationPartManager apm, IRuntimeClient rc, ISiloStatusOracle sso, ILoggerFactory lf)
         {
             this.ServiceProvider = sp;
             this.ApplicationPartManager = apm;
@@ -79,11 +79,11 @@ namespace Orleans.Indexing
             return Task.CompletedTask;  //vv2 nothing yet
         }
 
-        internal static IndexingManager GetIndexingManager(ref IndexingManager indexingManager, IServiceProvider serviceProvider)
-            => indexingManager ?? (indexingManager = GetIndexingManager(serviceProvider));
+        internal static IndexManager GetIndexManager(ref IndexManager indexManager, IServiceProvider serviceProvider)
+            => indexManager ?? (indexManager = GetIndexManager(serviceProvider));
 
-        internal static IndexingManager GetIndexingManager(IServiceProvider serviceProvider)
-            => serviceProvider.GetRequiredService<IndexingManager>();
+        internal static IndexManager GetIndexManager(IServiceProvider serviceProvider)
+            => serviceProvider.GetRequiredService<IndexManager>();
 
         internal SiloAddress[] GetSiloAddresses(SiloAddress[] silos)
             => (silos != null && silos.Length > 0)

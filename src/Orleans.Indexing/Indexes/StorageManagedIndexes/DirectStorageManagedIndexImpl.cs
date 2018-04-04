@@ -27,13 +27,13 @@ namespace Orleans.Indexing
         private string _indexedField;
         //private bool _isUnique; //TODO: missing support for the uniqueness feature
 
-        private readonly IndexingManager indexingManager;
+        private readonly IndexManager indexManager;
         private readonly ILogger logger;
 
         DirectStorageManagedIndexImpl()
         {
-            this.indexingManager = IndexingManager.GetIndexingManager(base.ServiceProvider);
-            this.logger = this.indexingManager.LoggerFactory.CreateLoggerWithFullCategoryName<DirectStorageManagedIndexImpl<K, V>>();
+            this.indexManager = IndexManager.GetIndexManager(base.ServiceProvider);
+            this.logger = this.indexManager.LoggerFactory.CreateLoggerWithFullCategoryName<DirectStorageManagedIndexImpl<K, V>>();
         }
 
         public override Task OnActivateAsync()
@@ -65,7 +65,7 @@ namespace Orleans.Indexing
             dynamic indexableStorageProvider = _storageProvider;
 
             List<GrainReference> resultReferences = await indexableStorageProvider.Lookup<K>(grainImplClass, _indexedField, key);
-            return resultReferences.Select(grain => this.indexingManager.RuntimeClient.InternalGrainFactory.Cast<V>(grain)).ToList();
+            return resultReferences.Select(grain => this.indexManager.RuntimeClient.InternalGrainFactory.Cast<V>(grain)).ToList();
         }
 
         public async Task<V> LookupUnique(K key)
@@ -93,13 +93,13 @@ namespace Orleans.Indexing
         {
             if (_storageProvider == null)
             {
-                var implementation = TypeCodeMapper.GetImplementation(this.indexingManager.RuntimeClient, typeof(V));
+                var implementation = TypeCodeMapper.GetImplementation(this.indexManager.RuntimeClient, typeof(V));
                 if (implementation == null || (grainImplClass = implementation.GrainClass) == null ||
-                        !this.indexingManager.CachedTypeResolver.TryResolveType(grainImplClass, out Type implType))
+                        !this.indexManager.CachedTypeResolver.TryResolveType(grainImplClass, out Type implType))
                 {
                     throw new Exception("The grain implementation class " + implementation.GrainClass + " for grain interface " + TypeUtils.GetFullName(typeof(V)) + " was not resolved.");
                 }
-                _storageProvider = null; //vv2err Catalog.SetupStorageProvider not implementable: this.IndexingManager.RuntimeClient.Catalog.SetupStorageProvider(implType);
+                _storageProvider = null; //vv2err Catalog.SetupStorageProvider not implementable: this.indexManager.RuntimeClient.Catalog.SetupStorageProvider(implType);
             }
         }
     }

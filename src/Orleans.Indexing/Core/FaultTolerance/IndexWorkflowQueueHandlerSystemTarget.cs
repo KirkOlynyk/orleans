@@ -10,10 +10,10 @@ namespace Orleans.Indexing
     {
         private IIndexWorkflowQueueHandler _base;
 
-        internal IndexWorkflowQueueHandlerSystemTarget(IndexingManager indexingManager, Type iGrainType, int queueSeqNum, bool isDefinedAsFaultTolerantGrain)
-            : base(IndexWorkflowQueueHandlerBase.CreateIndexWorkflowQueueHandlerGrainId(iGrainType, queueSeqNum), indexingManager.SiloAddress, indexingManager.LoggerFactory)
+        internal IndexWorkflowQueueHandlerSystemTarget(IndexManager indexManager, Type iGrainType, int queueSeqNum, bool isDefinedAsFaultTolerantGrain)
+            : base(IndexWorkflowQueueHandlerBase.CreateIndexWorkflowQueueHandlerGrainId(iGrainType, queueSeqNum), indexManager.SiloAddress, indexManager.LoggerFactory)
         {
-            _base = new IndexWorkflowQueueHandlerBase(indexingManager, iGrainType, queueSeqNum, indexingManager.SiloAddress,
+            _base = new IndexWorkflowQueueHandlerBase(indexManager, iGrainType, queueSeqNum, indexManager.SiloAddress,
                                                       isDefinedAsFaultTolerantGrain, this.AsWeaklyTypedReference());
         }
 

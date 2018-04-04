@@ -18,15 +18,15 @@ namespace Orleans.Indexing
         private string _indexName;
         //private bool _isUnique;   // TODO uniqueness currently not allowed
 
-        private readonly IndexingManager indexingManager;
+        private readonly IndexManager indexManager;
         private readonly ILogger logger;
 
         public HashIndexPartitionedPerKey(IServiceProvider serviceProvider, string indexName, bool isUniqueIndex)
         {
             this._indexName = indexName;
             //_isUnique = isUniqueIndex;
-            this.indexingManager = IndexingManager.GetIndexingManager(serviceProvider);
-            this.logger = this.indexingManager.LoggerFactory.CreateLoggerWithFullCategoryName<HashIndexPartitionedPerKey<K, V, BucketT>>();
+            this.indexManager = IndexManager.GetIndexManager(serviceProvider);
+            this.logger = this.indexManager.LoggerFactory.CreateLoggerWithFullCategoryName<HashIndexPartitionedPerKey<K, V, BucketT>>();
         }
 
         public async Task<bool> DirectApplyIndexUpdateBatch(Immutable<IDictionary<IIndexableGrain, IList<IMemberUpdate>>> iUpdates, bool isUnique, IndexMetaData idxMetaData, SiloAddress siloAddress = null)
@@ -82,7 +82,7 @@ namespace Orleans.Indexing
             return true;
         }
 
-        private BucketT GetGrain(string key) => this.indexingManager.GrainFactory.GetGrain<BucketT>(key);
+        private BucketT GetGrain(string key) => this.indexManager.GrainFactory.GetGrain<BucketT>(key);
 
         /// <summary>
         /// Adds an grain update to the bucketUpdates dictionary

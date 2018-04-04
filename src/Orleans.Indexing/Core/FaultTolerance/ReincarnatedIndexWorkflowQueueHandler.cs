@@ -10,8 +10,8 @@ namespace Orleans.Indexing
     {
         private IIndexWorkflowQueueHandler _base;
 
-        internal IndexingManager IndexingManager => IndexingManager.GetIndexingManager(ref __indexingManager, base.ServiceProvider);
-        private IndexingManager __indexingManager;
+        internal IndexManager IndexManager => IndexManager.GetIndexManager(ref __indexManager, base.ServiceProvider);
+        private IndexManager __indexManager;
 
         public override Task OnActivateAsync()
         {
@@ -30,11 +30,11 @@ namespace Orleans.Indexing
                     throw new Exception("The primary key for IndexWorkflowQueueSystemTarget should only contain a single special character '-', while it contains multiple. The primary key is '" + oldParentSystemTargetRef.GetPrimaryKeyString() + "'");
                 }
 
-                Type grainInterfaceType = this.IndexingManager.CachedTypeResolver.ResolveType(parts[0]);
+                Type grainInterfaceType = this.IndexManager.CachedTypeResolver.ResolveType(parts[0]);
                 int queueSequenceNumber = int.Parse(parts[1]);
 
                 GrainReference thisRef = this.AsWeaklyTypedReference();
-                _base = new IndexWorkflowQueueHandlerBase(this.IndexingManager, grainInterfaceType, queueSequenceNumber,
+                _base = new IndexWorkflowQueueHandlerBase(this.IndexManager, grainInterfaceType, queueSequenceNumber,
                                                           oldParentSystemTargetRef.SystemTargetSilo,
                                                           true /*otherwise it shouldn't have reached here!*/, thisRef);
             }

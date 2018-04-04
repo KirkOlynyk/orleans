@@ -11,8 +11,8 @@ namespace Orleans.Indexing
     /// </summary>
     public class ActiveGrainEnumeratorGrain : Grain, IActiveGrainEnumeratorGrain
     {
-        internal IndexingManager IndexingManager => IndexingManager.GetIndexingManager(ref __indexingManager, base.ServiceProvider);
-        private IndexingManager __indexingManager;
+        internal IndexManager IndexManager => IndexManager.GetIndexManager(ref __indexManager, base.ServiceProvider);
+        private IndexManager __indexManager;
 
         public async Task<IEnumerable<Guid>> GetActiveGrains(string grainTypeName)
         {
@@ -23,11 +23,11 @@ namespace Orleans.Indexing
 
         public async Task<IEnumerable<IGrain>> GetActiveGrains(Type grainType)
         {
-            string grainTypeName = TypeCodeMapper.GetImplementation(this.IndexingManager.RuntimeClient, grainType).GrainClass;
+            string grainTypeName = TypeCodeMapper.GetImplementation(this.IndexManager.RuntimeClient, grainType).GrainClass;
 
             IEnumerable<Tuple<GrainId, string, int>> activeGrainList = await GetGrainActivations();
             IEnumerable<IGrain> filteredList = activeGrainList.Where(s => s.Item2.Equals(grainTypeName))
-                    .Select(s => GrainFactory.GetGrain<IIndexableGrain>(this.IndexingManager.GrainTypeResolver, s.Item1.GetPrimaryKey(), grainType));
+                    .Select(s => GrainFactory.GetGrain<IIndexableGrain>(this.IndexManager.GrainTypeResolver, s.Item1.GetPrimaryKey(), grainType));
             return filteredList.ToList();
         }
 
@@ -40,8 +40,8 @@ namespace Orleans.Indexing
 
         private async Task<IEnumerable<Tuple<GrainId, string, int>>> GetGrainActivations(SiloAddress[] hostsIds)
         {
-            IEnumerable<Task<List<Tuple<GrainId, string, int>>>> all = SiloUtils.GetSiloAddresses(this.IndexingManager, hostsIds)
-                    .Select(s => SiloUtils.GetSiloControlReference(this.IndexingManager, s).GetGrainStatistics());
+            IEnumerable<Task<List<Tuple<GrainId, string, int>>>> all = SiloUtils.GetSiloAddresses(this.IndexManager, hostsIds)
+                    .Select(s => SiloUtils.GetSiloControlReference(this.IndexManager, s).GetGrainStatistics());
             List<Tuple<GrainId, string, int>>[] result = await Task.WhenAll(all);
             return result.SelectMany(s => s);
         }
@@ -57,12 +57,12 @@ namespace Orleans.Indexing
         {
             return (silos != null && silos.Length > 0)
                 ? silos
-                : this.IndexingManager.SiloStatusOracle.GetApproximateSiloStatuses(true).Select(s => s.Key).ToArray();
+                : this.IndexManager.SiloStatusOracle.GetApproximateSiloStatuses(true).Select(s => s.Key).ToArray();
         }
 
         private ISiloControl GetSiloControlReference(SiloAddress silo)
         {
-            return this.IndexingManager.RuntimeClient.InternalGrainFactory.GetSystemTarget<ISiloControl>(Constants.SiloControlId, silo);
+            return this.IndexManager.RuntimeClient.InternalGrainFactory.GetSystemTarget<ISiloControl>(Constants.SiloControlId, silo);
         }
 #endregion
     }

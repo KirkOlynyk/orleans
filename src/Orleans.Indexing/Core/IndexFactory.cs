@@ -13,13 +13,13 @@ namespace Orleans.Indexing
     /// </summary>
     internal class IndexFactory : IIndexFactory
     {
-        private IndexingManager indexingManager;
+        private IndexManager indexManager;
         private IGrainFactory grainFactory;
         private IRuntimeClient runtimeClient;
 
-        internal IndexFactory(IndexingManager im, IGrainFactory gf, IRuntimeClient rtc)
+        internal IndexFactory(IndexManager im, IGrainFactory gf, IRuntimeClient rtc)
         {
-            this.indexingManager = im;
+            this.indexManager = im;
             this.grainFactory = gf;
             this.runtimeClient = rtc;
         }
@@ -60,7 +60,7 @@ namespace Orleans.Indexing
         /// <param name="gf">the grain factory instance</param>
         /// <returns>the query to lookup all active grains of a given type</returns>
         public IOrleansQueryable<TIGrain, TProperty> GetActiveGrains<TIGrain, TProperty>() where TIGrain : IIndexableGrain
-            => this.GetActiveGrains<TIGrain, TProperty>(this.indexingManager.ServiceProvider.GetRequiredServiceByName<IStreamProvider>(IndexingConstants.INDEXING_STREAM_PROVIDER_NAME));
+            => this.GetActiveGrains<TIGrain, TProperty>(this.indexManager.ServiceProvider.GetRequiredServiceByName<IStreamProvider>(IndexingConstants.INDEXING_STREAM_PROVIDER_NAME));
 
         /// <summary>
         /// This method queries the active grains for the given grain interface.
@@ -120,7 +120,7 @@ namespace Orleans.Indexing
         /// project is not available.</returns>
         internal IDictionary<string, Tuple<object, object, object>> GetIndexes(Type iGrainType)
         {
-            return this.indexingManager.Indexes.TryGetValue(iGrainType, out IDictionary<string, Tuple<object, object, object>> indexes)
+            return this.indexManager.Indexes.TryGetValue(iGrainType, out IDictionary<string, Tuple<object, object, object>> indexes)
                 ? indexes
                 : new Dictionary<string, Tuple<object, object, object>>();
         }
@@ -158,38 +158,38 @@ namespace Orleans.Indexing
             IIndexInterface index;
             if (typeof(IGrain).IsAssignableFrom(idxType))
             {
-                index = (IIndexInterface)this.indexingManager.GrainFactory.GetGrain(this.indexingManager.GrainTypeResolver,
+                index = (IIndexInterface)this.indexManager.GrainFactory.GetGrain(this.indexManager.GrainTypeResolver,
                                                                                 IndexUtils.GetIndexGrainID(grainType, indexName), idxType, idxType);
 
-                var idxImplType = this.indexingManager.CachedTypeResolver.ResolveType(TypeCodeMapper.GetImplementation(this.indexingManager.RuntimeClient, idxType).GrainClass);
+                var idxImplType = this.indexManager.CachedTypeResolver.ResolveType(TypeCodeMapper.GetImplementation(this.indexManager.RuntimeClient, idxType).GrainClass);
                 if (idxImplType.IsGenericTypeDefinition)
                     idxImplType = idxImplType.MakeGenericType(iIndexType.GetGenericArguments());
 
                 var initPerSiloMethodInfo = idxImplType.GetMethod("InitPerSilo", BindingFlags.Static | BindingFlags.Public);
                 if (initPerSiloMethodInfo != null)  // Static method so cannot use an interface
                 {
-                    var initPerSiloMethod = (Action<IndexingManager, string, bool>)Delegate.CreateDelegate(
-                                            typeof(Action<IndexingManager, string, bool>), initPerSiloMethodInfo);
-                    initPerSiloMethod(this.indexingManager, indexName, isUniqueIndex);
+                    var initPerSiloMethod = (Action<IndexManager, string, bool>)Delegate.CreateDelegate(
+                                            typeof(Action<IndexManager, string, bool>), initPerSiloMethodInfo);
+                    initPerSiloMethod(this.indexManager, indexName, isUniqueIndex);
                 }
             }
             else 
             {
                 index = idxType.IsClass
-                    ? (IIndexInterface)Activator.CreateInstance(idxType, this.indexingManager.ServiceProvider, indexName, isUniqueIndex)
+                    ? (IIndexInterface)Activator.CreateInstance(idxType, this.indexManager.ServiceProvider, indexName, isUniqueIndex)
                     : throw new Exception(string.Format("{0} is neither a grain nor a class. Index \"{1}\" cannot be created.", idxType, indexName));
             }
 
             return Tuple.Create((object)index, (object)new IndexMetaData(idxType, isUniqueIndex, isEager, maxEntriesPerBucket), (object)CreateIndexUpdateGenFromProperty(indexedProperty));
         }
 
-        internal static void RegisterIndexWorkflowQueues(IndexingManager indexingManager, Type iGrainType, Type grainImplType)
+        internal static void RegisterIndexWorkflowQueues(IndexManager indexManager, Type iGrainType, Type grainImplType)
         {
             for (int i = 0; i < IndexWorkflowQueueBase.NUM_AVAILABLE_INDEX_WORKFLOW_QUEUES; ++i)
             {
                 bool isAssignable = typeof(IIndexableGrainFaultTolerant).IsAssignableFrom(grainImplType);
-                indexingManager.Silo.RegisterSystemTarget(new IndexWorkflowQueueSystemTarget(indexingManager, iGrainType, i, isAssignable));
-                indexingManager.Silo.RegisterSystemTarget(new IndexWorkflowQueueHandlerSystemTarget(indexingManager, iGrainType, i, isAssignable));
+                indexManager.Silo.RegisterSystemTarget(new IndexWorkflowQueueSystemTarget(indexManager, iGrainType, i, isAssignable));
+                indexManager.Silo.RegisterSystemTarget(new IndexWorkflowQueueHandlerSystemTarget(indexManager, iGrainType, i, isAssignable));
             }
         }
 

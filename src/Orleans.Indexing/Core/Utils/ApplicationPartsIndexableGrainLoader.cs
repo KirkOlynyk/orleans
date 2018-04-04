@@ -11,7 +11,7 @@ namespace Orleans.Indexing
 {
     internal class ApplicationPartsIndexableGrainLoader
     {
-        private readonly IndexingManager indexingManager;
+        private readonly IndexManager indexManager;
         private readonly ILogger logger;
 
         private readonly Type indexAttrType = typeof(IndexAttribute);
@@ -20,10 +20,10 @@ namespace Orleans.Indexing
         private readonly PropertyInfo isUniqueProperty = typeof(IndexAttribute).GetProperty(nameof(IndexAttribute.IsUnique));
         private readonly PropertyInfo maxEntriesPerBucketProperty = typeof(IndexAttribute).GetProperty(nameof(IndexAttribute.MaxEntriesPerBucket));
 
-        internal ApplicationPartsIndexableGrainLoader(IndexingManager indexingManager)
+        internal ApplicationPartsIndexableGrainLoader(IndexManager indexManager)
         {
-            this.indexingManager = indexingManager;
-            this.logger = this.indexingManager.LoggerFactory.CreateLoggerWithFullCategoryName<ApplicationPartsIndexableGrainLoader>();
+            this.indexManager = indexManager;
+            this.logger = this.indexManager.LoggerFactory.CreateLoggerWithFullCategoryName<ApplicationPartsIndexableGrainLoader>();
         }
 
         /// <summary>
@@ -50,7 +50,7 @@ namespace Orleans.Indexing
         /// </returns>
         public IDictionary<Type, IDictionary<string, Tuple<object, object, object>>> GetGrainClassIndexes()
         {
-            Type[] grainTypes = this.indexingManager.ApplicationPartManager.ApplicationParts.OfType<AssemblyPart>()
+            Type[] grainTypes = this.indexManager.ApplicationPartManager.ApplicationParts.OfType<AssemblyPart>()
                                     .SelectMany(part => TypeUtils.GetTypes(part.Assembly, TypeUtils.IsConcreteGrainClass, this.logger))
                                     .ToArray();
 
@@ -128,7 +128,7 @@ namespace Orleans.Indexing
                         if (!isEager) hasNonEagerIndex = true;
                         bool isUnique = (bool)isUniqueProperty.GetValue(indexAttr);
                         int maxEntriesPerBucket = (int)maxEntriesPerBucketProperty.GetValue(indexAttr);
-                        var index = this.indexingManager.IndexFactory.CreateIndex(indexType, indexName, isUnique, isEager, maxEntriesPerBucket, p);
+                        var index = this.indexManager.IndexFactory.CreateIndex(indexType, indexName, isUnique, isEager, maxEntriesPerBucket, p);
                         indexesOnGrain.Add(indexName, index);
                         this.logger.Info($"Index created: Interface = {userDefinedIGrain.Name}, property = {propertiesArg.Name}, index = {indexName}");
                     }
@@ -136,7 +136,7 @@ namespace Orleans.Indexing
                 result.Add(userDefinedIGrain, indexesOnGrain);
                 if (hasNonEagerIndex)
                 {
-                    IndexFactory.RegisterIndexWorkflowQueues(this.indexingManager, userDefinedIGrain, userDefinedGrainImpl);
+                    IndexFactory.RegisterIndexWorkflowQueues(this.indexManager, userDefinedIGrain, userDefinedGrainImpl);
                 }
             }
         }

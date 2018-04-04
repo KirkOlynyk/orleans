@@ -25,12 +25,12 @@ namespace Orleans.Indexing
     internal class ActiveHashIndexPartitionedPerSiloBucketImpl/*<K, V>*/ : SystemTarget, IActiveHashIndexPartitionedPerSiloBucket/*<K, V> where V : IIndexableGrain*/
     {
         private HashIndexBucketState<K, V> state;
-        private readonly IndexingManager indexingManager;
+        private readonly IndexManager indexManager;
         private readonly ILogger logger;
         private readonly string _parentIndexName;
 
-        public ActiveHashIndexPartitionedPerSiloBucketImpl(IndexingManager indexingManager, string parentIndexName, GrainId grainId)
-            : base(grainId, indexingManager.SiloAddress, indexingManager.LoggerFactory)
+        public ActiveHashIndexPartitionedPerSiloBucketImpl(IndexManager indexManager, string parentIndexName, GrainId grainId)
+            : base(grainId, indexManager.SiloAddress, indexManager.LoggerFactory)
         {
             state = new HashIndexBucketState<K, V>
             {
@@ -40,8 +40,8 @@ namespace Orleans.Indexing
             };
 
             _parentIndexName = parentIndexName;
-            this.indexingManager = indexingManager;
-            this.logger = indexingManager.LoggerFactory.CreateLoggerWithFullCategoryName<ActiveHashIndexPartitionedPerSiloBucketImpl>();
+            this.indexManager = indexManager;
+            this.logger = indexManager.LoggerFactory.CreateLoggerWithFullCategoryName<ActiveHashIndexPartitionedPerSiloBucketImpl>();
         }
 
         public async Task<bool> DirectApplyIndexUpdateBatch(Immutable<IDictionary<IIndexableGrain, IList<IMemberUpdate>>> iUpdates, bool isUnique, IndexMetaData idxMetaData, SiloAddress siloAddress = null)
@@ -153,7 +153,7 @@ namespace Orleans.Indexing
         {
             state.IndexStatus = IndexStatus.Disposed;
             state.IndexMap.Clear();
-            //vv2err UnregisterSystemTarget not available     this.indexingManager.Silo.UnregisterSystemTarget(this);
+            //vv2err UnregisterSystemTarget not available     this.indexManager.Silo.UnregisterSystemTarget(this);
             return Task.CompletedTask;
         }
 

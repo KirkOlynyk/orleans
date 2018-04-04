@@ -33,7 +33,7 @@ namespace Orleans.Indexing
         Action<OptionsBuilder<IndexingOptions>> configureOptions = null)
         {
             configureOptions?.Invoke(services.AddOptions<IndexingOptions>());
-            services.AddSingleton<ILifecycleParticipant<ISiloLifecycle>, IndexingManager>()
+            services.AddSingleton<ILifecycleParticipant<ISiloLifecycle>, IndexManager>()
                     .AddSingleton<IndexFactory>()
                     .AddFromExisting<IIndexFactory, IndexFactory>();
             return services;

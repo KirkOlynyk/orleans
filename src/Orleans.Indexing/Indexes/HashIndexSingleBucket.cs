@@ -17,13 +17,13 @@ namespace Orleans.Indexing
     [Reentrant]
     public abstract class HashIndexSingleBucket<K, V> : Grain<HashIndexBucketState<K, V>>, IHashIndexSingleBucketInterface<K, V> where V : class, IIndexableGrain
     {
-        private readonly IndexingManager indexingManager;
+        private readonly IndexManager indexManager;
         private readonly ILogger logger;
 
         public HashIndexSingleBucket()
         {
-            this.indexingManager = IndexingManager.GetIndexingManager(base.ServiceProvider);
-            this.logger = this.indexingManager.LoggerFactory.CreateLoggerWithFullCategoryName<HashIndexSingleBucket<K, V>>();
+            this.indexManager = IndexManager.GetIndexManager(base.ServiceProvider);
+            this.logger = this.indexManager.LoggerFactory.CreateLoggerWithFullCategoryName<HashIndexSingleBucket<K, V>>();
         }
 
         public override Task OnActivateAsync()
