@@ -8,8 +8,8 @@ using Microsoft.Extensions.Options;
 using Orleans.GrainDirectory;
 using Orleans.Hosting;
 using Orleans.Runtime.Scheduler;
-using Orleans.Runtime.Configuration;
 using Orleans.Runtime.MultiClusterNetwork;
+using Orleans.Configuration;
 
 namespace Orleans.Runtime.GrainDirectory
 {
@@ -23,7 +23,7 @@ namespace Orleans.Runtime.GrainDirectory
         private readonly List<SiloAddress> membershipRingList;
         
         private readonly HashSet<SiloAddress> membershipCache;
-        private readonly AsynchAgent maintainer;
+        private readonly DedicatedAsynchAgent maintainer;
         private readonly ILogger log;
         private readonly SiloAddress seed;
         private readonly RegistrarManager registrarManager;
@@ -92,7 +92,6 @@ namespace Orleans.Runtime.GrainDirectory
         internal readonly CounterStatistic UnregistrationsManyRemoteReceived;
 
         public LocalGrainDirectory(
-            ClusterConfiguration clusterConfig,
             ILocalSiloDetails siloDetails,
             OrleansTaskScheduler scheduler,
             ISiloStatusOracle siloStatusOracle,
@@ -101,12 +100,12 @@ namespace Orleans.Runtime.GrainDirectory
             Factory<GrainDirectoryPartition> grainDirectoryPartitionFactory,
             RegistrarManager registrarManager,
             ExecutorService executorService,
-            IOptions<DevelopmentMembershipOptions> developmentMembershipOptions,
+            IOptions<DevelopmentClusterMembershipOptions> developmentClusterMembershipOptions,
             IOptions<MultiClusterOptions> multiClusterOptions,
+            IOptions<GrainDirectoryOptions> grainDirectoryOptions,
             ILoggerFactory loggerFactory)
         {
             this.log = loggerFactory.CreateLogger<LocalGrainDirectory>();
-            var globalConfig = clusterConfig.Globals;
 
             var clusterId = multiClusterOptions.Value.HasMultiClusterNetwork ? siloDetails.ClusterId : null;
             MyAddress = siloDetails.SiloAddress;
@@ -119,13 +118,16 @@ namespace Orleans.Runtime.GrainDirectory
             membershipCache = new HashSet<SiloAddress>();
             ClusterId = clusterId;
 
-            clusterConfig.OnConfigChange("Globals/Caching", () =>
-            {
-                lock (membershipCache)
-                {
-                    DirectoryCache = GrainDirectoryCacheFactory<IReadOnlyList<Tuple<SiloAddress, ActivationId>>>.CreateGrainDirectoryCache(globalConfig);
-                }
-            });
+            DirectoryCache = GrainDirectoryCacheFactory<IReadOnlyList<Tuple<SiloAddress, ActivationId>>>.CreateGrainDirectoryCache(grainDirectoryOptions.Value);
+            /* TODO - investigate dynamic config changes using IOptions - jbragg
+                        clusterConfig.OnConfigChange("Globals/Caching", () =>
+                        {
+                            lock (membershipCache)
+                            {
+                                DirectoryCache = GrainDirectoryCacheFactory<IReadOnlyList<Tuple<SiloAddress, ActivationId>>>.CreateGrainDirectoryCache(globalConfig);
+                            }
+                        });
+            */
             maintainer =
                 GrainDirectoryCacheFactory<IReadOnlyList<Tuple<SiloAddress, ActivationId>>>.CreateGrainDirectoryCacheMaintainer(
                     this,
@@ -134,9 +136,9 @@ namespace Orleans.Runtime.GrainDirectory
                     grainFactory, 
                     executorService,
                     loggerFactory);
-            GsiActivationMaintainer = new GlobalSingleInstanceActivationMaintainer(this, this.Logger, globalConfig, grainFactory, multiClusterOracle, executorService, siloDetails, multiClusterOptions, loggerFactory);
+            GsiActivationMaintainer = new GlobalSingleInstanceActivationMaintainer(this, this.Logger, grainFactory, multiClusterOracle, executorService, siloDetails, multiClusterOptions, loggerFactory);
 
-            var primarySiloEndPoint = developmentMembershipOptions.Value.PrimarySiloEndpoint;
+            var primarySiloEndPoint = developmentClusterMembershipOptions.Value.PrimarySiloEndpoint;
             if (primarySiloEndPoint != null)
             {
                 this.seed = this.MyAddress.Endpoint.Equals(primarySiloEndPoint) ? this.MyAddress : SiloAddress.New(primarySiloEndPoint, 0);
@@ -254,6 +256,10 @@ namespace Orleans.Runtime.GrainDirectory
             if (maintainer != null)
             {
                 maintainer.Stop();
+            }
+            if (GsiActivationMaintainer != null)
+            {
+                GsiActivationMaintainer.Stop();
             }
             DirectoryCache.Clear();
         }
@@ -596,6 +602,8 @@ namespace Orleans.Runtime.GrainDirectory
 
                 // we are the owner     
                 var registrar = this.registrarManager.GetRegistrarForGrain(address.Grain);
+
+                if (log.IsEnabled(LogLevel.Trace)) log.Trace($"use registrar {registrar.GetType().Name} for activation {address}");
 
                 return registrar.IsSynchronous ? registrar.Register(address, singleActivation)
                     : await registrar.RegisterAsync(address, singleActivation);

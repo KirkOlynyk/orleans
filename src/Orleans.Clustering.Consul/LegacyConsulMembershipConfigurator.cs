@@ -1,16 +1,19 @@
-﻿using System;
-using Microsoft.Extensions.DependencyInjection;
+using System;
 using Orleans.Hosting;
-using Orleans.Runtime.Configuration;
 
 namespace Orleans.Runtime.MembershipService
 {
     /// <inheritdoc />
     public class LegacyConsulMembershipConfigurator : ILegacyMembershipConfigurator
     {
-        public void ConfigureServices(GlobalConfiguration configuration, IServiceCollection services)
+        public void Configure(object configuration, ISiloHostBuilder builder)
         {
-            services.UseConsulMembership(options => options.Address = new Uri(configuration.DataConnectionString));
+            var reader = new GlobalConfigurationReader(configuration);
+
+            builder.UseConsulClustering(options =>
+            {
+                options.Address = new Uri(reader.GetPropertyValue<string>("DataConnectionString"));
+            });
         }
     }
 }

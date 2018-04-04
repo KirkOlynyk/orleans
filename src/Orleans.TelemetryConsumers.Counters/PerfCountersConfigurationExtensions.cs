@@ -1,35 +1,30 @@
-﻿using OrleansTelemetryConsumers.Counters;
-using System.Linq;
+using Microsoft.Extensions.DependencyInjection;
+using Orleans.Configuration;
+using OrleansTelemetryConsumers.Counters;
 
-namespace Orleans.Runtime.Configuration
+namespace Orleans.Hosting
 {
     public static class PerfCountersConfigurationExtensions
     {
         /// <summary>
         /// Adds a metrics telemetric consumer provider of type <see cref="OrleansPerfCounterTelemetryConsumer"/>.
         /// </summary>
-        /// <param name="config">The cluster configuration object to add the telemetry consumer to.</param>
-        public static void AddPerfCountersTelemetryConsumer(this ClusterConfiguration config)
+        public static ISiloHostBuilder AddPerfCountersTelemetryConsumer(this ISiloHostBuilder hostBuilder)
         {
-            string typeName = typeof(OrleansPerfCounterTelemetryConsumer).FullName;
-            string assemblyName = typeof(OrleansPerfCounterTelemetryConsumer).Assembly.GetName().Name;
-
-            foreach (var nodeConfig in config.Overrides.Values.Union(new[] { config.Defaults }))
-            {
-                nodeConfig.TelemetryConfiguration.Add(typeName, assemblyName, null);
-            }
+            return hostBuilder.ConfigureServices(ConfigureServices);
         }
 
         /// <summary>
         /// Adds a metrics telemetric consumer provider of type <see cref="OrleansPerfCounterTelemetryConsumer"/>.
         /// </summary>
-        /// <param name="config">The cluster configuration object to add the telemetry consumer to.</param>
-        public static void AddPerfCountersTelemetryConsumer(this ClientConfiguration config)
+        public static IClientBuilder AddPerfCountersTelemetryConsumer(this IClientBuilder clientBuilder)
         {
-            string typeName = typeof(OrleansPerfCounterTelemetryConsumer).FullName;
-            string assemblyName = typeof(OrleansPerfCounterTelemetryConsumer).Assembly.GetName().Name;
+            return clientBuilder.ConfigureServices(ConfigureServices);
+        }
 
-            config.TelemetryConfiguration.Add(typeName, assemblyName, null);
+        private static void ConfigureServices(HostBuilderContext context, IServiceCollection services)
+        {
+            services.Configure<TelemetryOptions>(options => options.AddConsumer<OrleansPerfCounterTelemetryConsumer>());
         }
     }
 }

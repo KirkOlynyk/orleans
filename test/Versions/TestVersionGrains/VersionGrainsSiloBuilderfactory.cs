@@ -1,5 +1,7 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using System;
+using Microsoft.Extensions.DependencyInjection;
 using Orleans;
+using Orleans.Runtime;
 using Orleans.Runtime.Placement;
 using UnitTests.GrainInterfaces;
 using Orleans.Hosting;
@@ -12,9 +14,14 @@ namespace TestVersionGrains
     {
         public void Configure(ISiloHostBuilder hostBuilder)
         {
-            hostBuilder.ConfigureServices(services =>
-                    services.AddSingleton<IPlacementDirector<VersionAwarePlacementStrategy>, VersionAwarePlacementDirector>())
-                .ConfigureApplicationParts(parts => parts.AddFromAppDomain().AddFromApplicationBaseDirectory());
+            hostBuilder.ConfigureServices(this.ConfigureServices)
+                 .AddMemoryGrainStorageAsDefault();
+        }
+
+        private void ConfigureServices(IServiceCollection services)
+        {
+            services.AddSingletonNamedService<PlacementStrategy, VersionAwarePlacementStrategy>(nameof(VersionAwarePlacementStrategy));
+            services.AddSingletonKeyedService<Type, IPlacementDirector, VersionAwarePlacementDirector>(typeof(VersionAwarePlacementStrategy));
         }
     }
 }

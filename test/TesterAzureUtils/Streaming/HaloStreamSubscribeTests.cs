@@ -1,7 +1,6 @@
 using System;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using Orleans;
 using Orleans.Providers.Streams.AzureQueue;
 using Orleans.Runtime;
 using Orleans.Runtime.Configuration;
@@ -14,7 +13,9 @@ using UnitTests.StreamingTests;
 using Xunit;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
-using Tester.AzureUtils;
+using Orleans.Hosting;
+using Microsoft.Extensions.Options;
+using Orleans.Configuration;
 
 namespace UnitTests.HaloTests.Streaming
 {
@@ -30,30 +31,50 @@ namespace UnitTests.HaloTests.Streaming
 
             protected override void ConfigureTestCluster(TestClusterBuilder builder)
             {
-                builder.ConfigureLegacyConfiguration(legacy =>
+                builder.AddSiloBuilderConfigurator<SiloBuilderConfigurator>();
+            }
+
+            private class SiloBuilderConfigurator : ISiloBuilderConfigurator
+            {
+                public void Configure(ISiloHostBuilder hostBuilder)
                 {
-                    legacy.ClusterConfiguration.AddMemoryStorageProvider("MemoryStore", numStorageGrains: 1);
-
-                    legacy.ClusterConfiguration.AddAzureTableStorageProvider("AzureStore", deleteOnClear: true);
-                    legacy.ClusterConfiguration.AddAzureTableStorageProvider("PubSubStore", deleteOnClear: true, useJsonFormat: false);
-
-                    legacy.ClusterConfiguration.AddSimpleMessageStreamProvider(SmsStreamProviderName, fireAndForgetDelivery: false);
-                    legacy.ClusterConfiguration.AddSimpleMessageStreamProvider("SMSProviderDoNotOptimizeForImmutableData",
-                        fireAndForgetDelivery: false,
-                        optimizeForImmutableData: false);
-
-                    legacy.ClusterConfiguration.AddAzureQueueStreamProvider(AzureQueueStreamProviderName);
-                    legacy.ClusterConfiguration.AddAzureQueueStreamProvider("AzureQueueProvider2");
-                });
+                    hostBuilder
+                        .AddMemoryGrainStorage("MemoryStore", options => options.NumStorageGrains = 1)
+                        .AddAzureTableGrainStorage("AzureStore", builder => builder.Configure<IOptions<ClusterOptions>>((options, silo) =>
+                        {
+                            options.ConnectionString = TestDefaultConfiguration.DataConnectionString;
+                            options.DeleteStateOnClear = true;
+                        }))
+                        .AddSimpleMessageStreamProvider(SmsStreamProviderName)
+                        .AddSimpleMessageStreamProvider("SMSProviderDoNotOptimizeForImmutableData", options => options.OptimizeForImmutableData = false)
+                        .AddAzureTableGrainStorage("PubSubStore", builder => builder.Configure<IOptions<ClusterOptions>>((options, silo) =>
+                        {
+                            options.DeleteStateOnClear = true;
+                            options.ConnectionString = TestDefaultConfiguration.DataConnectionString;
+                        }))
+                        .AddAzureQueueStreams<AzureQueueDataAdapterV2>(AzureQueueStreamProviderName, b=>b
+                        .ConfigureAzureQueue(ob => ob.Configure(
+                            options =>
+                            {
+                                options.ConnectionString = TestDefaultConfiguration.DataConnectionString;
+                            })));
+                    hostBuilder
+                        .AddAzureQueueStreams<AzureQueueDataAdapterV2>("AzureQueueProvider2", b=>b
+                        .ConfigureAzureQueue(ob => ob.Configure(
+                            options =>
+                            {
+                                options.ConnectionString = TestDefaultConfiguration.DataConnectionString;
+                            })));
+                }
             }
 
             public override void Dispose()
             {
-                var clusterId = this.HostedCluster?.ClusterId;
+                var serviceId = this.HostedCluster?.Options.ServiceId;
                 base.Dispose();
-                if (clusterId != null)
+                if (serviceId != null)
                 {
-                    AzureQueueStreamProviderUtils.DeleteAllUsedAzureQueues(NullLoggerFactory.Instance, AzureQueueStreamProviderName, clusterId, TestDefaultConfiguration.DataConnectionString).Wait();
+                    AzureQueueStreamProviderUtils.DeleteAllUsedAzureQueues(NullLoggerFactory.Instance, AzureQueueStreamProviderName, serviceId.ToString(), TestDefaultConfiguration.DataConnectionString).Wait();
                 }
             }
         }
@@ -77,10 +98,10 @@ namespace UnitTests.HaloTests.Streaming
 
         public void Dispose()
         {
-            var clusterId = this.HostedCluster?.ClusterId;
-            if (clusterId != null && _streamProvider != null && _streamProvider.Equals(AzureQueueStreamProviderName))
+            var serviceId = this.HostedCluster?.Options.ServiceId;
+            if (serviceId != null && _streamProvider != null && _streamProvider.Equals(AzureQueueStreamProviderName))
             {
-                AzureQueueStreamProviderUtils.ClearAllUsedAzureQueues(this.loggerFactory, _streamProvider, clusterId, TestDefaultConfiguration.DataConnectionString).Wait();
+                AzureQueueStreamProviderUtils.ClearAllUsedAzureQueues(this.loggerFactory, _streamProvider, serviceId.ToString(), TestDefaultConfiguration.DataConnectionString).Wait();
             }
         }
 

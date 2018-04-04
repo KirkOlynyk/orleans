@@ -4,9 +4,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using Orleans.Runtime.Configuration;
+using Microsoft.Extensions.Options;
+using Orleans.Configuration;
 using Orleans.Runtime.Scheduler;
-
+using Orleans.Statistics;
 
 namespace Orleans.Runtime
 {
@@ -16,10 +17,16 @@ namespace Orleans.Runtime
     internal class DeploymentLoadPublisher : SystemTarget, IDeploymentLoadPublisher, ISiloStatusListener
     {
         private readonly ILocalSiloDetails siloDetails;
-        private readonly ISiloPerformanceMetrics siloMetrics;
         private readonly ISiloStatusOracle siloStatusOracle;
         private readonly IInternalGrainFactory grainFactory;
         private readonly OrleansTaskScheduler scheduler;
+        private readonly IMessageCenter messageCenter;
+        private readonly ActivationDirectory activationDirectory;
+        private readonly ActivationCollector activationCollector;
+        private readonly IAppEnvironmentStatistics appEnvironmentStatistics;
+        private readonly IHostEnvironmentStatistics hostEnvironmentStatistics;
+        private readonly IOptions<LoadSheddingOptions> loadSheddingOptions;
+
         private readonly ConcurrentDictionary<SiloAddress, SiloRuntimeStatistics> periodicStats;
         private readonly TimeSpan statisticsRefreshTime;
         private readonly IList<ISiloStatisticsChangeListener> siloStatisticsChangeListeners;
@@ -30,21 +37,31 @@ namespace Orleans.Runtime
 
         public DeploymentLoadPublisher(
             ILocalSiloDetails siloDetails,
-            ISiloPerformanceMetrics siloMetrics,
             ISiloStatusOracle siloStatusOracle,
-            GlobalConfiguration config,
+            IOptions<SiloStatisticsOptions> statisticsOptions,
             IInternalGrainFactory grainFactory,
             OrleansTaskScheduler scheduler,
-            ILoggerFactory loggerFactory)
+            ILoggerFactory loggerFactory,
+            IMessageCenter messageCenter,
+            ActivationDirectory activationDirectory,
+            ActivationCollector activationCollector,
+            IAppEnvironmentStatistics appEnvironmentStatistics,
+            IHostEnvironmentStatistics hostEnvironmentStatistics,
+            IOptions<LoadSheddingOptions> loadSheddingOptions)
             : base(Constants.DeploymentLoadPublisherSystemTargetId, siloDetails.SiloAddress, loggerFactory)
         {
             this.logger = loggerFactory.CreateLogger<DeploymentLoadPublisher>();
             this.siloDetails = siloDetails;
-            this.siloMetrics = siloMetrics;
             this.siloStatusOracle = siloStatusOracle;
             this.grainFactory = grainFactory;
             this.scheduler = scheduler;
-            statisticsRefreshTime = config.DeploymentLoadPublisherRefreshTime;
+            this.messageCenter = messageCenter;
+            this.activationDirectory = activationDirectory;
+            this.activationCollector = activationCollector;
+            this.appEnvironmentStatistics = appEnvironmentStatistics;
+            this.hostEnvironmentStatistics = hostEnvironmentStatistics;
+            this.loadSheddingOptions = loadSheddingOptions;
+            statisticsRefreshTime = statisticsOptions.Value.DeploymentLoadPublisherRefreshTime;
             periodicStats = new ConcurrentDictionary<SiloAddress, SiloRuntimeStatistics>();
             siloStatisticsChangeListeners = new List<ISiloStatisticsChangeListener>();
         }
@@ -72,7 +89,16 @@ namespace Orleans.Runtime
                 if(logger.IsEnabled(LogLevel.Debug)) logger.Debug("PublishStatistics.");
                 List<SiloAddress> members = this.siloStatusOracle.GetApproximateSiloStatuses(true).Keys.ToList();
                 var tasks = new List<Task>();
-                var myStats = new SiloRuntimeStatistics(this.siloMetrics, DateTime.UtcNow);
+                var activationCount = this.activationDirectory.Count;
+                var recentlyUsedActivationCount = this.activationCollector.GetNumRecentlyUsed(TimeSpan.FromMinutes(10));
+                var myStats = new SiloRuntimeStatistics(
+                    this.messageCenter,
+                    activationCount,
+                    recentlyUsedActivationCount,
+                    this.appEnvironmentStatistics,
+                    this.hostEnvironmentStatistics,
+                    this.loadSheddingOptions,
+                    DateTime.UtcNow);
                 foreach (var siloAddress in members)
                 {
                     try

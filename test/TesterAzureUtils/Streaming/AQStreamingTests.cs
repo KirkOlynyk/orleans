@@ -1,7 +1,11 @@
 using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using Orleans;
+using Orleans.Configuration;
+using Orleans.Hosting;
 using Orleans.Providers.Streams.AzureQueue;
 using Orleans.Runtime.Configuration;
 using Orleans.TestingHost;
@@ -17,25 +21,56 @@ namespace Tester.AzureUtils.Streaming
     {
         public const string AzureQueueStreamProviderName = StreamTestsConstants.AZURE_QUEUE_STREAM_PROVIDER_NAME;
         public const string SmsStreamProviderName = StreamTestsConstants.SMS_STREAM_PROVIDER_NAME;
-
+        private const int partitionCount = 8;
         private readonly SingleStreamTestRunner runner;
         protected override void ConfigureTestCluster(TestClusterBuilder builder)
         {
             TestUtils.CheckForAzureStorage();
+            builder.AddSiloBuilderConfigurator<SiloBuilderConfigurator>();
+            builder.AddClientBuilderConfigurator<MyClientBuilderConfigurator>();
+        }
 
-            builder.ConfigureLegacyConfiguration(legacy =>
+        private class MyClientBuilderConfigurator : IClientBuilderConfigurator
+        {
+            public void Configure(IConfiguration configuration, IClientBuilder clientBuilder)
             {
-                legacy.ClusterConfiguration.AddMemoryStorageProvider();
+                clientBuilder
+                    .AddSimpleMessageStreamProvider(SmsStreamProviderName)
+                    .AddAzureQueueStreams<AzureQueueDataAdapterV2>(AzureQueueStreamProviderName, b=>
+                    b.ConfigureAzureQueue(ob=>ob.Configure(
+                        options =>
+                        {
+                            options.ConnectionString = TestDefaultConfiguration.DataConnectionString;
+                        }))
+                    .ConfigurePartitioning(partitionCount));
+            }
+        }
 
-                legacy.ClusterConfiguration.AddAzureTableStorageProvider("AzureStore", deleteOnClear: true);
-                legacy.ClusterConfiguration.AddAzureTableStorageProvider("PubSubStore", deleteOnClear: true, useJsonFormat: false);
-
-                legacy.ClusterConfiguration.AddSimpleMessageStreamProvider(SmsStreamProviderName, fireAndForgetDelivery: false);
-                legacy.ClientConfiguration.AddSimpleMessageStreamProvider(SmsStreamProviderName, fireAndForgetDelivery: false);
-
-                legacy.ClusterConfiguration.AddAzureQueueStreamProviderV2(AzureQueueStreamProviderName);
-                legacy.ClientConfiguration.AddAzureQueueStreamProviderV2(AzureQueueStreamProviderName);
-            });
+        private class SiloBuilderConfigurator : ISiloBuilderConfigurator
+        {
+            public void Configure(ISiloHostBuilder hostBuilder)
+            {
+                hostBuilder
+                    .AddSimpleMessageStreamProvider(SmsStreamProviderName)
+                    .AddAzureTableGrainStorage("AzureStore", builder => builder.Configure<IOptions<ClusterOptions>>((options, silo) =>
+                    {
+                        options.ConnectionString = TestDefaultConfiguration.DataConnectionString;
+                        options.DeleteStateOnClear = true;
+                    }))
+                    .AddAzureTableGrainStorage("PubSubStore", builder => builder.Configure<IOptions<ClusterOptions>>((options, silo) =>
+                        {
+                            options.ConnectionString = TestDefaultConfiguration.DataConnectionString;
+                            options.DeleteStateOnClear = true;
+                        }))
+                    .AddMemoryGrainStorage("MemoryStore")
+                    .AddAzureQueueStreams<AzureQueueDataAdapterV2>(AzureQueueStreamProviderName, c=>
+                        c.ConfigureAzureQueue(ob => ob.Configure(
+                            options =>
+                            {
+                                options.ConnectionString = TestDefaultConfiguration.DataConnectionString;
+                            }))
+                        .ConfigurePartitioning(partitionCount));
+            }
         }
 
         public AQStreamingTests()
@@ -45,7 +80,7 @@ namespace Tester.AzureUtils.Streaming
         
         public override void Dispose()
         {
-            var clusterId = HostedCluster.ClusterId;
+            var clusterId = HostedCluster.Options.ClusterId;
             base.Dispose();
             AzureQueueStreamProviderUtils.DeleteAllUsedAzureQueues(NullLoggerFactory.Instance, SingleStreamTestRunner.AQ_STREAM_PROVIDER_NAME, clusterId, TestDefaultConfiguration.DataConnectionString).Wait();
         }

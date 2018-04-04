@@ -36,9 +36,6 @@ namespace Orleans.Runtime
             }
         }
 
-        /// <summary>Configuration of service </summary>
-        protected IGrainServiceConfiguration Config { get; private set; }
-
         /// <summary>Only to make Reflection happy</summary>
         protected GrainService() : base(null, null, null)
         {
@@ -46,7 +43,7 @@ namespace Orleans.Runtime
         }
 
         /// <summary>Constructor to use for grain services</summary>
-        protected GrainService(IGrainIdentity grainId, Silo silo, IGrainServiceConfiguration config, ILoggerFactory loggerFactory) : base((GrainId)grainId, silo.SiloAddress, lowPriority: true, loggerFactory:loggerFactory)
+        protected GrainService(IGrainIdentity grainId, Silo silo, ILoggerFactory loggerFactory) : base((GrainId)grainId, silo.SiloAddress, lowPriority: true, loggerFactory:loggerFactory)
         {
             typeName = this.GetType().FullName;
             Logger = loggerFactory.CreateLogger(typeName);
@@ -54,7 +51,6 @@ namespace Orleans.Runtime
             scheduler = silo.LocalScheduler;
             ring = silo.RingProvider;
             StoppedCancellationTokenSource = new CancellationTokenSource();
-            Config = config;
         }
 
         /// <summary>Invoked upon initialization of the service</summary>
@@ -85,8 +81,15 @@ namespace Orleans.Runtime
             return Task.CompletedTask;
         }
 
-        /// <summary>Deferred part of initialization that executes after the service is already started (to speed up startup)</summary>
-        protected abstract Task StartInBackground();
+        /// <summary>
+        /// Deferred part of initialization that executes after the service is already started (to speed up startup).
+        /// Sets Status to Started.
+        /// </summary>
+        protected virtual Task StartInBackground()
+        {
+            Status = GrainServiceStatus.Started;
+            return Task.CompletedTask;
+        }
 
         /// <summary>Invoked when service is being stopped</summary>
         public virtual Task Stop()

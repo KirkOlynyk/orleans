@@ -1,7 +1,7 @@
-﻿
+
 using System;
+using Orleans.Configuration;
 using Orleans.Runtime;
-using Orleans.Runtime.Configuration;
 
 namespace Orleans.Streams
 {
@@ -11,12 +11,7 @@ namespace Orleans.Streams
     /// </summary>
     public class LoadShedQueueFlowController : IQueueFlowController
     {
-        /// <summary>
-        /// Default percentage of silo load shedding limit.
-        /// </summary>
-        public const int DefaultPercentOfLoadSheddingLimit = 95;
-
-        private readonly Factory<NodeConfiguration> getNodeConfig;
+        private readonly LoadSheddingOptions options;
         private readonly double loadSheddingLimit;
         private FloatValueStatistic cpuStatistic;
 
@@ -25,14 +20,14 @@ namespace Orleans.Streams
         /// This is intended to reduce queue read rate prior to causing the silo to shed load.
         /// Note:  Triggered only when load shedding is enabled.
         /// </summary>
-        /// <param name="getNodeConfig">The method used to get the current node configuration.</param>
+        /// <param name="options">The silo satistics options.</param>
         /// <param name="percentOfSiloSheddingLimit">Percentage of load shed limit which triggers a reduction of queue read rate.</param>
         /// <returns></returns>
-        public static IQueueFlowController CreateAsPercentOfLoadSheddingLimit(Factory<NodeConfiguration> getNodeConfig, int percentOfSiloSheddingLimit = DefaultPercentOfLoadSheddingLimit)
+        public static IQueueFlowController CreateAsPercentOfLoadSheddingLimit(LoadSheddingOptions options, int percentOfSiloSheddingLimit = LoadSheddingOptions.DEFAULT_LOAD_SHEDDING_LIMIT)
         {
             if (percentOfSiloSheddingLimit < 0.0 || percentOfSiloSheddingLimit > 100.0) throw new ArgumentOutOfRangeException(nameof(percentOfSiloSheddingLimit), "Percent value must be between 0-100");
             // Start shedding before silo reaches shedding limit.
-            return new LoadShedQueueFlowController((int)(getNodeConfig().LoadSheddingLimit * (percentOfSiloSheddingLimit / 100.0)), getNodeConfig);
+            return new LoadShedQueueFlowController((int)(options.LoadSheddingLimit * (percentOfSiloSheddingLimit / 100.0)), options);
         }
 
         /// <summary>
@@ -40,22 +35,22 @@ namespace Orleans.Streams
         /// Note:  Triggered only when load shedding is enabled.
         /// </summary>
         /// <param name="loadSheddingLimit">Percentage of CPU which triggers queue read rate reduction</param>
-        /// <param name="getNodeConfig">The method used to get the current node configuration.</param>
+        /// <param name="options">The silo satistics options.</param>
         /// <returns></returns>
-        public static IQueueFlowController CreateAsPercentageOfCPU(int loadSheddingLimit, Factory<NodeConfiguration> getNodeConfig)
+        public static IQueueFlowController CreateAsPercentageOfCPU(int loadSheddingLimit, LoadSheddingOptions options)
         {
             if (loadSheddingLimit < 0 || loadSheddingLimit > 100) throw new ArgumentOutOfRangeException(nameof(loadSheddingLimit), "Value must be between 0-100");
-            return new LoadShedQueueFlowController(loadSheddingLimit, getNodeConfig);
+            return new LoadShedQueueFlowController(loadSheddingLimit, options);
         }
 
         /// <summary>
         /// Constructor
         /// </summary>
         /// <param name="loadSheddingLimit"></param>
-        /// <param name="getNodeConfig">The method used to get the current node configuration.</param>
-        private LoadShedQueueFlowController(int loadSheddingLimit, Factory<NodeConfiguration> getNodeConfig)
+        /// <param name="options"></param>
+        private LoadShedQueueFlowController(int loadSheddingLimit, LoadSheddingOptions options)
         {
-            this.getNodeConfig = getNodeConfig;
+            this.options = options;
             if (loadSheddingLimit < 0 || loadSheddingLimit > 100) throw new ArgumentOutOfRangeException(nameof(loadSheddingLimit), "Value must be between 0-100");
             this.loadSheddingLimit = loadSheddingLimit != 0 ? loadSheddingLimit : int.MaxValue;
         }
@@ -65,7 +60,7 @@ namespace Orleans.Streams
         /// </summary>
         public int GetMaxAddCount()
         {
-            return getNodeConfig().LoadSheddingEnabled && GetCpuUsage() > loadSheddingLimit ? 0 : int.MaxValue;
+            return options.LoadSheddingEnabled && GetCpuUsage() > loadSheddingLimit ? 0 : int.MaxValue;
         }
 
         private float GetCpuUsage()

@@ -1,6 +1,10 @@
 using System;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Options;
+using Orleans.Configuration;
+using Orleans.Hosting;
 using Orleans.Runtime.Configuration;
+using Orleans.Storage;
 using Orleans.TestingHost;
 using TestExtensions;
 using UnitTests.GrainInterfaces;
@@ -17,16 +21,25 @@ namespace Tester.AzureUtils.General
         {
             protected override void ConfigureTestCluster(TestClusterBuilder builder)
             {
-                builder.ConfigureLegacyConfiguration(legacy =>
-                {
-                    legacy.ClusterConfiguration.AddAzureTableStorageProvider("AzureStore");
-                });
+                builder.AddSiloBuilderConfigurator<SiloBuilderConfigurator>();
             }
 
             protected override void CheckPreconditionsOrThrow()
             {
                 base.CheckPreconditionsOrThrow();
                 StorageEmulatorUtilities.EnsureEmulatorIsNotUsed();
+            }
+
+            private class SiloBuilderConfigurator : ISiloBuilderConfigurator
+            {
+                public void Configure(ISiloHostBuilder hostBuilder)
+                {
+                    hostBuilder
+                        .AddAzureTableGrainStorage("AzureStore", builder => builder.Configure<IOptions<ClusterOptions>>((options, silo) =>
+                        {
+                            options.ConnectionString = TestDefaultConfiguration.DataConnectionString;
+                        }));
+                }
             }
         }
 
@@ -64,7 +77,18 @@ namespace Tester.AzureUtils.General
         {
             protected override void ConfigureTestCluster(TestClusterBuilder builder)
             {
-                builder.ConfigureLegacyConfiguration(legacy => legacy.ClusterConfiguration.AddAzureBlobStorageProvider("AzureStore"));
+                builder.AddSiloBuilderConfigurator<StorageSiloBuilderConfigurator>();
+            }
+
+            private class StorageSiloBuilderConfigurator : ISiloBuilderConfigurator
+            {
+                public void Configure(ISiloHostBuilder hostBuilder)
+                {
+                    hostBuilder.AddAzureBlobGrainStorage("AzureStore", (AzureBlobStorageOptions options) =>
+                    {
+                        options.ConnectionString = TestDefaultConfiguration.DataConnectionString;
+                    });
+                }
             }
 
             protected override void CheckPreconditionsOrThrow()

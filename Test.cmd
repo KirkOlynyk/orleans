@@ -37,11 +37,12 @@ set TESTS=^
 %CMDHOME%\test\GoogleUtils.Tests,^
 %CMDHOME%\test\ServiceBus.Tests,^
 %CMDHOME%\test\TestServiceFabric,^
-%CMDHOME%\test\TesterSQLUtils,^
+%CMDHOME%\test\TesterAdoNet,^
 %CMDHOME%\test\TesterZooKeeperUtils,^
 %CMDHOME%\test\RuntimeCodeGen.Tests,^
 %CMDHOME%\test\Orleans.Transactions.Tests,^
 %CMDHOME%\test\Orleans.Transactions.Azure.Test,^
+%CMDHOME%\test\Orleans.Transactions.DynamoDB.Test,^
 %CMDHOME%\test\Orleans.TestingHost.Tests
 
 if []==[%TEST_FILTERS%] set TEST_FILTERS=-trait Category=BVT -trait Category=SlowBVT

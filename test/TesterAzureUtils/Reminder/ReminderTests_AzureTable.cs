@@ -16,7 +16,7 @@ using UnitTests.TimerTests;
 
 namespace Tester.AzureUtils.TimerTests
 {
-    [TestCategory("ReminderService"), TestCategory("Azure")]
+    [TestCategory("Reminders"), TestCategory("Azure")]
     public class ReminderTests_AzureTable : ReminderTests_Base, IClassFixture<ReminderTests_AzureTable.Fixture>
     {
         public class Fixture : BaseAzureTestClusterFixture
@@ -149,7 +149,7 @@ namespace Tester.AzureUtils.TimerTests
             // start two extra silos ... although it will take it a while before they stabilize
             log.Info("Starting 2 extra silos");
 
-            await this.HostedCluster.StartAdditionalSilos(2);
+            await this.HostedCluster.StartAdditionalSilos(2, true);
             await this.HostedCluster.WaitForLivenessToStabilizeAsync();
 
             //Block until all tasks complete.
@@ -205,7 +205,7 @@ namespace Tester.AzureUtils.TimerTests
         [SkippableFact, TestCategory("Functional")]
         public async Task Rem_Azure_2F_MultiGrain()
         {
-            List<SiloHandle> silos = await this.HostedCluster.StartAdditionalSilos(2);
+            List<SiloHandle> silos = await this.HostedCluster.StartAdditionalSilos(2,true);
 
             IReminderTestGrain2 g1 = this.GrainFactory.GetGrain<IReminderTestGrain2>(Guid.NewGuid());
             IReminderTestGrain2 g2 = this.GrainFactory.GetGrain<IReminderTestGrain2>(Guid.NewGuid());
@@ -272,7 +272,7 @@ namespace Tester.AzureUtils.TimerTests
                 this.HostedCluster.StopSilo(siloToKill);
                 return true;
             });
-            Task<bool> t2 = this.HostedCluster.StartAdditionalSilos(1).ContinueWith(t =>
+            Task<bool> t2 = this.HostedCluster.StartAdditionalSilos(1, true).ContinueWith(t =>
             {
                 t.GetAwaiter().GetResult();
                 return true;
@@ -324,7 +324,7 @@ namespace Tester.AzureUtils.TimerTests
             Assert.Equal(4, curr2); // CopyGrain fault
         }
 
-        [SkippableFact, TestCategory("Functional")]
+        [SkippableFact(Skip = "https://github.com/dotnet/orleans/issues/4319"), TestCategory("Functional")]
         public async Task Rem_Azure_GT_1F1J_MultiGrain()
         {
             List<SiloHandle> silos = await this.HostedCluster.StartAdditionalSilos(1);

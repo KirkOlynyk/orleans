@@ -1,37 +1,33 @@
-﻿using Orleans.TelemetryConsumers.NewRelic;
-using System.Linq;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Orleans.Configuration;
+using Orleans.TelemetryConsumers.NewRelic;
 
-namespace Orleans.Runtime.Configuration
+namespace Orleans.Hosting
 {
     public static class NRTelemetryConsumerConfigurationExtensions
     {
         /// <summary>
         /// Adds a metrics telemetric consumer provider of type <see cref="NRTelemetryConsumer"/>.
         /// </summary>
-        /// <param name="config">The cluster configuration object to add the telemetry consumer to.</param>
-        /// <param name="instrumentationKey">The instrumentation key for New Relic.</param>
-        public static void AddPerfCountersTelemetryConsumer(this ClusterConfiguration config, string instrumentationKey)
+        /// <param name="hostBuilder"></param>
+        public static ISiloHostBuilder AddNewRelicTelemetryConsumer(this ISiloHostBuilder hostBuilder)
         {
-            string typeName = typeof(NRTelemetryConsumer).FullName;
-            string assemblyName = typeof(NRTelemetryConsumer).Assembly.GetName().Name;
-
-            foreach (var nodeConfig in config.Overrides.Values.Union(new[] { config.Defaults }))
-            {
-                nodeConfig.TelemetryConfiguration.Add(typeName, assemblyName, null);
-            }
+            return hostBuilder.ConfigureServices((context, services) => ConfigureServices(context, services));
         }
 
         /// <summary>
         /// Adds a metrics telemetric consumer provider of type <see cref="NRTelemetryConsumer"/>.
         /// </summary>
-        /// <param name="config">The cluster configuration object to add the telemetry consumer to.</param>
-        /// <param name="instrumentationKey">The instrumentation key for New Relic.</param>
-        public static void AddPerfCountersTelemetryConsumer(this ClientConfiguration config, string instrumentationKey)
+        /// <param name="clientBuilder"></param>
+        public static IClientBuilder AddNewRelicTelemetryConsumer(this IClientBuilder clientBuilder)
         {
-            string typeName = typeof(NRTelemetryConsumer).FullName;
-            string assemblyName = typeof(NRTelemetryConsumer).Assembly.GetName().Name;
-
-            config.TelemetryConfiguration.Add(typeName, assemblyName, null);
+            return clientBuilder.ConfigureServices((context, services) => ConfigureServices(context, services));
         }
+
+        private static void ConfigureServices(HostBuilderContext context, IServiceCollection services)
+        {
+            services.Configure<TelemetryOptions>(options => options.AddConsumer<NRTelemetryConsumer>());
+        }
+
     }
 }

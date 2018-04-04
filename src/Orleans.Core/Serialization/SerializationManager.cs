@@ -18,8 +18,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Orleans.ApplicationParts;
 using Orleans.CodeGeneration;
+using Orleans.Configuration;
 using Orleans.Runtime;
-using Orleans.Hosting;
 using Orleans.Metadata;
 using Orleans.Utilities;
 
@@ -107,7 +107,7 @@ namespace Orleans.Serialization
 
         public SerializationManager(
             IServiceProvider serviceProvider,
-            IOptions<SerializationProviderOptions> serializatonProviderOptions,
+            IOptions<SerializationProviderOptions> serializationProviderOptions,
             ILoggerFactory loggerFactory,
             ITypeResolver typeResolver)
         {
@@ -128,9 +128,9 @@ namespace Orleans.Serialization
             deserializers = new Dictionary<RuntimeTypeHandle, Deserializer>();
             grainRefConstructorDictionary = new ConcurrentDictionary<Type, Func<GrainReference, GrainReference>>();
 
-            var serializatonProviderOptionsValue = serializatonProviderOptions.Value;
+            var options = serializationProviderOptions.Value;
 
-            fallbackSerializer = GetFallbackSerializer(serviceProvider, serializatonProviderOptionsValue.FallbackSerializationProvider);
+            fallbackSerializer = GetFallbackSerializer(serviceProvider, options.FallbackSerializationProvider);
 
             if (StatisticsCollector.CollectSerializationStats)
             {
@@ -167,7 +167,7 @@ namespace Orleans.Serialization
                 FallbackCopiesTimeStatistic = CounterStatistic.FindOrCreate(StatisticNames.SERIALIZATION_BODY_FALLBACK_DEEPCOPY_MILLIS, storeFallback).AddValueConverter(Utils.TicksToMilliSeconds);
             }
 
-            RegisterSerializationProviders(serializatonProviderOptionsValue.SerializationProviders);
+            RegisterSerializationProviders(options.SerializationProviders);
         }
 
         public void RegisterSerializers(IApplicationPartManager applicationPartManager)
@@ -354,6 +354,7 @@ namespace Orleans.Serialization
         /// For instance, abstract base types and interfaces need to be registered this way.
         /// </summary>
         /// <param name="t">Type to be registered.</param>
+        /// <param name="typeKey">Type key to associate with the type.</param>
         private void Register(Type t, string typeKey = null)
         {
             string name = typeKey ?? t.OrleansTypeKeyString();
@@ -403,8 +404,7 @@ namespace Orleans.Serialization
                 var msg = $"No serialization methods found on type {serializerType.GetParseableName(TypeFormattingOptions.LogFormat)}.";
                 logger.Warn(
                     ErrorCode.SerMgr_SerializationMethodsMissing,
-                    msg,
-                    serializerType.GetParseableName(TypeFormattingOptions.LogFormat));
+                    msg);
                 throw new ArgumentException(msg);
             }
 
@@ -745,9 +745,9 @@ namespace Orleans.Serialization
                     if (etInfo.IsPrimitive && Buffer.ByteLength(originalArray) > this.LargeObjectSizeThreshold)
                     {
                         logger.Info(ErrorCode.Ser_LargeObjectAllocated,
-                            "Large {0} array of total byte size {1} is being copied. This will result in an allocation on the large object heap. " +
+                            $"Large {t.OrleansTypeName()} array of total byte size {Buffer.ByteLength(originalArray)} is being copied. This will result in an allocation on the large object heap. " +
                             "Frequent allocations to the large object heap can result in frequent gen2 garbage collections and poor system performance. " +
-                            "Please consider using Immutable<{0}> instead.", t.OrleansTypeName(), Buffer.ByteLength(originalArray));
+                            $"Please consider using Immutable<{t.OrleansTypeName()}> instead.");
                     }
                     return originalArray.Clone();
                 }

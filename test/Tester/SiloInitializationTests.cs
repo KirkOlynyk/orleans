@@ -27,6 +27,7 @@ namespace Tester
             try
             {
                 var config = ClusterConfiguration.LocalhostPrimarySilo();
+                config.Globals.ClusterId = Guid.NewGuid().ToString();
                 var originalLivenessType = config.Globals.LivenessType;
                 var originalMembershipAssembly = config.Globals.MembershipTableAssembly;
 
@@ -77,7 +78,7 @@ namespace Tester
             var args = new object[] { nameof(SiloInitializationIsRetryableTest), clusterConfig};
 
             return (SiloHost)appDomain.CreateInstanceFromAndUnwrap(
-                "Orleans.Runtime.dll",
+                "Orleans.Runtime.Legacy.dll",
                 typeof(SiloHost).FullName,
                 false,
                 BindingFlags.Default,

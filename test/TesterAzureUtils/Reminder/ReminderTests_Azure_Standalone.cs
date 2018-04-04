@@ -1,17 +1,17 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Orleans;
 using Orleans.Runtime;
-using Orleans.Runtime.Configuration;
 using Orleans.Runtime.ReminderService;
 using TestExtensions;
 using Xunit;
 using Xunit.Abstractions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Orleans.Configuration;
 using Orleans.TestingHost.Utils;
 
 // ReSharper disable InconsistentNaming
@@ -25,53 +25,45 @@ namespace Tester.AzureUtils.TimerTests
     {
         private readonly ITestOutputHelper output;
         private readonly TestEnvironmentFixture fixture;
+        private readonly string serviceId;
+        private readonly ILogger log;
+        private readonly ILoggerFactory loggerFactory;
 
-        private Guid ServiceId;
-
-        private ILogger log;
-        private ILoggerFactory loggerFactory;
         public ReminderTests_Azure_Standalone(ITestOutputHelper output, TestEnvironmentFixture fixture)
         {
             this.output = output;
             this.fixture = fixture;
             this.loggerFactory = TestingUtils.CreateDefaultLoggerFactory($"{GetType().Name}.log");
-            log = loggerFactory.CreateLogger<ReminderTests_Azure_Standalone>();
+            this.log = this.loggerFactory.CreateLogger<ReminderTests_Azure_Standalone>();
 
-            ServiceId = Guid.NewGuid();
+            this.serviceId = Guid.NewGuid().ToString();
 
             TestUtils.ConfigureClientThreadPoolSettingsForStorageTests(1000);
         }
 
         #region Extra tests / experiments
 
-        [SkippableFact, TestCategory("ReminderService"), TestCategory("Performance")]
+        [SkippableFact, TestCategory("Reminders"), TestCategory("Performance")]
         public async Task Reminders_AzureTable_InsertRate()
         {
-            var siloOptions = Options.Create(new SiloOptions { ClusterId = "TMSLocalTesting", ServiceId = this.ServiceId });
-            IReminderTable table = new AzureBasedReminderTable(this.fixture.Services.GetRequiredService<IGrainReferenceConverter>(), this.loggerFactory, siloOptions);
-            var config = new GlobalConfiguration()
-            {
-                DataConnectionString = TestDefaultConfiguration.DataConnectionString
-            };
-            await table.Init(config);
+            var clusterOptions = Options.Create(new ClusterOptions { ClusterId = "TMSLocalTesting", ServiceId = this.serviceId });
+            var storageOptions = Options.Create(new AzureTableReminderStorageOptions { ConnectionString = TestDefaultConfiguration.DataConnectionString });
+
+            IReminderTable table = new AzureBasedReminderTable(this.fixture.Services.GetRequiredService<IGrainReferenceConverter>(), this.loggerFactory, clusterOptions, storageOptions);
+            await table.Init();
 
             await TestTableInsertRate(table, 10);
             await TestTableInsertRate(table, 500);
         }
 
-        [SkippableFact, TestCategory("ReminderService")]
+        [SkippableFact, TestCategory("Reminders")]
         public async Task Reminders_AzureTable_InsertNewRowAndReadBack()
         {
             string clusterId = NewClusterId();
-            var siloOptions = Options.Create(new SiloOptions { ClusterId = clusterId, ServiceId = this.ServiceId });
-            IReminderTable table = new AzureBasedReminderTable(this.fixture.Services.GetRequiredService<IGrainReferenceConverter>(), this.loggerFactory, siloOptions);
-            var config = new GlobalConfiguration()
-            {
-                ServiceId = ServiceId,
-                ClusterId = clusterId,
-                DataConnectionString = TestDefaultConfiguration.DataConnectionString
-            };
-            await table.Init(config);
+            var clusterOptions = Options.Create(new ClusterOptions { ClusterId = clusterId, ServiceId = this.serviceId });
+            var storageOptions = Options.Create(new AzureTableReminderStorageOptions { ConnectionString = TestDefaultConfiguration.DataConnectionString });
+            IReminderTable table = new AzureBasedReminderTable(this.fixture.Services.GetRequiredService<IGrainReferenceConverter>(), this.loggerFactory, clusterOptions, storageOptions);
+            await table.Init();
 
             ReminderEntry[] rows = (await GetAllRows(table)).ToArray();
             Assert.Empty(rows); // "The reminder table (sid={0}, did={1}) was not empty.", ServiceId, clusterId);
@@ -87,7 +79,7 @@ namespace Tester.AzureUtils.TimerTests
             Assert.Equal(expected.Period,  actual.Period); // "The newly inserted reminder table (sid={0}, did={1}) row did not have the expected period.", ServiceId, clusterId);
             // the following assertion fails but i don't know why yet-- the timestamps appear identical in the error message. it's not really a priority to hunt down the reason, however, because i have high confidence it is working well enough for the moment.
             /*Assert.Equal(expected.StartAt,  actual.StartAt); // "The newly inserted reminder table (sid={0}, did={1}) row did not contain the correct start time.", ServiceId, clusterId);*/
-            Assert.False(string.IsNullOrWhiteSpace(actual.ETag), $"The newly inserted reminder table (sid={ServiceId}, did={clusterId}) row contains an invalid etag.");
+            Assert.False(string.IsNullOrWhiteSpace(actual.ETag), $"The newly inserted reminder table (sid={this.serviceId}, did={clusterId}) row contains an invalid etag.");
         }
 
         private async Task TestTableInsertRate(IReminderTable reminderTable, double numOfInserts)
@@ -115,21 +107,21 @@ namespace Tester.AzureUtils.TimerTests
                     Task<bool> promise = Task.Run(async () =>
                     {
                         await reminderTable.UpsertRow(e);
-                        output.WriteLine("Done " + capture);
+                        this.output.WriteLine("Done " + capture);
                         return true;
                     });
                     promises.Add(promise);
-                    log.Info("Started " + capture);
+                    this.log.Info("Started " + capture);
                 }
-                log.Info("Started all, now waiting...");
+                this.log.Info("Started all, now waiting...");
                 await Task.WhenAll(promises).WithTimeout(TimeSpan.FromSeconds(500));
             }
             catch (Exception exc)
             {
-                log.Info("Exception caught {0}", exc);
+                this.log.Info("Exception caught {0}", exc);
             }
             TimeSpan dur = DateTime.UtcNow - startedAt;
-            log.Info("Inserted {0} rows in {1}, i.e., {2:f2} upserts/sec", numOfInserts, dur, (numOfInserts / dur.TotalSeconds));
+            this.log.Info("Inserted {0} rows in {1}, i.e., {2:f2} upserts/sec", numOfInserts, dur, (numOfInserts / dur.TotalSeconds));
         }
         #endregion
 

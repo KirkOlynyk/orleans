@@ -2,7 +2,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Orleans.Configuration;
 using Orleans.GrainDirectory;
-using Orleans.Runtime.Configuration;
 using Orleans.Runtime.ConsistentRing;
 using Orleans.Runtime.Counters;
 using Orleans.Runtime.GrainDirectory;
@@ -35,6 +34,10 @@ using System;
 using System.Collections.Generic;
 using Orleans.Metadata;
 using Orleans.Statistics;
+using Microsoft.Extensions.Options;
+
+using Orleans.Configuration.Validators;
+using Orleans.Runtime.Configuration;
 
 namespace Orleans.Hosting
 {
@@ -44,10 +47,17 @@ namespace Orleans.Hosting
         {
             services.AddOptions();
 
+            services.AddTransient<IConfigurationValidator, EndpointOptionsValidator>();
+
+            // Options logging
+            services.TryAddSingleton(typeof(IOptionFormatter<>), typeof(DefaultOptionsFormatter<>));
+            services.TryAddSingleton(typeof(IOptionFormatterResolver<>), typeof(DefaultOptionsFormatterResolver<>));
+
             // Register system services.
             services.TryAddSingleton<ILocalSiloDetails, LocalSiloDetails>();
             services.TryAddSingleton<ISiloHost, SiloWrapper>();
-            services.TryAddSingleton<SiloLifecycle>();
+            services.TryAddTransient<ILifecycleSubject,LifecycleSubject>();
+            services.TryAddSingleton<ISiloLifecycleSubject,SiloLifecycleSubject>();
             services.TryAddSingleton<ILifecycleParticipant<ISiloLifecycle>, SiloOptionsLogger>();
             services.PostConfigure<SiloMessagingOptions>(options =>
             {
@@ -70,16 +80,15 @@ namespace Orleans.Hosting
 
             services.TryAddSingleton<IAppEnvironmentStatistics, AppEnvironmentStatistics>();
             services.TryAddSingleton<IHostEnvironmentStatistics, NoOpHostEnvironmentStatistics>();
+            services.TryAddSingleton<OverloadDetector>();
 
             services.TryAddSingleton<ExecutorService>();
             // queue balancer contructing related
-            services.TryAddTransient<StaticClusterConfigDeploymentBalancer>();
-            services.TryAddTransient<DynamicClusterConfigDeploymentBalancer>();
-            services.TryAddTransient<ClusterConfigDeploymentLeaseBasedBalancer>();
-            services.TryAddTransient<ConsistentRingQueueBalancer>();
+            services.TryAddTransient<IStreamQueueBalancer, ConsistentRingQueueBalancer>();
             services.TryAddSingleton<IStreamSubscriptionHandleFactory, StreamSubscriptionHandlerFactory>();
 
             services.TryAddSingleton<FallbackSystemTarget>();
+            services.TryAddSingleton<LifecycleSchedulingSystemTarget>();
 
             services.AddLogging();
             services.TryAddSingleton<ITimerRegistry, TimerRegistry>();
@@ -95,12 +104,11 @@ namespace Orleans.Hosting
             services.TryAddSingleton<IGrainReferenceRuntime, GrainReferenceRuntime>();
             services.TryAddSingleton<TypeMetadataCache>();
             services.TryAddSingleton<ActivationDirectory>();
+            services.TryAddSingleton<ActivationCollector>();
             services.TryAddSingleton<LocalGrainDirectory>();
             services.TryAddFromExisting<ILocalGrainDirectory, LocalGrainDirectory>();
             services.TryAddSingleton(sp => sp.GetRequiredService<LocalGrainDirectory>().GsiActivationMaintainer);
             services.TryAddSingleton<SiloStatisticsManager>();
-            services.TryAddSingleton<ISiloPerformanceMetrics>(sp => sp.GetRequiredService<SiloStatisticsManager>().MetricsTable);
-            services.TryAddFromExisting<ICorePerformanceMetrics, ISiloPerformanceMetrics>();
             services.TryAddSingleton<GrainTypeManager>();
             services.TryAddSingleton<MessageCenter>();
             services.TryAddFromExisting<IMessageCenter, MessageCenter>();
@@ -111,18 +119,17 @@ namespace Orleans.Hosting
             services.TryAddFromExisting<IRuntimeClient, InsideRuntimeClient>();
             services.TryAddFromExisting<ISiloRuntimeClient, InsideRuntimeClient>();
             services.AddFromExisting<ILifecycleParticipant<ISiloLifecycle>, InsideRuntimeClient>();
+            
             services.TryAddSingleton<MultiClusterGossipChannelFactory>();
             services.TryAddSingleton<MultiClusterOracle>();
             services.TryAddSingleton<MultiClusterRegistrationStrategyManager>();
             services.TryAddFromExisting<IMultiClusterOracle, MultiClusterOracle>();
             services.TryAddSingleton<DeploymentLoadPublisher>();
+
             services.TryAddSingleton<MembershipOracle>();
             services.TryAddFromExisting<IMembershipOracle, MembershipOracle>();
             services.TryAddFromExisting<ISiloStatusOracle, MembershipOracle>();
-            services.TryAddSingleton<MembershipTableFactory>();
-            services.TryAddSingleton<ReminderTableFactory>();
-            services.TryAddSingleton<IReminderTable>(sp => sp.GetRequiredService<ReminderTableFactory>().Create());
-            services.TryAddSingleton<LocalReminderServiceFactory>();
+
             services.TryAddSingleton<ClientObserverRegistrar>();
             services.TryAddSingleton<SiloProviderRuntime>();
             services.TryAddFromExisting<IStreamProviderRuntime, SiloProviderRuntime>();
@@ -137,28 +144,49 @@ namespace Orleans.Hosting
             services.TryAddSingleton(FactoryUtility.Create<GrainDirectoryPartition>);
 
             // Placement
+            services.AddSingleton<IConfigurationValidator, ActivationCountBasedPlacementOptionsValidator>();
             services.TryAddSingleton<PlacementDirectorsManager>();
-            services.TryAddSingleton<IPlacementDirector<RandomPlacement>, RandomPlacementDirector>();
-            services.TryAddSingleton<IActivationSelector<RandomPlacement>, RandomPlacementDirector>();
-            services.TryAddSingleton<IPlacementDirector<PreferLocalPlacement>, PreferLocalPlacementDirector>();
-            services.TryAddSingleton<IPlacementDirector<StatelessWorkerPlacement>, StatelessWorkerDirector>();
-            services.TryAddSingleton<IActivationSelector<StatelessWorkerPlacement>, StatelessWorkerDirector>();
-            services.TryAddSingleton<IPlacementDirector<ActivationCountBasedPlacement>, ActivationCountPlacementDirector>();
-            services.TryAddSingleton<IPlacementDirector<HashBasedPlacement>, HashBasedPlacementDirector>();
-            services.TryAddSingleton<DefaultPlacementStrategy>();
             services.TryAddSingleton<ClientObserversPlacementDirector>();
 
-            // Versions
+            // Configure the default placement strategy.
+            services.TryAddSingleton<PlacementStrategy, RandomPlacement>();
+
+            // Placement directors
+            services.AddPlacementDirector<RandomPlacement, RandomPlacementDirector>();
+            services.AddPlacementDirector<PreferLocalPlacement, PreferLocalPlacementDirector>();
+            services.AddPlacementDirector<StatelessWorkerPlacement, StatelessWorkerDirector>();
+            services.AddPlacementDirector<ActivationCountBasedPlacement, ActivationCountPlacementDirector>();
+            services.AddPlacementDirector<HashBasedPlacement, HashBasedPlacementDirector>();
+
+            // Activation selectors
+            services.AddSingletonKeyedService<Type, IActivationSelector, RandomPlacementDirector>(typeof(RandomPlacement));
+            services.AddSingletonKeyedService<Type, IActivationSelector, StatelessWorkerDirector>(typeof(StatelessWorkerPlacement));
+
+            // Versioning
             services.TryAddSingleton<VersionSelectorManager>();
-            services.TryAddSingleton<IVersionSelector<MinimumVersion>, MinimumVersionSelector>();
-            services.TryAddSingleton<IVersionSelector<LatestVersion>, LatestVersionSelector>();
-            services.TryAddSingleton<IVersionSelector<AllCompatibleVersions>, AllCompatibleVersionsSelector>();
-            services.TryAddSingleton<CompatibilityDirectorManager>();
-            services.TryAddSingleton<ICompatibilityDirector<BackwardCompatible>, BackwardCompatilityDirector>();
-            services.TryAddSingleton<ICompatibilityDirector<AllVersionsCompatible>, AllVersionsCompatibilityDirector>();
-            services.TryAddSingleton<ICompatibilityDirector<StrictVersionCompatible>, StrictVersionCompatibilityDirector>();
             services.TryAddSingleton<CachedVersionSelectorManager>();
-            services.TryAddSingleton<IVersionStore, GrainVersionStore>();
+            // Version selector strategy
+            services.TryAddSingleton<GrainVersionStore>();
+            services.AddFromExisting<IVersionStore, GrainVersionStore>();
+            services.AddFromExisting<ILifecycleParticipant<ISiloLifecycle>, GrainVersionStore>();
+            services.AddSingletonNamedService<VersionSelectorStrategy, AllCompatibleVersions>(nameof(AllCompatibleVersions));
+            services.AddSingletonNamedService<VersionSelectorStrategy, LatestVersion>(nameof(LatestVersion));
+            services.AddSingletonNamedService<VersionSelectorStrategy, MinimumVersion>(nameof(MinimumVersion));
+            // Versions selectors
+            services.AddSingletonKeyedService<Type, IVersionSelector, MinimumVersionSelector>(typeof(MinimumVersion));
+            services.AddSingletonKeyedService<Type, IVersionSelector, LatestVersionSelector>(typeof(LatestVersion));
+            services.AddSingletonKeyedService<Type, IVersionSelector, AllCompatibleVersionsSelector>(typeof(AllCompatibleVersions));
+
+            // Compatibility
+            services.TryAddSingleton<CompatibilityDirectorManager>();
+            // Compatability strategy
+            services.AddSingletonNamedService<CompatibilityStrategy, AllVersionsCompatible>(nameof(AllVersionsCompatible));
+            services.AddSingletonNamedService<CompatibilityStrategy, BackwardCompatible>(nameof(BackwardCompatible));
+            services.AddSingletonNamedService<CompatibilityStrategy, StrictVersionCompatible>(nameof(StrictVersionCompatible));
+            // Compatability directors
+            services.AddSingletonKeyedService<Type, ICompatibilityDirector, BackwardCompatilityDirector>(typeof(BackwardCompatible));
+            services.AddSingletonKeyedService<Type, ICompatibilityDirector, AllVersionsCompatibilityDirector>(typeof(AllVersionsCompatible));
+            services.AddSingletonKeyedService<Type, ICompatibilityDirector, StrictVersionCompatibilityDirector>(typeof(StrictVersionCompatible));
 
             services.TryAddSingleton<Factory<IGrainRuntime>>(sp => () => sp.GetRequiredService<IGrainRuntime>());
 
@@ -173,12 +201,13 @@ namespace Orleans.Hosting
             services.TryAddSingleton<IConsistentRingProvider>(
                 sp =>
                 {
-                    var globalConfig = sp.GetRequiredService<GlobalConfiguration>();
+                    // TODO: make this not sux - jbragg
+                    var consistentRingOptions = sp.GetRequiredService<IOptions<ConsistentRingOptions>>().Value;
                     var siloDetails = sp.GetRequiredService<ILocalSiloDetails>();
                     var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
-                    if (globalConfig.UseVirtualBucketsConsistentRing)
+                    if (consistentRingOptions.UseVirtualBucketsConsistentRing)
                     {
-                        return new VirtualBucketsRingProvider(siloDetails.SiloAddress, loggerFactory, globalConfig.NumVirtualBucketsConsistentRing);
+                        return new VirtualBucketsRingProvider(siloDetails.SiloAddress, loggerFactory, consistentRingOptions.NumVirtualBucketsConsistentRing);
                     }
 
                     return new ConsistentRingProvider(siloDetails.SiloAddress, loggerFactory);
@@ -212,11 +241,30 @@ namespace Orleans.Hosting
             applicationPartManager.AddFeatureProvider(new AssemblyAttributeFeatureProvider<SerializerFeature>());
             services.AddTransient<IConfigurationValidator, ApplicationPartValidator>();
 
-            //Add default option formatter if none is configured, for options which are requied to be configured 
-            services.TryConfigureFormatter<SiloMessagingOptions, SiloMessageingOptionFormatter>();
-            services.TryConfigureFormatter<StatisticsOptions, StatisticOptionsFormatter>();
-            services.TryConfigureFormatter<NetworkingOptions, NetworkingOptionFormatter>();
-            services.TryConfigureFormatter<SerializationProviderOptions, SerializationProviderOptionsFormatter>();
+            //Add default option formatter if none is configured, for options which are required to be configured 
+            services.ConfigureFormatter<SiloOptions>();
+            services.ConfigureFormatter<ProcessExitHandlingOptions>();
+            services.ConfigureFormatter<SchedulingOptions>();
+            services.ConfigureFormatter<PerformanceTuningOptions>();
+            services.ConfigureFormatter<SerializationProviderOptions>();
+            services.ConfigureFormatter<NetworkingOptions>();
+            services.ConfigureFormatter<SiloMessagingOptions>();
+            services.ConfigureFormatter<TypeManagementOptions>();
+            services.ConfigureFormatter<ClusterMembershipOptions>();
+            services.ConfigureFormatter<GrainDirectoryOptions>();
+            services.ConfigureFormatter<ActivationCountBasedPlacementOptions>();
+            services.ConfigureFormatter<GrainCollectionOptions>();
+            services.ConfigureFormatter<GrainVersioningOptions>();
+            services.ConfigureFormatter<ConsistentRingOptions>();
+            services.ConfigureFormatter<MultiClusterOptions>();
+            services.ConfigureFormatter<SiloStatisticsOptions>();
+            services.ConfigureFormatter<TelemetryOptions>();
+            services.ConfigureFormatter<LoadSheddingOptions>();
+            services.ConfigureFormatter<EndpointOptions>();
+
+            // This validator needs to construct the IMembershipOracle and the IMembershipTable
+            // so move it in the end so other validator are called first
+            services.AddTransient<IConfigurationValidator, SiloClusteringValidator>();
         }
     }
 }

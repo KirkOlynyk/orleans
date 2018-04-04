@@ -27,7 +27,7 @@ namespace UnitTests.MembershipTests
 
         protected async Task Do_Liveness_OracleTest_1()
         {
-            output.WriteLine("ClusterId= {0}", this.HostedCluster.ClusterId);
+            output.WriteLine("ClusterId= {0}", this.HostedCluster.Options.ClusterId);
 
             SiloHandle silo3 = this.HostedCluster.StartAdditionalSilo();
 
@@ -78,11 +78,7 @@ namespace UnitTests.MembershipTests
                 await SendTraffic(i + 1, startTimers);
             }
 
-            SiloHandle silo2KillHandle;
-            if (silo2Kill == 0)
-                silo2KillHandle = this.HostedCluster.Primary;
-            else
-                silo2KillHandle = this.HostedCluster.SecondarySilos[silo2Kill - 1];
+            SiloHandle silo2KillHandle = this.HostedCluster.Silos[silo2Kill];
 
             logger.Info("\n\n\n\nAbout to kill {0}\n\n\n", silo2KillHandle.SiloAddress.Endpoint);
 

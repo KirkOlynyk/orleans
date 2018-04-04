@@ -1,13 +1,12 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using Orleans.Configuration;
 using Orleans.Runtime;
 using Orleans.Runtime.Configuration;
 using Orleans.Storage;
 using Xunit;
-using Microsoft.Extensions.Options;
-using Orleans.Hosting;
 
 namespace UnitTests.StorageTests
 {
@@ -17,7 +16,7 @@ namespace UnitTests.StorageTests
         {
             public Fixture()
             {
-                BufferPool.InitGlobalBufferPool(Options.Create(new SiloMessagingOptions()));
+                BufferPool.InitGlobalBufferPool(new SiloMessagingOptions());
                 ClientConfiguration cfg = ClientConfiguration.LoadFromFile("ClientConfigurationForTesting.xml");
             }
         }
@@ -40,7 +39,7 @@ namespace UnitTests.StorageTests
             string fromValue = "Rem10";
             string toValue = "Rem11";
 
-            var compareClause = MemoryStorage.GetComparer(rangeParamName, fromValue, toValue);
+            var compareClause = MemoryGrainStorage.GetComparer(rangeParamName, fromValue, toValue);
 
             var data = new Dictionary<string, object>();
 
@@ -69,7 +68,7 @@ namespace UnitTests.StorageTests
             string toValue = "Rem10";
             string fromValue = "Rem12";
 
-            var compareClause = MemoryStorage.GetComparer(rangeParamName, fromValue, toValue);
+            var compareClause = MemoryGrainStorage.GetComparer(rangeParamName, fromValue, toValue);
 
             var data = new Dictionary<string, object>();
 
@@ -98,7 +97,7 @@ namespace UnitTests.StorageTests
             string fromValue = "Rem11";
             string toValue = "Rem11";
 
-            var compareClause = MemoryStorage.GetComparer(rangeParamName, fromValue, toValue);
+            var compareClause = MemoryGrainStorage.GetComparer(rangeParamName, fromValue, toValue);
 
             var data = new Dictionary<string, object>();
 

@@ -10,6 +10,11 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using UnitTests.StreamingTests;
 using Xunit;
+using Microsoft.Extensions.Configuration;
+using Orleans;
+using Orleans.Hosting;
+using Microsoft.Extensions.Options;
+using Orleans.Configuration;
 
 namespace Tester.AzureUtils.Streaming
 {
@@ -22,12 +27,35 @@ namespace Tester.AzureUtils.Streaming
         protected override void ConfigureTestCluster(TestClusterBuilder builder)
         {
             TestUtils.CheckForAzureStorage();
-            builder.ConfigureLegacyConfiguration(legacy =>
+            builder.AddSiloBuilderConfigurator<MySiloBuilderConfigurator>();
+            builder.AddClientBuilderConfigurator<MyClientBuilderConfigurator>();
+        }
+
+        private class MyClientBuilderConfigurator : IClientBuilderConfigurator
+        {
+            public void Configure(IConfiguration configuration, IClientBuilder clientBuilder)
             {
-                legacy.ClusterConfiguration.AddMemoryStorageProvider("PubSubStore");
-                legacy.ClusterConfiguration.AddAzureQueueStreamProvider(AQStreamProviderName);
-                legacy.ClientConfiguration.AddAzureQueueStreamProvider(AQStreamProviderName);
-            });
+                clientBuilder
+                    .AddAzureQueueStreams<AzureQueueDataAdapterV2>(AQStreamProviderName, ob=>ob.Configure(
+                        options =>
+                        {
+                            options.ConnectionString = TestDefaultConfiguration.DataConnectionString;
+                        }));
+            }
+        }
+
+        private class MySiloBuilderConfigurator : ISiloBuilderConfigurator
+        {
+            public void Configure(ISiloHostBuilder hostBuilder)
+            {
+                hostBuilder
+                     .AddMemoryGrainStorage("PubSubStore")
+                    .AddAzureQueueStreams<AzureQueueDataAdapterV2>(AQStreamProviderName, ob=>ob.Configure(
+                        options =>
+                        {
+                            options.ConnectionString = TestDefaultConfiguration.DataConnectionString;
+                        }));
+            }
         }
 
         public AQSubscriptionMultiplicityTests()
@@ -37,7 +65,7 @@ namespace Tester.AzureUtils.Streaming
 
         public override void Dispose()
         {
-            var clusterId = HostedCluster.ClusterId;
+            var clusterId = HostedCluster.Options.ClusterId;
             base.Dispose();
             AzureQueueStreamProviderUtils.DeleteAllUsedAzureQueues(NullLoggerFactory.Instance, AQStreamProviderName, clusterId, TestDefaultConfiguration.DataConnectionString).Wait();
         }

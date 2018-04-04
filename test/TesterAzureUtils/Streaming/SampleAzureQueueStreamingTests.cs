@@ -13,6 +13,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using UnitTests.StreamingTests;
 using Xunit;
+using Orleans.Hosting;
+using Microsoft.Extensions.Options;
+using Orleans.Configuration;
 
 namespace Tester.AzureUtils.Streaming
 {
@@ -24,16 +27,26 @@ namespace Tester.AzureUtils.Streaming
         protected override void ConfigureTestCluster(TestClusterBuilder builder)
         {
             TestUtils.CheckForAzureStorage();
-            builder.ConfigureLegacyConfiguration(legacy =>
+            builder.AddSiloBuilderConfigurator<MySiloBuilderConfigurator>();
+        }
+
+        private class MySiloBuilderConfigurator : ISiloBuilderConfigurator
+        {
+            public void Configure(ISiloHostBuilder hostBuilder)
             {
-                legacy.ClusterConfiguration.AddMemoryStorageProvider("PubSubStore");
-                legacy.ClusterConfiguration.AddAzureQueueStreamProvider(StreamProvider);
-            });
+                hostBuilder
+                    .AddAzureQueueStreams<AzureQueueDataAdapterV2>(StreamProvider, ob=>ob.Configure(
+                        options =>
+                        {
+                            options.ConnectionString = TestDefaultConfiguration.DataConnectionString;
+                        }))
+                    .AddMemoryGrainStorage("PubSubStore");
+            }
         }
 
         public override void Dispose()
         {
-            var clusterId = HostedCluster?.ClusterId;
+            var clusterId = HostedCluster?.Options.ClusterId;
             if (clusterId != null)
             {
                 AzureQueueStreamProviderUtils.DeleteAllUsedAzureQueues(NullLoggerFactory.Instance, StreamProvider, clusterId, TestDefaultConfiguration.DataConnectionString).Wait();

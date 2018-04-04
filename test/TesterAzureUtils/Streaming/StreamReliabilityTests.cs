@@ -14,7 +14,6 @@ using Orleans.Providers.Streams.AzureQueue;
 using Orleans.Runtime;
 using Orleans.Runtime.Configuration;
 using Orleans.TestingHost;
-using Orleans.TestingHost.Utils;
 using TestExtensions;
 using UnitTests.GrainInterfaces;
 using UnitTests.Grains;
@@ -22,6 +21,8 @@ using UnitTests.StreamingTests;
 using Xunit;
 using Xunit.Abstractions;
 using Tester;
+using Microsoft.Extensions.Options;
+using Orleans.Configuration;
 
 // ReSharper disable ConvertToConstant.Local
 // ReSharper disable CheckNamespace
@@ -47,23 +48,9 @@ namespace UnitTests.Streaming.Reliability
             TestUtils.CheckForAzureStorage();
 
             this.numExpectedSilos = 2;
+            builder.CreateSilo = AppDomainSiloHandle.Create;
             builder.Options.InitialSilosCount = (short) this.numExpectedSilos;
             builder.Options.UseTestClusterMembership = false;
-            builder.ConfigureLegacyConfiguration(legacy =>
-            {
-                legacy.ClusterConfiguration.AddMemoryStorageProvider("MemoryStore", numStorageGrains: 1);
-
-                legacy.ClusterConfiguration.AddAzureTableStorageProvider("AzureStore", deleteOnClear: true);
-                legacy.ClusterConfiguration.AddAzureTableStorageProvider("PubSubStore", deleteOnClear: true, useJsonFormat: false);
-
-                legacy.ClusterConfiguration.AddSimpleMessageStreamProvider(SMS_STREAM_PROVIDER_NAME, fireAndForgetDelivery: false);
-
-                legacy.ClusterConfiguration.AddAzureQueueStreamProvider(AZURE_QUEUE_STREAM_PROVIDER_NAME);
-                legacy.ClusterConfiguration.AddAzureQueueStreamProvider("AzureQueueProvider2");
-                
-                legacy.ClientConfiguration.AddSimpleMessageStreamProvider(SMS_STREAM_PROVIDER_NAME, fireAndForgetDelivery: false);
-                legacy.ClientConfiguration.AddAzureQueueStreamProvider(AZURE_QUEUE_STREAM_PROVIDER_NAME);
-            });
 
             builder.AddSiloBuilderConfigurator<SiloBuilderConfigurator>();
             builder.AddClientBuilderConfigurator<ClientBuilderConfigurator>();
@@ -73,10 +60,16 @@ namespace UnitTests.Streaming.Reliability
         {
             public void Configure(IConfiguration configuration, IClientBuilder clientBuilder)
             {
-                clientBuilder.UseAzureTableGatewayListProvider(gatewayOptions =>
+                clientBuilder.UseAzureStorageClustering(gatewayOptions =>
                 {
                     gatewayOptions.ConnectionString = TestDefaultConfiguration.DataConnectionString;
-                });
+                })
+                .AddAzureQueueStreams<AzureQueueDataAdapterV2>(AZURE_QUEUE_STREAM_PROVIDER_NAME, ob=>ob.Configure(
+                    options =>
+                    {
+                        options.ConnectionString = TestDefaultConfiguration.DataConnectionString;
+                    }))
+                .AddSimpleMessageStreamProvider(SMS_STREAM_PROVIDER_NAME);
             }
         }
 
@@ -84,11 +77,33 @@ namespace UnitTests.Streaming.Reliability
         {
             public void Configure(ISiloHostBuilder hostBuilder)
             {
-                hostBuilder.UseAzureTableMembership(options =>
+                hostBuilder.UseAzureStorageClustering(options =>
                 {
                     options.ConnectionString = TestDefaultConfiguration.DataConnectionString;
                     options.MaxStorageBusyRetries = 3;
-                });
+                })
+                .AddAzureTableGrainStorage("AzureStore", builder => builder.Configure<IOptions<ClusterOptions>>((options, silo) =>
+                    {
+                        options.ConnectionString = TestDefaultConfiguration.DataConnectionString;
+                        options.DeleteStateOnClear = true;
+                    }))
+                .AddMemoryGrainStorage("MemoryStore", options => options.NumStorageGrains = 1)
+                .AddSimpleMessageStreamProvider(SMS_STREAM_PROVIDER_NAME)
+                .AddAzureTableGrainStorage("PubSubStore", builder => builder.Configure<IOptions<ClusterOptions>>((options, silo) =>
+                {
+                    options.DeleteStateOnClear = true;
+                    options.ConnectionString = TestDefaultConfiguration.DataConnectionString;
+                }))
+                .AddAzureQueueStreams<AzureQueueDataAdapterV2>(AZURE_QUEUE_STREAM_PROVIDER_NAME, ob=>ob.Configure(
+                    options =>
+                    {
+                        options.ConnectionString = TestDefaultConfiguration.DataConnectionString;
+                    }))
+                .AddAzureQueueStreams<AzureQueueDataAdapterV2>("AzureQueueProvider2", ob=>ob.Configure(
+                    options =>
+                    {
+                        options.ConnectionString = TestDefaultConfiguration.DataConnectionString;
+                    }));
             }
         }
 
@@ -111,7 +126,7 @@ namespace UnitTests.Streaming.Reliability
             }
             Task.WhenAll(promises).Wait();
 #endif
-            var clusterId = HostedCluster.ClusterId;
+            var clusterId = HostedCluster.Options.ClusterId;
             base.Dispose();
             if (_streamProviderName != null && _streamProviderName.Equals(AZURE_QUEUE_STREAM_PROVIDER_NAME))
             {
@@ -136,15 +151,12 @@ namespace UnitTests.Streaming.Reliability
             StreamTestUtils.LogStartTest(testName, _streamId, _streamProviderName, logger, HostedCluster);
 
             CheckSilosRunning("Before Restart", numExpectedSilos);
-            SiloHandle prim1 = this.HostedCluster.Primary;
-            SiloHandle sec1 = this.HostedCluster.SecondarySilos.First();
-
+            var silos = this.HostedCluster.Silos;
             RestartAllSilos();
 
             CheckSilosRunning("After Restart", numExpectedSilos);
-
-            Assert.NotEqual(prim1, this.HostedCluster.Primary); // Should be different Primary silos after restart
-            Assert.NotEqual(sec1, this.HostedCluster.SecondarySilos.First()); // Should be different Secondary silos after restart
+            
+            Assert.NotEqual(silos, this.HostedCluster.Silos); // Should be different silos after restart
 
             StreamTestUtils.LogEndTest(testName, logger);
         }
@@ -706,8 +718,7 @@ namespace UnitTests.Streaming.Reliability
             output.WriteLine("Consumer grain is located on silo {0} ; Producer on same silo = {1}", siloAddress, sameSilo);
 
             // Kill the silo containing the consumer grain
-            bool isPrimary = siloAddress.Equals(this.HostedCluster.Primary.SiloAddress);
-            SiloHandle siloToKill = isPrimary ? this.HostedCluster.Primary : this.HostedCluster.SecondarySilos.First();
+            SiloHandle siloToKill = this.HostedCluster.Silos.First(s => s.SiloAddress.Equals(siloAddress));
             StopSilo(siloToKill, true, false);
             // Note: Don't restart failed silo for this test case
             // Note: Don't reinitialize client
@@ -745,8 +756,7 @@ namespace UnitTests.Streaming.Reliability
             output.WriteLine("Producer grain is located on silo {0} ; Consumer on same silo = {1}", siloAddress, sameSilo);
 
             // Kill the silo containing the producer grain
-            bool isPrimary = siloAddress.Equals(this.HostedCluster.Primary.SiloAddress);
-            SiloHandle siloToKill = isPrimary ? this.HostedCluster.Primary : this.HostedCluster.SecondarySilos.First();
+            SiloHandle siloToKill = this.HostedCluster.Silos.First(s => s.SiloAddress.Equals(siloAddress));
             StopSilo(siloToKill, true, false);
             // Note: Don't restart failed silo for this test case
             // Note: Don't reinitialize client
@@ -786,8 +796,7 @@ namespace UnitTests.Streaming.Reliability
             output.WriteLine("Consumer grain is located on silo {0} ; Producer on same silo = {1}", siloAddress, sameSilo);
 
             // Restart the silo containing the consumer grain
-            bool isPrimary = siloAddress.Equals(this.HostedCluster.Primary.SiloAddress);
-            SiloHandle siloToKill = isPrimary ? this.HostedCluster.Primary : this.HostedCluster.SecondarySilos.First();
+            SiloHandle siloToKill = this.HostedCluster.Silos.First(s => s.SiloAddress.Equals(siloAddress));
             StopSilo(siloToKill, true, true);
             // Note: Don't reinitialize client
 
@@ -825,8 +834,7 @@ namespace UnitTests.Streaming.Reliability
             output.WriteLine("Producer grain is located on silo {0} ; Consumer on same silo = {1}", siloAddress, sameSilo);
 
             // Restart the silo containing the consumer grain
-            bool isPrimary = siloAddress.Equals(this.HostedCluster.Primary.SiloAddress);
-            SiloHandle siloToKill = isPrimary ? this.HostedCluster.Primary : this.HostedCluster.SecondarySilos.First();
+            SiloHandle siloToKill = this.HostedCluster.Silos.First(s => s.SiloAddress.Equals(siloAddress));
             StopSilo(siloToKill, true, true);
             // Note: Don't reinitialize client
 
@@ -942,7 +950,7 @@ namespace UnitTests.Streaming.Reliability
         private void StopSilo(SiloHandle silo, bool kill, bool restart)
         {
             SiloAddress oldSilo = silo.SiloAddress;
-            bool isPrimary = oldSilo.Equals(this.HostedCluster.Primary.SiloAddress);
+            bool isPrimary = oldSilo.Equals(this.HostedCluster.Primary?.SiloAddress);
             string siloType = isPrimary ? "Primary" : "Secondary";
             string action;
             if (restart)    action = kill ? "Kill+Restart" : "Stop+Restart";

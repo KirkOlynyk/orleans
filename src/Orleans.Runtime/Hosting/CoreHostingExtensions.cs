@@ -1,9 +1,9 @@
 using System;
+using System.Net;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Orleans.Configuration;
 using Orleans.Runtime;
-using Orleans.Runtime.Configuration;
 using Orleans.Runtime.MembershipService;
 
 namespace Orleans.Hosting
@@ -14,135 +14,117 @@ namespace Orleans.Hosting
     public static class CoreHostingExtensions
     {
         /// <summary>
-        /// Configure the container to use Orleans, including the default silo name & services.
+        /// Configure the container to use Orleans.
         /// </summary>
         /// <param name="builder">The host builder.</param>
-        /// <param name="configureOptions">The delegate that configures the options.</param>
         /// <returns>The host builder.</returns>
-        public static ISiloHostBuilder ConfigureOrleans(this ISiloHostBuilder builder, Action<SiloOptions> configureOptions)
+        public static ISiloHostBuilder ConfigureDefaults(this ISiloHostBuilder builder)
         {
-            var optionsConfigurator = configureOptions != null
-                ? ob => ob.Configure(configureOptions)
-                : default(Action<OptionsBuilder<SiloOptions>>);
-
-            return builder.ConfigureOrleans(optionsConfigurator);
-        }
-
-        /// <summary>
-        /// Configure the container to use Orleans, including the default silo name & services.
-        /// </summary>
-        /// <param name="builder">The host builder.</param>
-        /// <param name="configureOptions">The delegate that configures the options using the options builder.</param>
-        /// <returns>The host builder.</returns>
-        public static ISiloHostBuilder ConfigureOrleans(this ISiloHostBuilder builder, Action<OptionsBuilder<SiloOptions>> configureOptions = null)
-        {
-            builder.ConfigureServices((context, services) =>
+            return builder.ConfigureServices((context, services) =>
             {
                 if (!context.Properties.ContainsKey("OrleansServicesAdded"))
                 {
-                    services.PostConfigure<SiloOptions>(options => options.SiloName = options.SiloName
-                                           ?? context.HostingEnvironment.ApplicationName
-                                           ?? $"Silo_{Guid.NewGuid().ToString("N").Substring(0, 5)}");
+                    services.PostConfigure<SiloOptions>(
+                        options => options.SiloName =
+                            options.SiloName
+                            ?? context.HostingEnvironment.ApplicationName
+                            ?? $"Silo_{Guid.NewGuid().ToString("N").Substring(0, 5)}");
 
                     services.TryAddSingleton<Silo>();
                     DefaultSiloServices.AddDefaultServices(context, services);
 
                     context.Properties.Add("OrleansServicesAdded", true);
                 }
-
-                configureOptions?.Invoke(services.AddOptions<SiloOptions>());
             });
-            return builder;
         }
 
         /// <summary>
-        /// Configures the name of this silo.
+        /// Configures a localhost silo for development and testing.
         /// </summary>
-        /// <param name="builder">The host builder.</param>
-        /// <param name="siloName">The silo name.</param>
+        /// <param name="builder">The silo builder.</param>
+        /// <param name="siloPort">The silo port.</param>
+        /// <param name="gatewayPort">The gateway port.</param>
+        /// <param name="primarySiloEndpoint">
+        /// The endpoint of the primary silo, or <see langword="null"/> to use this silo as the primary.
+        /// </param>
+        /// <param name="clusterId">Cluster ID</param>
         /// <returns>The silo builder.</returns>
-        public static ISiloHostBuilder ConfigureSiloName(this ISiloHostBuilder builder, string siloName)
+        public static ISiloHostBuilder UseLocalhostClustering(
+            this ISiloHostBuilder builder,
+            int siloPort = EndpointOptions.DEFAULT_SILO_PORT,
+            int gatewayPort = EndpointOptions.DEFAULT_GATEWAY_PORT,
+            IPEndPoint primarySiloEndpoint = null,
+            string clusterId = ClusterOptions.DevelopmentClusterId)
         {
-            builder.Configure<SiloOptions>(options => options.SiloName = siloName);
-            return builder;
-        }
-
-        /// <summary>
-        /// Specifies the configuration to use for this silo.
-        /// </summary>
-        /// <param name="builder">The host builder.</param>
-        /// <param name="configuration">The configuration.</param>
-        /// <remarks>This method may only be called once per builder instance.</remarks>
-        /// <returns>The silo builder.</returns>
-        public static ISiloHostBuilder UseConfiguration(this ISiloHostBuilder builder, ClusterConfiguration configuration)
-        {
-            if (configuration == null) throw new ArgumentNullException(nameof(configuration));
-            return builder.ConfigureServices((context, services) =>
+            builder.Configure<EndpointOptions>(options =>
             {
-                services.AddLegacyClusterConfigurationSupport(configuration);
+                options.AdvertisedIPAddress = IPAddress.Loopback;
+                options.SiloPort = siloPort;
+                options.GatewayPort = gatewayPort;
             });
+
+            builder.UseDevelopmentClustering(primarySiloEndpoint ?? new IPEndPoint(IPAddress.Loopback, siloPort));
+            builder.Configure<ClusterOptions>(options => options.ClusterId = clusterId);
+            builder.Configure<ClusterMembershipOptions>(options => options.ExpectedClusterSize = 1);
+
+            return builder;
         }
 
         /// <summary>
-        /// Loads <see cref="ClusterConfiguration"/> using <see cref="ClusterConfiguration.StandardLoad"/>.
+        /// Configures the silo to use development-only clustering.
         /// </summary>
-        /// <param name="builder">The host builder.</param>
+        /// <param name="builder"></param>
+        /// <param name="primarySiloEndpoint">
+        /// The endpoint of the primary silo, or <see langword="null"/> to use this silo as the primary.
+        /// </param>
         /// <returns>The silo builder.</returns>
-        public static ISiloHostBuilder LoadClusterConfiguration(this ISiloHostBuilder builder)
+        public static ISiloHostBuilder UseDevelopmentClustering(this ISiloHostBuilder builder, IPEndPoint primarySiloEndpoint)
         {
-            var configuration = new ClusterConfiguration();
-            configuration.StandardLoad();
-            return builder.UseConfiguration(configuration);
-        }
-        
-        /// <summary>
-        /// Configures a localhost silo.
-        /// </summary>
-        /// <param name="builder">The host builder.</param>
-        /// <param name="siloPort">The silo-to-silo communication port.</param>
-        /// <param name="gatewayPort">The client-to-silo communication port.</param>
-        /// <returns>The silo builder.</returns>
-        public static ISiloHostBuilder ConfigureLocalHostPrimarySilo(this ISiloHostBuilder builder, int siloPort = 22222, int gatewayPort = 40000)
-        {
-            builder.ConfigureSiloName(Silo.PrimarySiloName);
-            return builder.UseConfiguration(ClusterConfiguration.LocalhostPrimarySilo(siloPort, gatewayPort));
+            return builder.UseDevelopmentClustering(options => options.PrimarySiloEndpoint = primarySiloEndpoint);
         }
 
         /// <summary>
-        /// Configure silo to use Development membership
+        /// Configures the silo to use development-only clustering.
         /// </summary>
-        public static ISiloHostBuilder UseDevelopmentMembership(this ISiloHostBuilder builder, Action<DevelopmentMembershipOptions> configureOptions)
+        public static ISiloHostBuilder UseDevelopmentClustering(
+            this ISiloHostBuilder builder,
+            Action<DevelopmentClusterMembershipOptions> configureOptions,
+            string clusterId = ClusterOptions.DevelopmentClusterId)
         {
-            return builder.ConfigureServices(services => services.UseDevelopmentMembership(configureOptions));
+            return builder
+                .Configure<ClusterOptions>(options => options.ClusterId = clusterId)
+                .ConfigureServices(
+                services =>
+                {
+                    if (configureOptions != null)
+                    {
+                        services.Configure(configureOptions);
+                    }
+
+                    services.ConfigureFormatter<DevelopmentClusterMembershipOptions>();
+                    services
+                        .AddSingleton<GrainBasedMembershipTable>()
+                        .AddFromExisting<IMembershipTable, GrainBasedMembershipTable>();
+                });
         }
 
         /// <summary>
-        /// Configure silo to use Development membership
+        /// Configures the silo to use development-only clustering.
         /// </summary>
-        public static ISiloHostBuilder UseDevelopmentMembership(this ISiloHostBuilder builder, Action<OptionsBuilder<DevelopmentMembershipOptions>> configureOptions)
+        public static ISiloHostBuilder UseDevelopmentClustering(
+            this ISiloHostBuilder builder,
+            Action<OptionsBuilder<DevelopmentClusterMembershipOptions>> configureOptions,
+            string clusterId = ClusterOptions.DevelopmentClusterId)
         {
-            return builder.ConfigureServices(services => services.UseDevelopmentMembership(configureOptions));
-        }
-
-        /// <summary>
-        /// Configure silo to use Development membership
-        /// </summary>
-        public static IServiceCollection UseDevelopmentMembership(this IServiceCollection services, Action<DevelopmentMembershipOptions> configureOptions)
-        {
-            return services.UseDevelopmentMembership(ob => ob.Configure(configureOptions));
-        }
-
-        /// <summary>
-        /// Configure silo to use Development membership
-        /// </summary>
-        public static IServiceCollection UseDevelopmentMembership(this IServiceCollection services, Action<OptionsBuilder<DevelopmentMembershipOptions>> configureOptions)
-        {
-            configureOptions?.Invoke(services.AddOptions<DevelopmentMembershipOptions>());
-            services
-                .AddSingleton<GrainBasedMembershipTable>()
-                .AddFromExisting<IMembershipTable, GrainBasedMembershipTable>();
-
-            return services;
+            return builder.ConfigureServices(
+                services =>
+                {
+                    configureOptions?.Invoke(services.AddOptions<DevelopmentClusterMembershipOptions>());
+                    services.ConfigureFormatter<DevelopmentClusterMembershipOptions>();
+                    services
+                        .AddSingleton<GrainBasedMembershipTable>()
+                        .AddFromExisting<IMembershipTable, GrainBasedMembershipTable>();
+                });
         }
     }
 }

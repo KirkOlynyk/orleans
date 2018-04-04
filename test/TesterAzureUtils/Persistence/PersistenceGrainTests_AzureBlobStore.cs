@@ -1,17 +1,15 @@
 //#define REREAD_STATE_AFTER_WRITE_FAILED
 
-
 using System;
 using System.Threading.Tasks;
-using Orleans.Storage;
-using Orleans.TestingHost;
+using System.Collections.Generic;
 using Xunit;
 using Xunit.Abstractions;
+using Orleans.TestingHost;
 using Orleans.Runtime.Configuration;
-using System.Collections.Generic;
-using Orleans.Providers;
-using System.Linq;
 using TestExtensions;
+using Orleans.Hosting;
+using Orleans.Configuration;
 
 // ReSharper disable RedundantAssignment
 // ReSharper disable UnusedVariable
@@ -27,17 +25,42 @@ namespace Tester.AzureUtils.Persistence
     {
         public class Fixture : BaseAzureTestClusterFixture
         {
+            private class StorageSiloBuilderConfigurator : ISiloBuilderConfigurator
+            {
+                public void Configure(ISiloHostBuilder hostBuilder)
+                {
+                    hostBuilder.AddAzureBlobGrainStorage("AzureStore", (AzureBlobStorageOptions options) =>
+                    {
+                        options.ConnectionString = TestDefaultConfiguration.DataConnectionString;
+                    })
+                    .AddAzureBlobGrainStorage("AzureStore1", (AzureBlobStorageOptions options) =>
+                    {
+                        options.ConnectionString = TestDefaultConfiguration.DataConnectionString;
+                    })
+                    .AddAzureBlobGrainStorage("AzureStore2", (AzureBlobStorageOptions options) =>
+                    {
+                        options.ConnectionString = TestDefaultConfiguration.DataConnectionString;
+                    })
+                    .AddAzureBlobGrainStorage("AzureStore3", (AzureBlobStorageOptions options) =>
+                    {
+                        options.ConnectionString = TestDefaultConfiguration.DataConnectionString;
+                    })
+                    .AddAzureBlobGrainStorage("GrainStorageForTest", (AzureBlobStorageOptions options) =>
+                    {
+                        options.ConnectionString = TestDefaultConfiguration.DataConnectionString;
+                    })
+                    .AddMemoryGrainStorage("MemoryStore");
+                }
+            }
+
             protected override void ConfigureTestCluster(TestClusterBuilder builder)
             {
-                Guid serviceId = Guid.NewGuid();
                 builder.Options.InitialSilosCount = 4;
                 builder.Options.UseTestClusterMembership = false;
                 builder.ConfigureLegacyConfiguration(legacy =>
                 {
+                    legacy.ClusterConfiguration.Globals.ServiceId = Guid.NewGuid();
                     legacy.ClusterConfiguration.Globals.DataConnectionString = TestDefaultConfiguration.DataConnectionString;
-
-                    legacy.ClusterConfiguration.Globals.ServiceId = serviceId;
-
                     legacy.ClusterConfiguration.Globals.MaxResendCount = 0;
 
                     legacy.ClusterConfiguration.Globals.RegisterStorageProvider<UnitTests.StorageTests.MockStorageProvider>("test1");
@@ -45,14 +68,10 @@ namespace Tester.AzureUtils.Persistence
                         new Dictionary<string, string> {{"Config1", "1"}, {"Config2", "2"}});
                     legacy.ClusterConfiguration.Globals.RegisterStorageProvider<UnitTests.StorageTests.ErrorInjectionStorageProvider>("ErrorInjector");
                     legacy.ClusterConfiguration.Globals.RegisterStorageProvider<UnitTests.StorageTests.MockStorageProvider>("lowercase");
-
-                    legacy.ClusterConfiguration.AddMemoryStorageProvider("MemoryStore");
-                    legacy.ClusterConfiguration.AddAzureBlobStorageProvider("AzureStore", legacy.ClusterConfiguration.Globals.DataConnectionString);
-                    legacy.ClusterConfiguration.AddAzureBlobStorageProvider("AzureStore1", legacy.ClusterConfiguration.Globals.DataConnectionString);
-                    legacy.ClusterConfiguration.AddAzureBlobStorageProvider("AzureStore2", legacy.ClusterConfiguration.Globals.DataConnectionString);
-                    legacy.ClusterConfiguration.AddAzureBlobStorageProvider("AzureStore3", legacy.ClusterConfiguration.Globals.DataConnectionString);
+                    
                 });
                 builder.AddSiloBuilderConfigurator<SiloBuilderConfigurator>();
+                builder.AddSiloBuilderConfigurator<StorageSiloBuilderConfigurator>();
                 builder.AddClientBuilderConfigurator<ClientBuilderConfigurator>();
             }
         }

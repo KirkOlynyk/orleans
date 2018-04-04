@@ -1,34 +1,21 @@
-﻿using Orleans;
 using Orleans.Providers.Streams.Common;
-using Orleans.Runtime;
-using Orleans.ServiceBus.Providers;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
-using UnitTests.GrainInterfaces;
-using UnitTests.Grains;
 
 namespace ServiceBus.Tests.MonitorTests
 {
     public class EventHubReceiverMonitorForTesting : IQueueAdapterReceiverMonitor
     {
-        public static EventHubReceiverMonitorForTesting Instance = new EventHubReceiverMonitorForTesting();
-        public EventHubReceiverMonitorCounters CallCounters;
-        private EventHubReceiverMonitorForTesting()
-        {
-            this.CallCounters = new EventHubReceiverMonitorCounters();
-        }
+        public EventHubReceiverMonitorCounters CallCounters { get; } = new EventHubReceiverMonitorCounters();
+
         public void TrackInitialization(bool success, TimeSpan callTime, Exception exception)
         {
-            Interlocked.Increment(ref this.CallCounters.TrackInitializationCallCounter);
+            if(success) Interlocked.Increment(ref this.CallCounters.TrackInitializationCallCounter);
         }
 
         public void TrackRead(bool success, TimeSpan callTime, Exception exception)
         {
-            Interlocked.Increment(ref this.CallCounters.TrackReadCallCounter);
+            if (success) Interlocked.Increment(ref this.CallCounters.TrackReadCallCounter);
         }
 
         public void TrackMessagesReceived(long count, DateTime? oldestEnqueueTime, DateTime? newestEnqueueTime)
@@ -41,12 +28,13 @@ namespace ServiceBus.Tests.MonitorTests
             Interlocked.Increment(ref this.CallCounters.TrackShutdownCallCounter);
         }
     }
+
     [Serializable]
     public class EventHubReceiverMonitorCounters 
     {
-        public int TrackInitializationCallCounter = 0;
-        public int TrackReadCallCounter = 0;
-        public int TrackMessagesReceivedCallCounter = 0;
-        public int TrackShutdownCallCounter = 0;
+        public int TrackInitializationCallCounter;
+        public int TrackReadCallCounter;
+        public int TrackMessagesReceivedCallCounter;
+        public int TrackShutdownCallCounter;
     }
 }

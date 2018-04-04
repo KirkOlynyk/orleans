@@ -11,9 +11,9 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Orleans;
 using Orleans.Concurrency;
+using Orleans.Configuration;
 using Orleans.Core;
 using Orleans.Runtime;
-using Orleans.Runtime.Configuration;
 using Orleans.Runtime.Scheduler;
 using Orleans.Serialization;
 using UnitTests.GrainInterfaces;
@@ -31,17 +31,13 @@ namespace UnitTests.Grains
                 "   TaskScheduler={0}" + Environment.NewLine
                 + "   RuntimeContext={1}" + Environment.NewLine
                 + "   WorkerPoolThread={2}" + Environment.NewLine
-                + "   WorkerPoolThread.CurrentWorkerThread.ManagedThreadId={3}" + Environment.NewLine
                 + "   Thread.CurrentThread.ManagedThreadId={4}" + Environment.NewLine
                 + "   StackTrace=" + Environment.NewLine
                 + "   {5}",
                 TaskScheduler.Current,
                 RuntimeContext.Current,
-                WorkerPoolThread.CurrentWorkerThread == null ? "null" : WorkerPoolThread.CurrentWorkerThread.Name,
-                WorkerPoolThread.CurrentWorkerThread == null
-                    ? "null"
-                    : WorkerPoolThread.CurrentWorkerThread.ManagedThreadId.ToString(CultureInfo.InvariantCulture),
-                System.Threading.Thread.CurrentThread.ManagedThreadId,
+                Thread.CurrentThread.Name,
+                Thread.CurrentThread.ManagedThreadId,
                 callStack);
         }
     }
@@ -88,9 +84,9 @@ namespace UnitTests.Grains
 
         public Task<string> CheckProviderType()
         {
-            IStorageProvider storageProvider = this.GetStorageProvider(this.ServiceProvider);
-            Assert.NotNull(storageProvider);
-            return Task.FromResult(storageProvider.GetType().FullName);
+            IGrainStorage grainStorage = this.GetGrainStorage(this.ServiceProvider);
+            Assert.NotNull(grainStorage);
+            return Task.FromResult(grainStorage.GetType().FullName);
         }
 
         public Task DoSomething()
@@ -294,22 +290,22 @@ namespace UnitTests.Grains
 
     public class ServiceIdGrain : Grain, IServiceIdGrain
     {
-        private readonly IOptions<SiloOptions> siloOptions;
+        private readonly IOptions<ClusterOptions> clusterOptions;
 
-        public ServiceIdGrain(IOptions<SiloOptions> siloOptions)
+        public ServiceIdGrain(IOptions<ClusterOptions> clusterOptions)
         {
-            this.siloOptions = siloOptions;
+            this.clusterOptions = clusterOptions;
         }
 
-        public Task<Guid> GetServiceId()
+        public Task<string> GetServiceId()
         {
-            return Task.FromResult(siloOptions.Value.ServiceId);
+            return Task.FromResult(clusterOptions.Value.ServiceId);
         }
     }
 
-    [Orleans.Providers.StorageProvider(ProviderName = "AzureStore")]
-    public class AzureStorageTestGrain : Grain<PersistenceTestGrainState>,
-        IAzureStorageTestGrain, IAzureStorageTestGrain_LongKey
+    [Orleans.Providers.StorageProvider(ProviderName = "GrainStorageForTest")]
+    public class GrainStorageTestGrain : Grain<PersistenceTestGrainState>,
+        IGrainStorageTestGrain, IGrainStorageTestGrain_LongKey
     {
         public override Task OnActivateAsync()
         {
@@ -339,9 +335,9 @@ namespace UnitTests.Grains
         }
     }
 
-    [Orleans.Providers.StorageProvider(ProviderName = "AzureStore")]
-    public class AzureStorageGenericGrain<T> : Grain<PersistenceGenericGrainState<T>>,
-        IAzureStorageGenericGrain<T>
+    [Orleans.Providers.StorageProvider(ProviderName = "GrainStorageForTest")]
+    public class GrainStorageGenericGrain<T> : Grain<PersistenceGenericGrainState<T>>,
+        IGrainStorageGenericGrain<T>
     {
         public override Task OnActivateAsync()
         {
@@ -371,9 +367,9 @@ namespace UnitTests.Grains
         }
     }
 
-    [Orleans.Providers.StorageProvider(ProviderName = "AzureStore")]
-    public class AzureStorageTestGrainExtendedKey : Grain<PersistenceTestGrainState>,
-        IAzureStorageTestGrain_GuidExtendedKey, IAzureStorageTestGrain_LongExtendedKey
+    [Orleans.Providers.StorageProvider(ProviderName = "GrainStorageForTest")]
+    public class GrainStorageTestGrainExtendedKey : Grain<PersistenceTestGrainState>,
+        IGrainStorageTestGrain_GuidExtendedKey, IGrainStorageTestGrain_LongExtendedKey
     {
         public override Task OnActivateAsync()
         {

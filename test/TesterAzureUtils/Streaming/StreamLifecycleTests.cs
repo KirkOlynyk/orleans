@@ -11,6 +11,11 @@ using UnitTests.GrainInterfaces;
 using Xunit;
 using Xunit.Abstractions;
 using Tester;
+using Orleans.Hosting;
+using Microsoft.Extensions.Options;
+using Orleans.Configuration;
+using Microsoft.Extensions.Configuration;
+using Orleans.Providers.Streams.AzureQueue;
 
 namespace UnitTests.StreamingTests
 {
@@ -30,25 +35,54 @@ namespace UnitTests.StreamingTests
         protected override void ConfigureTestCluster(TestClusterBuilder builder)
         {
             TestUtils.CheckForAzureStorage();
+            builder.CreateSilo = AppDomainSiloHandle.Create;
+            builder.AddSiloBuilderConfigurator<MySiloBuilderConfigurator>();
+            builder.AddClientBuilderConfigurator<MyClientBuilderConfigurator>();
+        }
 
-            builder.ConfigureLegacyConfiguration(legacy =>
+        private class MyClientBuilderConfigurator : IClientBuilderConfigurator
+        {
+            public void Configure(IConfiguration configuration, IClientBuilder clientBuilder)
             {
-                legacy.ClusterConfiguration.AddMemoryStorageProvider("MemoryStore", numStorageGrains: 1);
+                clientBuilder
+                    .AddSimpleMessageStreamProvider(SmsStreamProviderName)
+                    .AddAzureQueueStreams<AzureQueueDataAdapterV2>(AzureQueueStreamProviderName, ob=>ob.Configure(
+                        options =>
+                        {
+                            options.ConnectionString = TestDefaultConfiguration.DataConnectionString;
+                        }));
+            }
+        }
 
-                legacy.ClusterConfiguration.AddAzureTableStorageProvider("AzureStore", deleteOnClear: true);
-                legacy.ClusterConfiguration.AddAzureTableStorageProvider("PubSubStore", deleteOnClear: true, useJsonFormat: false);
-
-                legacy.ClusterConfiguration.AddSimpleMessageStreamProvider(SmsStreamProviderName, fireAndForgetDelivery: false);
-                legacy.ClusterConfiguration.AddSimpleMessageStreamProvider("SMSProviderDoNotOptimizeForImmutableData",
-                    fireAndForgetDelivery: false,
-                    optimizeForImmutableData: false);
-
-                legacy.ClusterConfiguration.AddAzureQueueStreamProvider(AzureQueueStreamProviderName);
-                legacy.ClusterConfiguration.AddAzureQueueStreamProvider("AzureQueueProvider2");
-
-                legacy.ClientConfiguration.AddSimpleMessageStreamProvider(SmsStreamProviderName, fireAndForgetDelivery: false);
-                legacy.ClientConfiguration.AddAzureQueueStreamProvider(AzureQueueStreamProviderName);
-            });
+        private class MySiloBuilderConfigurator : ISiloBuilderConfigurator
+        {
+            public void Configure(ISiloHostBuilder hostBuilder)
+            {
+                hostBuilder
+                    .AddSimpleMessageStreamProvider(SmsStreamProviderName)
+                    .AddSimpleMessageStreamProvider("SMSProviderDoNotOptimizeForImmutableData", options => options.OptimizeForImmutableData = false)
+                    .AddAzureTableGrainStorage("AzureStore", builder => builder.Configure<IOptions<ClusterOptions>>((options, silo) =>
+                    {
+                        options.ConnectionString = TestDefaultConfiguration.DataConnectionString;
+                        options.DeleteStateOnClear = true;
+                    }))
+                    .AddAzureTableGrainStorage("PubSubStore", builder => builder.Configure<IOptions<ClusterOptions>>((options, silo) =>
+                    {
+                        options.DeleteStateOnClear = true;
+                        options.ConnectionString = TestDefaultConfiguration.DataConnectionString;
+                    }))
+                    .AddAzureQueueStreams<AzureQueueDataAdapterV2>(AzureQueueStreamProviderName, ob=>ob.Configure(
+                        options =>
+                        {
+                            options.ConnectionString = TestDefaultConfiguration.DataConnectionString;
+                        }))
+                    .AddAzureQueueStreams<AzureQueueDataAdapterV2>("AzureQueueProvider2", ob=>ob.Configure(
+                        options =>
+                        {
+                            options.ConnectionString = TestDefaultConfiguration.DataConnectionString;
+                        }))
+                    .AddMemoryGrainStorage("MemoryStore", options => options.NumStorageGrains = 1);
+            }
         }
 
         public StreamLifecycleTests(ITestOutputHelper output)

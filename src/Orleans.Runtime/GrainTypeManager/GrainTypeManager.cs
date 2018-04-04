@@ -4,13 +4,15 @@ using System.Linq;
 using System.Net;
 using System.Reflection;
 using System.Text;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Orleans.ApplicationParts;
 using Orleans.CodeGeneration;
+using Orleans.Configuration;
 using Orleans.GrainDirectory;
-using Orleans.Hosting;
 using Orleans.Metadata;
+using Orleans.Runtime.Placement;
 using Orleans.Serialization;
 using Orleans.Utilities;
 
@@ -40,7 +42,7 @@ namespace Orleans.Runtime
         public GrainTypeManager(
             ILocalSiloDetails siloDetails,
             IApplicationPartManager applicationPartManager,
-            DefaultPlacementStrategy defaultPlacementStrategy,
+            PlacementStrategy defaultPlacementStrategy,
             SerializationManager serializationManager,
             MultiClusterRegistrationStrategyManager multiClusterRegistrationStrategyManager,
             ILogger<GrainTypeManager> logger,
@@ -48,7 +50,7 @@ namespace Orleans.Runtime
         {
             var localTestMode = siloDetails.SiloAddress.Endpoint.Address.Equals(IPAddress.Loopback);
             this.logger = logger;
-            this.defaultPlacementStrategy = defaultPlacementStrategy.PlacementStrategy;
+            this.defaultPlacementStrategy = defaultPlacementStrategy;
             this.serializationManager = serializationManager;
             this.multiClusterRegistrationStrategyManager = multiClusterRegistrationStrategyManager;
             grainInterfaceMap = new GrainInterfaceMap(localTestMode, this.defaultPlacementStrategy);

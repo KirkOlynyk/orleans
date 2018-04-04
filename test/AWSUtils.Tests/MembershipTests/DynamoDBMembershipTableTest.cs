@@ -1,22 +1,15 @@
-﻿using System;
-using System.Threading.Tasks;
-using AWSUtils.Tests.StorageTests;
+﻿using AWSUtils.Tests.StorageTests;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Orleans;
+using Orleans.Clustering.DynamoDB;
+using Orleans.Configuration;
 using Orleans.Messaging;
-using Orleans.Runtime;
-using Orleans.Runtime.Configuration;
-using Orleans.Runtime.Membership;
-using Orleans.Runtime.MembershipService;
-using OrleansAWSUtils.Configuration;
+using System.Threading.Tasks;
 using TestExtensions;
 using UnitTests;
 using UnitTests.MembershipTests;
 using Xunit;
-using OrleansAWSUtils;
-using OrleansAWSUtils.Membership;
-using OrleansAWSUtils.Options;
 
 namespace AWSUtils.Tests.MembershipTests
 {
@@ -43,18 +36,16 @@ namespace AWSUtils.Tests.MembershipTests
         {
             if (!AWSTestConstants.IsDynamoDbAvailable)
                 throw new SkipException("Unable to connect to AWS DynamoDB simulator");
-            var options = new DynamoDBMembershipOptions()
-            {
-                ConnectionString = this.connectionString,
-            };
-            return new DynamoDBMembershipTable(this.loggerFactory, Options.Create(options), this.siloOptions);
+            var options = new DynamoDBClusteringOptions();
+            LegacyDynamoDBMembershipConfigurator.ParseDataConnectionString(this.connectionString, options);
+            return new DynamoDBMembershipTable(this.loggerFactory, Options.Create(options), this.clusterOptions);
         }
 
         protected override IGatewayListProvider CreateGatewayListProvider(ILogger logger)
         {
-            var options = new DynamoDBGatewayListProviderOptions();
+            var options = new DynamoDBGatewayOptions();
             LegacyDynamoDBGatewayListProviderConfigurator.ParseDataConnectionString(this.connectionString, options);
-            return new DynamoDBGatewayListProvider(this.loggerFactory, this.clientConfiguration, Options.Create(options), this.clientOptions);
+            return new DynamoDBGatewayListProvider(this.loggerFactory, Options.Create(options), this.clusterOptions, this.gatewayOptions);
         }
 
         protected override Task<string> GetConnectionString()

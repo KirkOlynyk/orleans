@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
@@ -7,18 +7,17 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.WindowsAzure.Storage.Queue;
-using Orleans.Providers;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Orleans.Providers.Streams.AzureQueue;
 using Orleans.Providers.Streams.Common;
 using Orleans.Runtime;
-using Orleans.Runtime.Configuration;
 using Orleans.Streams;
 using TestExtensions;
 using Xunit;
-using Microsoft.Extensions.DependencyInjection;
 using Xunit.Abstractions;
-using Microsoft.Extensions.Options;
-using Orleans.Hosting;
+using Orleans.Configuration;
+using Orleans.Serialization;
 
 namespace Tester.AzureUtils.Streaming
 {
@@ -41,7 +40,7 @@ namespace Tester.AzureUtils.Streaming
             this.fixture = fixture;
             this.clusterId = MakeClusterId();
             this.loggerFactory = this.fixture.Services.GetService<ILoggerFactory>();
-            BufferPool.InitGlobalBufferPool(Options.Create(new SiloMessagingOptions()));
+            BufferPool.InitGlobalBufferPool(new SiloMessagingOptions());
         }
         
         public void Dispose()
@@ -52,20 +51,19 @@ namespace Tester.AzureUtils.Streaming
         [SkippableFact, TestCategory("Functional"), TestCategory("Halo")]
         public async Task SendAndReceiveFromAzureQueue()
         {
-            var properties = new Dictionary<string, string>
-                {
-                    {AzureQueueAdapterConstants.DataConnectionStringPropertyName, TestDefaultConfiguration.DataConnectionString},
-                    {AzureQueueAdapterConstants.DeploymentIdPropertyName, this.clusterId},
-                    {AzureQueueAdapterConstants.MessageVisibilityTimeoutPropertyName, "00:00:30" }
-                };
-            var config = new ProviderConfiguration(properties, "type", "name");
-
-            var adapterFactory = new AzureQueueAdapterFactory<AzureQueueDataAdapterV2>();
-            adapterFactory.Init(config, AZURE_QUEUE_STREAM_PROVIDER_NAME, this.fixture.Services);
-            await SendAndReceiveFromQueueAdapter(adapterFactory, config);
+            var options = new AzureQueueOptions
+            {
+                ConnectionString = TestDefaultConfiguration.DataConnectionString,
+                MessageVisibilityTimeout = TimeSpan.FromSeconds(30)
+            };
+            var adapterFactory = new AzureQueueAdapterFactory<AzureQueueDataAdapterV2>(AZURE_QUEUE_STREAM_PROVIDER_NAME, options,
+                new HashRingStreamQueueMapperOptions(), new SimpleQueueCacheOptions(), this.fixture.Services, this.fixture.Services.GetService<IOptions<ClusterOptions>>(), 
+                this.fixture.Services.GetRequiredService<SerializationManager>(), loggerFactory);
+            adapterFactory.Init();
+            await SendAndReceiveFromQueueAdapter(adapterFactory);
         }
 
-        private async Task SendAndReceiveFromQueueAdapter(IQueueAdapterFactory adapterFactory, IProviderConfiguration config)
+        private async Task SendAndReceiveFromQueueAdapter(IQueueAdapterFactory adapterFactory)
         {
             IQueueAdapter adapter = await adapterFactory.CreateAdapter();
             IQueueAdapterCache cache = adapterFactory.GetQueueAdapterCache();
@@ -109,7 +107,7 @@ namespace Tester.AzureUtils.Streaming
                                     set.Add(new StreamIdentity(message.StreamGuid, message.StreamGuid.ToString()));
                                     return set;
                                 });
-                            output.WriteLine("Queue {0} received message on stream {1}", queueId,
+                            this.output.WriteLine("Queue {0} received message on stream {1}", queueId,
                                 message.StreamGuid);
                             Assert.Equal(NumMessagesPerBatch / 2, message.GetEvents<int>().Count());  // "Half the events were ints"
                             Assert.Equal(NumMessagesPerBatch / 2, message.GetEvents<string>().Count());  // "Half the events were strings"
@@ -153,7 +151,7 @@ namespace Tester.AzureUtils.Streaming
                         Exception ex;
                         messageCount++;
                         IBatchContainer batch = cursor.GetCurrent(out ex);
-                        output.WriteLine("Token: {0}", batch.SequenceToken);
+                        this.output.WriteLine("Token: {0}", batch.SequenceToken);
                         Assert.True(batch.SequenceToken.CompareTo(lastToken) >= 0, $"order check for event {messageCount}");
                         lastToken = batch.SequenceToken;
                         if (messageCount == 10)
@@ -161,7 +159,7 @@ namespace Tester.AzureUtils.Streaming
                             tenthInCache = batch.SequenceToken;
                         }
                     }
-                    output.WriteLine("On Queue {0} we received a total of {1} message on stream {2}", kvp.Key, messageCount, streamGuid);
+                    this.output.WriteLine("On Queue {0} we received a total of {1} message on stream {2}", kvp.Key, messageCount, streamGuid);
                     Assert.Equal(NumBatches / 2, messageCount);
                     Assert.NotNull(tenthInCache);
 
@@ -172,7 +170,7 @@ namespace Tester.AzureUtils.Streaming
                     {
                         messageCount++;
                     }
-                    output.WriteLine("On Queue {0} we received a total of {1} message on stream {2}", kvp.Key, messageCount, streamGuid);
+                    this.output.WriteLine("On Queue {0} we received a total of {1} message on stream {2}", kvp.Key, messageCount, streamGuid);
                     const int expected = NumBatches / 2 - 10 + 1; // all except the first 10, including the 10th (10 + 1)
                     Assert.Equal(expected, messageCount);
                 }
@@ -195,7 +193,7 @@ namespace Tester.AzureUtils.Streaming
         {
             const string DeploymentIdFormat = "cluster-{0}";
             string now = DateTime.UtcNow.ToString("yyyy-MM-dd-hh-mm-ss-ffff");
-            return String.Format(DeploymentIdFormat, now);
+            return string.Format(DeploymentIdFormat, now);
         }
     }
 }

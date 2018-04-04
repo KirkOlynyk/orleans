@@ -1,16 +1,18 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using Orleans.Runtime.Configuration;
-using Orleans.Runtime.MembershipService;
 using Orleans.Hosting;
+using Orleans.Runtime.MembershipService;
 
 namespace OrleansZooKeeperUtils
 {
     /// <inheritdoc />
     public class LegacyZooKeeperMembershipConfigurator : ILegacyMembershipConfigurator
     {
-        public void ConfigureServices(GlobalConfiguration configuration, IServiceCollection services)
+        public void Configure(object configuration, ISiloHostBuilder builder)
         {
-            services.UseZooKeeperMembership(options => options.ConnectionString = configuration.DataConnectionString);
+            var reader = new GlobalConfigurationReader(configuration);
+            builder.UseZooKeeperClustering(options =>
+            {
+                options.ConnectionString = reader.GetPropertyValue<string>("DataConnectionString");
+            });
         }
     }
 }
