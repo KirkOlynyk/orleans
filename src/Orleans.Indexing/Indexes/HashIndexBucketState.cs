@@ -78,7 +78,7 @@ namespace Orleans.Indexing
             }
             //this condition check is not necessary, because if the flag is set,
             //we will unset it, and if it's unset, we will unset it again, which is a no-op
-            else ///if(!isUniqueIndex || isTentative())
+            else //if(!isUniqueIndex || isTentative())
             {
                 ClearTentativeFlag();
             }

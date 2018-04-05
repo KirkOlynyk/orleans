@@ -31,7 +31,7 @@ namespace Orleans.Indexing
         /// expression should contain an indexed field.
         /// </summary>
         /// <typeparam name="TIGrain">the given grain interface type to query over its active instances</typeparam>
-        /// <param name="gf">the grain factory instance</param>
+        /// <typeparam name="TProperties">the property type to query over</typeparam>
         /// <param name="filterExpr">the filter expression of the query</param>
         /// <param name="queryResultObserver">the observer object to be called on every grain found for the query</param>
         /// <returns>the result of the query</returns>
@@ -44,7 +44,7 @@ namespace Orleans.Indexing
         /// expression should contain an indexed field.
         /// </summary>
         /// <typeparam name="TIGrain">the given grain interface type to query over its active instances</typeparam>
-        /// <param name="gf">the grain factory instance</param>
+        /// <typeparam name="TProperties">the property type to query over</typeparam>
         /// <param name="streamProvider">the stream provider for the query results</param>
         /// <param name="filterExpr">the filter expression of the query</param>
         /// <param name="queryResultObserver">the observer object to be called on every grain found for the query</param>
@@ -57,7 +57,7 @@ namespace Orleans.Indexing
         /// This method queries the active grains for the given grain interface.
         /// </summary>
         /// <typeparam name="TIGrain">the given grain interface type to query over its active instances</typeparam>
-        /// <param name="gf">the grain factory instance</param>
+        /// <typeparam name="TProperty">the property type to query over</typeparam>
         /// <returns>the query to lookup all active grains of a given type</returns>
         public IOrleansQueryable<TIGrain, TProperty> GetActiveGrains<TIGrain, TProperty>() where TIGrain : IIndexableGrain
             => this.GetActiveGrains<TIGrain, TProperty>(this.indexManager.ServiceProvider.GetRequiredServiceByName<IStreamProvider>(IndexingConstants.INDEXING_STREAM_PROVIDER_NAME));
@@ -66,26 +66,26 @@ namespace Orleans.Indexing
         /// This method queries the active grains for the given grain interface.
         /// </summary>
         /// <typeparam name="TIGrain">the given grain interface type to query over its active instances</typeparam>
-        /// <param name="gf">the grain factory instance</param>
+        /// <typeparam name="TProperty">the property type to query over</typeparam>
         /// <param name="streamProvider">the stream provider for the query results</param>
         /// <returns>the query to lookup all active grains of a given type</returns>
         public IOrleansQueryable<TIGrain, TProperty> GetActiveGrains<TIGrain, TProperty>(IStreamProvider streamProvider) where TIGrain : IIndexableGrain
             => new QueryActiveGrainsNode<TIGrain, TProperty>(this, streamProvider);
 
         /// <summary>
-        /// Gets an IndexInterface<K,V> given its name
+        /// Gets an <see cref="IIndexInterface{K,V}"/> given its name
         /// </summary>
         /// <typeparam name="K">key type of the index</typeparam>
         /// <typeparam name="V">value type of the index, which is the grain being indexed</typeparam>
         /// <param name="indexName">the name of the index, which is the identifier of the index</param>
-        /// <returns>the IndexInterface<K,V> with the specified name</returns>
+        /// <returns>the <see cref="IIndexInterface{K,V}"/> with the specified name</returns>
         public IIndexInterface<K, V> GetIndex<K, V>(string indexName) where V : IIndexableGrain
             => (IIndexInterface<K, V>)this.GetIndex(typeof(V), indexName);
 
         /// <summary>
         /// Gets an IndexInterface given its name and grain interface type
         /// </summary>
-        /// <param name="indexName">the name of the index, which is the identifier of the index<</param>
+        /// <param name="indexName">the name of the index, which is the identifier of the index</param>
         /// <param name="iGrainType">the grain interface type that is being indexed</param>
         /// <returns>the IndexInterface with the specified name on the given grain interface type</returns>
         public IIndexInterface GetIndex(Type iGrainType, string indexName)
@@ -128,7 +128,6 @@ namespace Orleans.Indexing
         /// <summary>
         /// This is a helper method for creating an index on a field of an actor.
         /// </summary>
-        /// <param name="gf">The current instance of IGrainFactory</param>
         /// <param name="idxType">The type of index to be created</param>
         /// <param name="indexName">The index name to be created</param>
         /// <param name="isUniqueIndex">Determines whether this is a unique index that needs to be created</param>

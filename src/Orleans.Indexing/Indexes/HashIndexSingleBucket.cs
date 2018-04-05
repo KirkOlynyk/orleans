@@ -102,11 +102,12 @@ namespace Orleans.Indexing
         /// <param name="updatedGrain">the grain that issued the update</param>
         /// <param name="iUpdate">contains the data for the update</param>
         /// <param name="isUnique">whether this is a unique index that we are updating</param>
-        /// <param name="op">the actual type of the operation, which override the operation-type in iUpdate</param>
+        /// <param name="idxMetaData">the index metadata</param>
+        /// <param name="siloAddress">the silo address</param>
         /// <returns>true, if the index update was successful, otherwise false</returns>
-        public async Task<bool> DirectApplyIndexUpdate(IIndexableGrain g, Immutable<IMemberUpdate> iUpdate, bool isUniqueIndex, IndexMetaData idxMetaData, SiloAddress siloAddress)
+        public async Task<bool> DirectApplyIndexUpdate(IIndexableGrain updatedGrain, Immutable<IMemberUpdate> iUpdate, bool isUnique, IndexMetaData idxMetaData, SiloAddress siloAddress)
         {
-            await DirectApplyIndexUpdateNonPersistent(g, iUpdate.Value, isUniqueIndex, idxMetaData, siloAddress);
+            await DirectApplyIndexUpdateNonPersistent(updatedGrain, iUpdate.Value, isUnique, idxMetaData, siloAddress);
             await PersistIndex();
             return true;
         }

@@ -69,16 +69,14 @@ namespace Orleans.Indexing
         /// lookup value from the given expression tree.
         /// </summary>
         /// <param name="exprTree">the given expression tree</param>
-        /// <param name="indexName">the index name that is intended to
-        /// be pulled out of the expression tree.</param>
-        /// <param name="lookupValue">the lookup value that is intended to
-        /// be pulled out of the expression tree.</param>
+        /// <param name="iGrainType">the grain interface type</param>
+        /// <param name="indexName">the index name that is intended to be pulled out of the expression tree.</param>
+        /// <param name="lookupValue">the lookup value that is intended to be pulled out of the expression tree.</param>
         /// <returns>determines whether the operation was successful or not</returns>
         private static bool TryGetIndexNameAndLookupValue(LambdaExpression exprTree, Type iGrainType, out string indexName, out object lookupValue)
         {
-            if (exprTree.Body is BinaryExpression)
+            if (exprTree.Body is BinaryExpression operation)
             {
-                BinaryExpression operation = (BinaryExpression)exprTree.Body;
                 if (operation.NodeType == ExpressionType.Equal)
                 {
                     Expression constantExpr = null;
@@ -120,6 +118,7 @@ namespace Orleans.Indexing
         /// a given field expression.
         /// </summary>
         /// <param name="exprTree">the original expression tree</param>
+        /// <param name="iGrainType">the grain interface type</param>
         /// <param name="fieldExpr">the field expression that should
         /// contain the indexed field</param>
         /// <returns></returns>

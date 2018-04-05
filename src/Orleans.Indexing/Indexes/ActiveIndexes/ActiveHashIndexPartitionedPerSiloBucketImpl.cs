@@ -18,8 +18,9 @@ namespace Orleans.Indexing
     /// Generic SystemTargets are not supported yet, and that's why the
     /// implementation is non-generic.
     /// </summary>
-    /// <typeparam name="K">type of hash-index key</typeparam>
-    /// <typeparam name="V">type of grain that is being indexed</typeparam>
+    //Per comments for IActiveHashIndexPartitionedPerSiloBucket, we cannot use generics here.
+    //<typeparam name="K">type of hash-index key</typeparam>
+    //<typeparam name="V">type of grain that is being indexed</typeparam>
     [StorageProvider(ProviderName = Constants.MEMORY_STORAGE_PROVIDER_NAME)]
     [Reentrant]
     internal class ActiveHashIndexPartitionedPerSiloBucketImpl/*<K, V>*/ : SystemTarget, IActiveHashIndexPartitionedPerSiloBucket/*<K, V> where V : IIndexableGrain*/

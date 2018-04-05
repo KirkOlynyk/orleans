@@ -3,7 +3,7 @@ using Orleans.Concurrency;
 namespace Orleans.Indexing
 {
     /// <summary>
-    /// The interface for HashIndexPartitionedPerKeyBucket<K, V> grain,
+    /// The interface for <see cref="HashIndexPartitionedPerKeyBucket{K, V}"/> grain,
     /// which is created in order to guide Orleans to find the grain instances
     /// more efficiently.
     /// </summary>

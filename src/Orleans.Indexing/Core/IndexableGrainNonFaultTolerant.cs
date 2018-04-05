@@ -322,6 +322,7 @@ namespace Orleans.Indexing
         /// <param name="updates">the dictionary of updates for each index</param>
         /// <param name="iGrainTypes">the grain interface type implemented by this grain</param>
         /// <param name="thisGrain">the grain reference for the current grain</param>
+        /// <param name="workflowID">the workflow identifier</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void ApplyIndexUpdatesLazilyWithoutWait(IDictionary<string, IMemberUpdate> updates,
                                              IList<Type> iGrainTypes,
@@ -340,6 +341,7 @@ namespace Orleans.Indexing
         /// <param name="updates">the dictionary of updates for each index</param>
         /// <param name="iGrainTypes">the grain interface type implemented by this grain</param>
         /// <param name="thisGrain">the grain reference for the current grain</param>
+        /// <param name="workflowID">the workflow identifier</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected Task ApplyIndexUpdatesLazily(IDictionary<string, IMemberUpdate> updates,
                                              IList<Type> iGrainTypes,
@@ -662,28 +664,20 @@ namespace Orleans.Indexing
 
     /// <summary>
     /// This stateless IndexableGrainNonFaultTolerant is the super class of all stateless 
-    /// indexable-grains. But as multiple-inheritance (from both Grain and 
-    /// IndexableGrainNonFaultTolerant<T>) is not allowed, this class extends IndexableGrainNonFaultTolerant<object>
-    /// and disables the storage functionality of Grain<T>
+    /// indexable-grains. But as multiple-inheritance (from both <see cref="Grain{T}"/> and 
+    /// <see cref="IndexableGrainNonFaultTolerant{T}"/>) is not allowed, this class extends
+    /// IndexableGrainNonFaultTolerant{object} and disables the storage functionality of Grain{T}.
     /// </summary>
     public abstract class IndexableGrainNonFaultTolerant<TProperties> : IndexableGrainNonFaultTolerant<object, TProperties>, IIndexableGrain<TProperties> where TProperties : new()
     {
-        protected override Task ClearStateAsync()
-        {
-            return Task.CompletedTask;
-        }
+        protected override Task ClearStateAsync() => Task.CompletedTask;
 
         protected override Task WriteStateAsync()
         {
-            // The only thing that should be done during
-            // WriteStateAsync for a stateless indexable grain
-            // is to update its indexes
+            // The only thing that should be done during WriteStateAsync for a stateless indexable grain is to update its indexes
             return UpdateIndexes(this.Properties, isOnActivate: false, onlyUpdateActiveIndexes: false, writeStateIfConstraintsAreNotViolated: false);
         }
 
-        protected override Task ReadStateAsync()
-        {
-            return Task.CompletedTask;
-        }
+        protected override Task ReadStateAsync() => Task.CompletedTask;
     }
 }

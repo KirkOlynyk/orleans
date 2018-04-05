@@ -28,6 +28,7 @@ namespace Orleans.Indexing
         /// <typeparam name="TGrainInterface">output grain interface type, which iGrainType extends it</typeparam>
         /// <param name="grain">the target grain to be casted</param>
         /// <param name="gf">the grain factory object</param>
+        /// <param name="iGrainType">the grain implementation type</param>
         /// <returns>A strongly typed <c>GrainReference</c> of grain interface type iGrainType casted to TGrainInterface.</returns>
         /// <returns></returns>
         public static TGrainInterface AsReference<TGrainInterface>(this IAddressable grain, IGrainFactory gf, Type iGrainType)

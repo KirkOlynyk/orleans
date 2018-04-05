@@ -18,7 +18,7 @@ namespace Orleans.Indexing
 
         internal SiloAddress SiloAddress => this.Silo.SiloAddress;
 
-        internal IDictionary<Type, IDictionary<string, Tuple<object, object, object>>> Indexes { get; private set; }
+        internal IDictionary<Type, IDictionary<string, Tuple<object, object, object>>> Indexes { get; private set; }    // vv2 TODO strongly type this
 
         // Explicit dependency on ServiceProvider is needed so we can retrieve Silo after ctor returns; see comments on Silo property.
         // Also, in some cases this is passed through non-injected interfaces such as Hash classes.
@@ -58,7 +58,7 @@ namespace Orleans.Indexing
 
         public void Participate(ISiloLifecycle lifecycle)
         {
-            lifecycle.Subscribe(SiloLifecycleStage.RuntimeGrainServices, ct => OnStartAsync(ct), ct => OnStopAsync(ct));
+            lifecycle.Subscribe(this.GetType().FullName, ServiceLifecycleStage.RuntimeGrainServices, ct => OnStartAsync(ct), ct => OnStopAsync(ct));
         }
 
         /// <summary>

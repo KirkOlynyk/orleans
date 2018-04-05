@@ -25,7 +25,7 @@ namespace Orleans.Indexing
     }
 
     /// <summary>
-    /// The top-level class for query objects, which implements <see cref="IOrleansQueryable{T}"/>
+    /// The top-level class for query objects, which implements <see cref="IOrleansQueryable{G, P}"/>
     /// </summary>
     public abstract class QueryGrainsNode<TIGrain, TProperties> : QueryGrainsNode, IOrleansQueryable<TIGrain, TProperties> where TIGrain : IIndexableGrain
     {

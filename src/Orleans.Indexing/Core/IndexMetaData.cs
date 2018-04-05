@@ -19,7 +19,12 @@ namespace Orleans.Indexing
         /// Constructs an IndexMetaData, which currently only
         /// consists of the type of the index
         /// </summary>
-        /// <param name="indexType">the type of the index</param>
+        /// <param name="indexType">Type of the index implementation class.</param>
+        /// <param name="isEager">Determines whether the index should be updated eagerly upon any change in the indexed grains. Otherwise,
+        /// the update propagation happens lazily after applying the update to the grain itself.</param>
+        /// <param name="isUniqueIndex">Determines whether the index should maintain a uniqueness constraint.</param>
+        /// <param name="maxEntriesPerBucket">The maximum number of entries that should be stored in each bucket of a distributed index. This
+        /// option is only considered if the index is a distributed index. Use -1 to declare no limit.</param>
         public IndexMetaData(Type indexType, bool isUniqueIndex, bool isEager, int maxEntriesPerBucket)
         {
             this._indexType = indexType;

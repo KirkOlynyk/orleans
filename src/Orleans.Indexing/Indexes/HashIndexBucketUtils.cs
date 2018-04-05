@@ -11,18 +11,13 @@ namespace Orleans.Indexing
         /// <typeparam name="K">key type</typeparam>
         /// <typeparam name="V">value type</typeparam>
         /// <param name="updatedGrain">the updated grain that is being indexed</param>
-        /// <param name="update">the update information</param>
-        /// <param name="opType">the update operation type, which might be different
-        /// from the update operation type inside the update parameter</param>
+        /// <param name="iUpdate">the update information</param>
         /// <param name="state">the index bucket to be updated</param>
-        /// <param name="isUniqueIndex">a flag to indicate whether the
-        /// hash-index has a uniqueness constraint</param>
+        /// <param name="isUniqueIndex">a flag to indicate whether the hash-index has a uniqueness constraint</param>
+        /// <param name="idxMetaData">the index metadata</param>
         internal static bool UpdateBucket<K, V>(V updatedGrain, IMemberUpdate iUpdate, HashIndexBucketState<K, V> state, bool isUniqueIndex, IndexMetaData idxMetaData) where V : IIndexableGrain
         {
-            K befImg;
-            HashIndexSingleBucketEntry<V> befEntry;
-            bool fixIndexUnavailableOnDelete;
-            return UpdateBucket(updatedGrain, iUpdate, state, isUniqueIndex, idxMetaData, out befImg, out befEntry, out fixIndexUnavailableOnDelete);
+            return UpdateBucket(updatedGrain, iUpdate, state, isUniqueIndex, idxMetaData, out K befImg, out HashIndexSingleBucketEntry<V> befEntry, out bool fixIndexUnavailableOnDelete);
         }
 
         /// <summary>
@@ -33,11 +28,9 @@ namespace Orleans.Indexing
         /// <typeparam name="V">value type</typeparam>
         /// <param name="updatedGrain">the updated grain that is being indexed</param>
         /// <param name="update">the update information</param>
-        /// <param name="opType">the update operation type, which might be different
-        /// from the update operation type inside the update parameter</param>
         /// <param name="state">the index bucket to be updated</param>
-        /// <param name="isUniqueIndex">a flag to indicate whether the 
-        /// hash-index has a uniqueness constraint</param>
+        /// <param name="isUniqueIndex">a flag to indicate whether the hash-index has a uniqueness constraint</param>
+        /// <param name="idxMetaData">the index metadata</param>
         /// <param name="befImg">output parameter: the before-image</param>
         /// <param name="befEntry">output parameter: the index entry containing the before-image</param>
         /// <param name="fixIndexUnavailableOnDelete">output parameter: this variable determines whether

@@ -20,6 +20,7 @@ namespace Orleans.Indexing
         /// <param name="updatedGrain">the grain that issued the update</param>
         /// <param name="iUpdate">contains the data for the update</param>
         /// <param name="isUnique">whether this is a unique index that we are updating</param>
+        /// <param name="idxMetaData">the index metadata</param>
         /// <param name="siloAddress">The address of the silo where the grain resides.</param>
         /// <returns>true, if the index update was successful, otherwise false</returns>
         [AlwaysInterleave]
@@ -29,9 +30,9 @@ namespace Orleans.Indexing
         /// <summary>
         /// This method applies a batch of given updates to the current index.
         /// </summary>
-        /// <param name="iUpdates">a mapping from the grains that issued the
-        /// updates to the list of actual update information</param>
+        /// <param name="iUpdates">a mapping from the grains that issued the updates to the list of actual update information</param>
         /// <param name="isUnique">whether this is a unique index that we are updating</param>
+        /// <param name="idxMetaData">the index metadata</param>
         /// <param name="siloAddress">The address of the silo where the grain resides.</param>
         /// <returns>true, if the index update was successful, otherwise false</returns>
         [AlwaysInterleave]
@@ -55,6 +56,7 @@ namespace Orleans.Indexing
         /// <summary>
         /// This method retrieves the result of a lookup into the hash-index
         /// </summary>
+        /// <param name="result">the stream to search</param>
         /// <param name="key">the lookup key</param>
         /// <returns>the result of lookup into the hash-index</returns>
         [ReadOnly]
@@ -85,6 +87,7 @@ namespace Orleans.Indexing
         /// <summary>
         /// This method retrieves the result of a lookup into the hash-index
         /// </summary>
+        /// <param name="result">the stream to search</param>
         /// <param name="key">the lookup key</param>
         /// <returns>the result of lookup into the hash-index</returns>
         [ReadOnly]
@@ -92,11 +95,9 @@ namespace Orleans.Indexing
         Task Lookup(IOrleansQueryResultStream<V> result, K key);
 
         /// <summary>
-        /// This method is used for extracting the whole result of
-        /// a lookup from an ActiveHashIndexPartitionedPerSiloBucket.
+        /// This method is used for extracting the whole result of a lookup from an ActiveHashIndexPartitionedPerSiloBucket.
         /// 
-        /// TODO: This should not be necessary if we could call streams
-        /// from within a SystemTarget, and the stream were efficient enough
+        /// TODO: This should not be necessary if we could call streams from within a SystemTarget, and the stream were efficient enough
         /// </summary>
         /// <param name="key">the lookup key</param>
         /// <returns>the result of the lookup</returns>

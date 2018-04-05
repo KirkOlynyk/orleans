@@ -5,7 +5,7 @@ using Orleans.Streams;
 namespace Orleans.Indexing
 {
     /// <summary>
-    /// Implements <see cref="IOrleansQueryable"/>
+    /// Implements <see cref="IOrleansQueryable{G, P}"/>
     /// </summary>
     public class QueryIndexedGrainsNode<TIGrain, TProperties> : QueryGrainsNode<TIGrain, TProperties> where TIGrain : IIndexableGrain
     {

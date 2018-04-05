@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Logging;
+using Orleans.Hosting;
 using Orleans.Runtime.Configuration;
 using Orleans.TestingHost;
 using TestExtensions;
@@ -8,12 +10,20 @@ namespace Orleans.Indexing.Tests
     {
         protected TestClusterBuilder ConfigureTestClusterForIndexing(TestClusterBuilder builder)
         {
-            builder.ConfigureLegacyConfiguration(legacy =>
-            {
-                legacy.ClusterConfiguration.AddMemoryStorageProvider(IndexingTestConstants.GrainStore);
-                legacy.ClusterConfiguration.AddMemoryStorageProvider(IndexingTestConstants.MemoryStore);
-            });
+            // Currently nothing
             return builder;
+        }
+
+        internal static ISiloHostBuilder Configure(ISiloHostBuilder hostBuilder)
+        {
+            return hostBuilder.AddMemoryGrainStorage(IndexingTestConstants.GrainStore)
+                              .AddMemoryGrainStorage(IndexingTestConstants.MemoryStore)
+                              .ConfigureLogging(loggingBuilder =>
+                              {
+                                  loggingBuilder.SetMinimumLevel(LogLevel.Information);
+                                  loggingBuilder.AddDebug();
+                              })
+                              .ConfigureApplicationParts(parts => parts.AddApplicationPart(typeof(BaseIndexingFixture).Assembly));
         }
     }
 }

@@ -31,7 +31,7 @@ namespace Orleans.Indexing
         /// <summary>
         /// The constructor for Index.
         /// </summary>
-        /// <param name="IsEager">Determines whether the index should be
+        /// <param name="isEager">Determines whether the index should be
         /// updated eagerly upon any change in the indexed grains. Otherwise,
         /// the update propagation happens lazily after applying the update
         /// to the grain itself.</param>
@@ -42,17 +42,12 @@ namespace Orleans.Indexing
         /// <summary>
         /// The full-option constructor for ActiveIndex.
         /// </summary>
-        /// <param name="IndexType">Type of the index implementation class.</param>
-        /// <param name="IsEager">Determines whether the index should be
-        /// updated eagerly upon any change in the indexed grains. Otherwise,
-        /// the update propagation happens lazily after applying the update
-        /// to the grain itself.</param>
-        /// <param name="IsUnique">Determines whether the index should maintain
-        /// a uniqueness constraint.</param>
-        /// <param name="MaxEntriesPerBucket">The maximum number of entries
-        /// that should be stored in each bucket of a distributed index. This
-        /// option is only considered if the index is a distributed index.
-        /// Use -1 to declare no limit.</param>
+        /// <param name="indexType">Type of the index implementation class.</param>
+        /// <param name="isEager">Determines whether the index should be updated eagerly upon any change in the indexed grains. Otherwise,
+        /// the update propagation happens lazily after applying the update to the grain itself.</param>
+        /// <param name="isUnique">Determines whether the index should maintain a uniqueness constraint.</param>
+        /// <param name="maxEntriesPerBucket">The maximum number of entries that should be stored in each bucket of a distributed index. This
+        /// option is only considered if the index is a distributed index. Use -1 to declare no limit.</param>
         public IndexAttribute(Type indexType, bool isEager = false, bool isUnique = false, int maxEntriesPerBucket = -1)
         {
             this.IndexType = indexType;

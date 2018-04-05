@@ -43,20 +43,17 @@ namespace Orleans.Indexing
         /// The main use-case is when you want to get a grain that its type
         /// is unknown at compile time.
         /// </summary>
-        /// <typeparam name="OutputGrainInterfaceType">The output type of
-        /// the grain</typeparam>
-        /// <param name="gf">the grainFactory instance that this method
-        /// is extending its functionality</param>
+        /// <typeparam name="OutputGrainInterfaceType">The output type of the grain</typeparam>
+        /// <param name="gf">the grainFactory instance that this method is extending its functionality</param>
         /// <param name="grainID">the primary key of the grain</param>
-        /// <param name="grainInterfaceType">the runtime type of the grain
-        /// interface</param>
+        /// <param name="grainInterfaceType">the runtime type of the grain interface</param>
+        /// <param name="grainTypeResolver">resolves the grain type to its class data</param>
         /// <returns>the requested grain with the given grainID and grainInterfaceType</returns>
         public static OutputGrainInterfaceType GetGrain<OutputGrainInterfaceType>(this IGrainFactory gf, IGrainTypeResolver grainTypeResolver, Guid grainID, Type grainInterfaceType)
             where OutputGrainInterfaceType : IGrain
         {
             Type interfaceType = grainInterfaceType;
-            GrainClassData implementation;
-            grainTypeResolver.TryGetGrainClassData(interfaceType, out implementation, "");
+            grainTypeResolver.TryGetGrainClassData(interfaceType, out GrainClassData implementation, "");
             var grainId = TypeCodeMapper.ComposeGrainId(implementation, grainID, interfaceType);
             return default(OutputGrainInterfaceType); //vv2err: .MakeGrainReferenceFromType was made internal in v1: ((GrainFactory)gf).Cast<OutputGrainInterfaceType>(((GrainFactory)gf).MakeGrainReferenceFromType(interfaceType, grainId));
         }
@@ -71,15 +68,11 @@ namespace Orleans.Indexing
         /// is unknown at compile time, and also SuperOutputGrainInterfaceType
         /// is non-generic, while outputGrainInterfaceType is a generic type.
         /// </summary>
-        /// <typeparam name="SuperOutputGrainInterfaceType">The output type of
-        /// the grain</typeparam>
-        /// <param name="gf">the grainFactory instance that this method
-        /// is extending its functionality</param>
+        /// <param name="gf">the grainFactory instance that this methodis extending its functionality</param>
+        /// <param name="grainTypeResolver">resolves the grain type to its class data</param>
         /// <param name="grainID">the primary key of the grain</param>
-        /// <param name="grainInterfaceType">the runtime type of the grain
-        /// interface</param>
-        /// <param name="outputGrainInterfaceType">the type of grain interface
-        /// that should be returned</param>
+        /// <param name="grainInterfaceType">the runtime type of the grain interface</param>
+        /// <param name="outputGrainInterfaceType">the type of grain interface that should be returned</param>
         /// <returns></returns>
         public static IGrain GetGrain(this IGrainFactory gf, IGrainTypeResolver grainTypeResolver, string grainID, Type grainInterfaceType, Type outputGrainInterfaceType)
         {

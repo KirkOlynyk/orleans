@@ -34,8 +34,6 @@ namespace Orleans.Indexing
         /// In order to avoid having any dependency on OrleansIndexing
         /// project, all the required types are loaded via reflection.
         /// </summary>
-        /// <param name="strict">determines the lookup strategy for
-        /// looking into the assemblies</param>
         /// <returns>A dictionary of grain interface types to their
         /// corresponding index information. The index information is
         /// a dictionary from index IDs defined on a grain interface to

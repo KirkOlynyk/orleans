@@ -4,14 +4,6 @@ using System.Collections.Generic;
 namespace Orleans.Indexing
 {
     /// <summary>
-    /// Extension for the built-in <see cref="IObservable"/> and <see cref="IDisposable"/>
-    /// allowing for Orleans specific operations, which represents the results of a query
-    /// </summary>
-    //interface IOrleansQueryResult : IEnumerable, IDisposable
-    //{
-    //}
-
-    /// <summary>
     /// Extension for the built-in <see cref="IEnumerable{T}"/> and <see cref="IDisposable"/>
     /// allowing for Orleans specific operations, which represents the results of a query
     /// 
