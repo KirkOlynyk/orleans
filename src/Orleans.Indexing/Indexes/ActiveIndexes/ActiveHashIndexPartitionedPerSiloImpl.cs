@@ -15,7 +15,7 @@ namespace Orleans.Indexing
     /// <typeparam name="V">type of grain that is being indexed</typeparam>
     [Reentrant]
     //[StatelessWorker]
-    //TODO: because of a bug in OrleansStreams, this grain cannot be StatelessWorker. It should be fixed later. vv2 which bug?
+    //TODO: because of a bug in OrleansStreams, this grain cannot be StatelessWorker. It should be fixed later. TODO which bug?
     //TODO: basically, this class does not even need to be a grain, but it's not possible to call a SystemTarget from a non-grain
     public class ActiveHashIndexPartitionedPerSiloImpl<K, V> : Grain, IActiveHashIndexPartitionedPerSilo<K, V> where V : class, IIndexableGrain
     {
@@ -86,7 +86,7 @@ namespace Orleans.Indexing
             GrainId grainID = GetGrainID(IndexUtils.GetIndexNameFromIndexGrain(this));
 
             // Get and Dispose() all silos
-            Dictionary<SiloAddress, SiloStatus> hosts = await SiloUtils.GetHosts(base.GrainFactory, true);
+            Dictionary<SiloAddress, SiloStatus> hosts = await this.indexManager.GetSiloHosts(true);
             await Task.WhenAll(hosts.Keys.Select(sa => this.indexManager.GetSystemTarget<IActiveHashIndexPartitionedPerSiloBucket>(grainID, sa).Dispose()));
         }
 
@@ -97,7 +97,7 @@ namespace Orleans.Indexing
             logger.Trace($"Eager index lookup called for key = {key}");
 
             //get all silos
-            Dictionary<SiloAddress, SiloStatus> hosts = await SiloUtils.GetHosts(base.GrainFactory, true);
+            Dictionary<SiloAddress, SiloStatus> hosts = await this.indexManager.GetSiloHosts(true);
             IEnumerable<IIndexableGrain>[] queriesToSilos = await Task.WhenAll(GetResultQueries(hosts, key));
             return new OrleansQueryResult<V>(queriesToSilos.SelectMany(res => res.Select(e => e.AsReference<V>())).ToList());
         }
@@ -133,23 +133,20 @@ namespace Orleans.Indexing
             logger.Trace($"Streamed index lookup called for key = {key}");
 
             //get all silos
-            Dictionary<SiloAddress, SiloStatus> hosts = await SiloUtils.GetHosts(base.GrainFactory, true);
-
+            Dictionary<SiloAddress, SiloStatus> hosts = await this.indexManager.GetSiloHosts(true);
             ISet<Task<IOrleansQueryResult<IIndexableGrain>>> queriesToSilos = GetResultQueries(hosts, key);
 
-            //TODO: After fixing the problem with OrleansStream, this part is not needed anymore. vv2 find out what that problem is
+            //TODO: After fixing the problem with OrleansStream, this part is not needed anymore. TODO find out what that problem is
             while (queriesToSilos.Count > 0)
             {
                 // Identify the first task that completes.
                 Task<IOrleansQueryResult<IIndexableGrain>> firstFinishedTask = await Task.WhenAny(queriesToSilos);
 
-                // ***Remove the selected task from the list so that you don't
-                // process it more than once.
+                // ***Remove the selected task from the list so that you don't process it more than once.
                 queriesToSilos.Remove(firstFinishedTask);
 
                 // Await the completed task.
                 IOrleansQueryResult<IIndexableGrain> partialResult = await firstFinishedTask;
-
                 await result.OnNextBatchAsync(partialResult);
             }
             await result.OnCompletedAsync();

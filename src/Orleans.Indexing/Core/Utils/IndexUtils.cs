@@ -64,7 +64,7 @@ namespace Orleans.Indexing
         public static IIndexUpdateGenerator GetIndexUpdateGenerator<T>(this IGrainFactory gf, string indexName) where T : IIndexableGrain
         {
             if (!(IndexHandler.GetIndexes<T>()).TryGetValue(indexName, out Tuple<object, object, object> output))
-                throw new Exception(string.Format("Index \"{0}\" does not exist on {1}.", indexName, typeof(T)));
+                throw new IndexException(string.Format("Index \"{0}\" does not exist on {1}.", indexName, typeof(T)));
             return ((IIndexUpdateGenerator)output.Item3);
         }
 #endif

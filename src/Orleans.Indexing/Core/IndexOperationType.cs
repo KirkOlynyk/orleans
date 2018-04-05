@@ -25,7 +25,7 @@ namespace Orleans.Indexing
                     switch (otherOp)
                     {
                         case IndexOperationType.Insert:
-                            throw new Exception(string.Format("Two subsequent Insert operations are not allowed."));
+                            throw new IndexOperationException(string.Format("Two subsequent Insert operations are not allowed."));
                         case IndexOperationType.Update:
                             return IndexOperationType.Insert;
                         case IndexOperationType.Delete:
@@ -37,7 +37,7 @@ namespace Orleans.Indexing
                     switch (otherOp)
                     {
                         case IndexOperationType.Insert:
-                            throw new Exception(string.Format("An Insert operation after an Update operation is not allowed."));
+                            throw new IndexOperationException(string.Format("An Insert operation after an Update operation is not allowed."));
                         case IndexOperationType.Delete:
                             return otherOp; //i.e., IndexOperationType.Delete
                         default: //case IndexOperationType.None or IndexOperationType.Update
@@ -49,12 +49,12 @@ namespace Orleans.Indexing
                         case IndexOperationType.Insert:
                             return IndexOperationType.Update;
                         case IndexOperationType.Update:
-                            throw new Exception(string.Format("An Update operation after a Delete operation is not allowed."));
+                            throw new IndexOperationException(string.Format("An Update operation after a Delete operation is not allowed."));
                         default: //case IndexOperationType.None or IndexOperationType.Delete
                             return thisOp;
                     }
                 default:
-                    throw new Exception(string.Format("Operation type {0} is not valid", thisOp));
+                    throw new IndexOperationException(string.Format("Operation type {0} is not valid", thisOp));
             }
         }
     }

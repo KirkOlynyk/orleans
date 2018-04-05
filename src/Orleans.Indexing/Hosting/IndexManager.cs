@@ -53,7 +53,7 @@ namespace Orleans.Indexing
             this.SiloStatusOracle = sso;
             this.LoggerFactory = lf;
             this.CachedTypeResolver = new CachedTypeResolver();
-            this.IndexFactory = new IndexFactory(this, this.GrainFactory, this.RuntimeClient);  // vv2 this vs. singleton: is singleton ever used?
+            this.IndexFactory = new IndexFactory(this, this.GrainFactory, this.RuntimeClient);
         }
 
         public void Participate(ISiloLifecycle lifecycle)
@@ -84,6 +84,9 @@ namespace Orleans.Indexing
 
         internal static IndexManager GetIndexManager(IServiceProvider serviceProvider)
             => serviceProvider.GetRequiredService<IndexManager>();
+
+        internal Task<Dictionary<SiloAddress, SiloStatus>> GetSiloHosts(bool onlyActive = false)
+            => this.GrainFactory.GetGrain<IManagementGrain>(0).GetHosts(onlyActive);
 
         internal SiloAddress[] GetSiloAddresses(SiloAddress[] silos)
             => (silos != null && silos.Length > 0)

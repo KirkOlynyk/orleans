@@ -29,7 +29,8 @@ namespace Orleans.Indexing
                 string[] parts = oldParentSystemTargetRef.GetPrimaryKeyString().Split('-');
                 if (parts.Length != 2)
                 {
-                    throw new Exception("The primary key for IndexWorkflowQueueSystemTarget should only contain a single special character '-', while it contains multiple. The primary key is '" + oldParentSystemTargetRef.GetPrimaryKeyString() + "'");
+                    throw new WorkflowIndexException("The primary key for IndexWorkflowQueueSystemTarget should only contain a single special character '-', while it contains multiple." +
+                                                     " The primary key is '" + oldParentSystemTargetRef.GetPrimaryKeyString() + "'");
                 }
 
                 Type grainInterfaceType = this.IndexManager.CachedTypeResolver.ResolveType(parts[0]);

@@ -96,7 +96,7 @@ namespace Orleans.Indexing
             }
 
             // It should never happen that the indexes are not loaded if the index is registered in the index registry
-            throw new Exception(string.Format("Index \"{0}\" does not exist for {1}.", indexName, iGrainType)); //vv2 add IndexingException class
+            throw new IndexException(string.Format("Index \"{0}\" does not exist for {1}.", indexName, iGrainType));
         }
 
         #endregion IIndexFactory
@@ -176,7 +176,7 @@ namespace Orleans.Indexing
             {
                 index = idxType.IsClass
                     ? (IIndexInterface)Activator.CreateInstance(idxType, this.indexManager.ServiceProvider, indexName, isUniqueIndex)
-                    : throw new Exception(string.Format("{0} is neither a grain nor a class. Index \"{1}\" cannot be created.", idxType, indexName));
+                    : throw new IndexException(string.Format("{0} is neither a grain nor a class. Index \"{1}\" cannot be created.", idxType, indexName));
             }
 
             return Tuple.Create((object)index, (object)new IndexMetaData(idxType, isUniqueIndex, isEager, maxEntriesPerBucket), (object)CreateIndexUpdateGenFromProperty(indexedProperty));

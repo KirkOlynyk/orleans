@@ -25,7 +25,7 @@ namespace Orleans.Indexing
 
         internal static GrainClassData GetImplementation(int interfaceId, string grainClassNamePrefix = null)
         {
-            var grainTypeResolver = RuntimeClient.Current.GrainTypeResolver;    //vv2 RuntimeClient
+            var grainTypeResolver = RuntimeClient.Current.GrainTypeResolver;    //vv2err RuntimeClient.Current
             if (grainTypeResolver.TryGetGrainClassData(interfaceId, out GrainClassData implementation, grainClassNamePrefix)) return implementation;
 
             var loadedAssemblies = grainTypeResolver.GetLoadedGrainAssemblies();

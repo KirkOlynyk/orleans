@@ -50,7 +50,7 @@ namespace Orleans.Indexing
         {
             //we never append a punctuation to an existing punctuation.
             //It should never be requested
-            if (IsPunctuation()) throw new Exception("Adding a punctuation to a work-flow queue that already has a punctuation is not allowed.");
+            if (IsPunctuation()) throw new WorkflowIndexException("Adding a punctuation to a work-flow queue that already has a punctuation is not allowed.");
 
             var punctuation = new IndexWorkflowRecordNode();
             Append(punctuation, ref tail);

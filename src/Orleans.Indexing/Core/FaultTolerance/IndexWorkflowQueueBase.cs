@@ -7,9 +7,6 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-#pragma warning disable IDE0006 //vv2 - note: these are suppressed in the project build settings.
-#pragma warning disable IDE0009
-
 namespace Orleans.Indexing
 {
     /// <summary>
@@ -198,10 +195,10 @@ namespace Orleans.Indexing
 
         private IndexWorkflowRecordNode AddPuctuationAt(int batchSize)
         {
-            if (_workflowRecordsTail == null) throw new Exception("Adding a punctuation to an empty work-flow queue is not possible.");
+            if (_workflowRecordsTail == null) throw new WorkflowIndexException("Adding a punctuation to an empty work-flow queue is not possible.");
 
             var punctutationHead = queueState.State.WorkflowRecordsHead;
-            if (punctutationHead.IsPunctuation()) throw new Exception("The element at the head of work-flow queue cannot be a punctuation.");
+            if (punctutationHead.IsPunctuation()) throw new WorkflowIndexException("The element at the head of work-flow queue cannot be a punctuation.");
 
             if (batchSize == int.MaxValue)
             {

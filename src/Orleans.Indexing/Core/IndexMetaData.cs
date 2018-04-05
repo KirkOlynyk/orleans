@@ -34,12 +34,9 @@ namespace Orleans.Indexing
         }
 
         /// <returns>the type of the index</returns>
-        public Type GetIndexType()
-        {
-            return this._indexType;
-        }
+        public Type GetIndexType() => this._indexType;
 
-#if false //vv2 not used?   IsIndexStatelessWorker... can an index be a stateless worker?
+#if false //vv2 not used? IsStatelessWorker
         /// <summary>
         /// Determines whether the index grain is a stateless worker
         /// or not. This piece of information can impact the relationship
@@ -47,49 +44,28 @@ namespace Orleans.Indexing
         /// </summary>
         /// <returns>the result of whether the current index is
         /// a stateless worker or not</returns>
-        public bool IsIndexStatelessWorker()
+        public bool IsIndexStatelessWorker() => IsStatelessWorker(Type.GetType(TypeCodeMapper.GetImplementation(this._indexType).GrainClass));
+
+        /// <summary>
+        /// A helper function that determines whether a given grain type is annotated with StatelessWorker annotation or not.
+        /// </summary>
+        /// <param name="grainType">the grain type to be tested</param>
+        /// <returns>true if the grain type has StatelessWorker annotation, otherwise false.</returns>
+        private static bool IsStatelessWorker(Type grainType)
         {
-            return IsStatelessWorker(Type.GetType(TypeCodeMapper.GetImplementation(this._indexType).GrainClass));
+            bool hasStatelessWorkerAttribute(Type t) => t.GetCustomAttributes(typeof(StatelessWorkerAttribute), true).Length > 0;
+            return hasStatelessWorkerAttribute(grainType) || grainType.GetInterfaces().Any(i => hasStatelessWorkerAttribute(i));
         }
 #endif
 
-        /// <summary>
-        /// A helper function that determines whether a given grain type
-        /// is annotated with StatelessWorker annotation or not.
-        /// </summary>
-        /// <param name="grainType">the grain type to be tested</param>
-        /// <returns>true if the grain type has StatelessWorker annotation,
-        /// otherwise false.</returns>
-        private static bool IsStatelessWorker(Type grainType)
-        {
-            return grainType.GetCustomAttributes(typeof(StatelessWorkerAttribute), true).Length > 0 ||
-                grainType.GetInterfaces()
-                    .Any(i => i.GetCustomAttributes(typeof(StatelessWorkerAttribute), true).Length > 0);
-        }
+        public bool IsUniqueIndex() =>this._isUniqueIndex;
 
-        public bool IsUniqueIndex()
-        {
-            return this._isUniqueIndex;
-        }
+        public bool IsEager() => this._isEager;
 
-        public bool IsEager()
-        {
-            return this._isEager;
-        }
+        public int GetMaxEntriesPerBucket() => this._maxEntriesPerBucket;
 
-        public int GetMaxEntriesPerBucket()
-        {
-            return this._maxEntriesPerBucket;
-        }
+        public bool IsChainedBuckets() => this._maxEntriesPerBucket > 0;
 
-        public bool IsChainedBuckets()
-        {
-            return this._maxEntriesPerBucket > 0;
-        }
-
-        public bool IsCreatingANewBucketNecessary(int currentSize)
-        {
-            return IsChainedBuckets() && currentSize >= this._maxEntriesPerBucket;
-        }
+        public bool IsCreatingANewBucketNecessary(int currentSize) => IsChainedBuckets() && currentSize >= this._maxEntriesPerBucket;
     }
 }

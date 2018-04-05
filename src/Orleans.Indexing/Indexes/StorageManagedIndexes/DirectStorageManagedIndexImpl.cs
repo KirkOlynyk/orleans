@@ -97,7 +97,7 @@ namespace Orleans.Indexing
                 if (implementation == null || (grainImplClass = implementation.GrainClass) == null ||
                         !this.indexManager.CachedTypeResolver.TryResolveType(grainImplClass, out Type implType))
                 {
-                    throw new Exception("The grain implementation class " + implementation.GrainClass + " for grain interface " + TypeUtils.GetFullName(typeof(V)) + " was not resolved.");
+                    throw new IndexException("The grain implementation class " + implementation.GrainClass + " for grain interface " + TypeUtils.GetFullName(typeof(V)) + " was not resolved.");
                 }
                 _storageProvider = null; //vv2err Catalog.SetupStorageProvider not implementable: this.indexManager.RuntimeClient.Catalog.SetupStorageProvider(implType);
             }
