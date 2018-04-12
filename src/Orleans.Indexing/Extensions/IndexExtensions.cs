@@ -53,12 +53,6 @@ namespace Orleans.Indexing
                                           IndexUtils.GetIndexGrainID(iGrainType, indexName));
         }
 
-        internal static GrainId GetSystemTargetGrainId(int typeData, string systemGrainId)
-        {
-            //vv2err UniqueKey: In v1 there was an overload of GrainId.GetSystemTargetGrainId added to Corleans that takes (int, string)
-            //      and creates the UniqueKey using an also-added Category.KeyExtSystemTarget.
-            var key = UniqueKey.NewKey(0, UniqueKey.Category.SystemTarget, typeData, systemGrainId);
-            return GrainId.GetGrainId(key);
-        }
+        internal static GrainId GetSystemTargetGrainId(int typeData, string systemGrainId) => GrainId.GetSystemTargetGrainId(typeData, systemGrainId);
     }
 }

@@ -830,6 +830,12 @@ namespace Orleans.Runtime
             providerRuntime.RegisterSystemTarget(target);
         }
 
+        internal void UnregisterSystemTarget(SystemTarget target)
+        {
+            var providerRuntime = this.Services.GetRequiredService<SiloProviderRuntime>();
+            providerRuntime.UnregisterSystemTarget(target);
+        }
+
         /// <summary> Return dump of diagnostic data from this silo. </summary>
         /// <param name="all"></param>
         /// <returns>Debug data for this silo.</returns>

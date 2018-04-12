@@ -11,8 +11,8 @@ namespace Orleans.Indexing
     /// </summary>
     public class ActiveGrainEnumeratorGrain : Grain, IActiveGrainEnumeratorGrain
     {
-        internal IndexManager IndexManager => IndexManager.GetIndexManager(ref __indexManager, base.ServiceProvider);
-        private IndexManager __indexManager;
+        internal SiloIndexManager SiloIndexManager => IndexManager.GetSiloIndexManager(ref __siloIndexManager, base.ServiceProvider);
+        private SiloIndexManager __siloIndexManager;
 
         public async Task<IEnumerable<Guid>> GetActiveGrains(string grainTypeName)
         {
@@ -23,24 +23,24 @@ namespace Orleans.Indexing
 
         public async Task<IEnumerable<IGrain>> GetActiveGrains(Type grainType)
         {
-            string grainTypeName = TypeCodeMapper.GetImplementation(this.IndexManager.RuntimeClient, grainType).GrainClass;
+            string grainTypeName = TypeCodeMapper.GetImplementation(this.SiloIndexManager.RuntimeClient, grainType).GrainClass;
 
             IEnumerable<Tuple<GrainId, string, int>> activeGrainList = await GetGrainActivations();
             IEnumerable<IGrain> filteredList = activeGrainList.Where(s => s.Item2.Equals(grainTypeName))
-                    .Select(s => GrainFactory.GetGrain<IIndexableGrain>(this.IndexManager.GrainTypeResolver, s.Item1.GetPrimaryKey(), grainType));
+                    .Select(s => GrainFactory.GetGrain<IIndexableGrain>(this.SiloIndexManager.GrainTypeResolver, s.Item1.GetPrimaryKey(), grainType));
             return filteredList.ToList();
         }
 
         private async Task<IEnumerable<Tuple<GrainId, string, int>>> GetGrainActivations()
         {
-            Dictionary<SiloAddress, SiloStatus> hosts = await this.IndexManager.GetSiloHosts(true);
+            Dictionary<SiloAddress, SiloStatus> hosts = await this.SiloIndexManager.GetSiloHosts(true);
             return await GetGrainActivations(hosts.Keys.ToArray());
         }
 
         private async Task<IEnumerable<Tuple<GrainId, string, int>>> GetGrainActivations(SiloAddress[] hostsIds)
         {
-            IEnumerable<Task<List<Tuple<GrainId, string, int>>>> all = this.IndexManager.GetSiloAddresses(hostsIds)
-                    .Select(s => this.IndexManager.GetSiloControlReference(s).GetGrainStatistics());
+            IEnumerable<Task<List<Tuple<GrainId, string, int>>>> all = this.SiloIndexManager.GetSiloAddresses(hostsIds)
+                    .Select(s => this.SiloIndexManager.GetSiloControlReference(s).GetGrainStatistics());
             List<Tuple<GrainId, string, int>>[] result = await Task.WhenAll(all);
             return result.SelectMany(s => s);
         }

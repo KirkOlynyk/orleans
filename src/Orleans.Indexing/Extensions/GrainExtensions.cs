@@ -57,5 +57,15 @@ namespace Orleans.Indexing
 
             throw new ArgumentException(string.Format("AsWeaklyTypedReference has been called on an unexpected type: {0}.", grain.GetType().FullName), "grain");
         }
+
+        internal static GrainReference AsGrainReference(this ISystemTargetBase grain, IGrainReferenceRuntime grainReferenceRuntime, SiloAddress siloAddress, out GrainId grainId)
+        {
+            if (grain is ISystemTargetBase systemTarget)
+            {
+                grainId = systemTarget.GrainId;
+                return GrainReference.FromGrainId(grainId, grainReferenceRuntime, null, siloAddress);
+            }
+            throw new ArgumentException(string.Format("AsWeaklyTypedReference has been called on an unexpected type: {0}.", grain.GetType().FullName), "grain");
+        }
     }
 }

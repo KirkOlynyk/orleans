@@ -1,42 +1,39 @@
-using System;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Orleans.Configuration;
-using Orleans.Hosting;
-using Orleans.Runtime;
+using System;
 
 namespace Orleans.Indexing
 {
-    public static class SiloBuilderExtensions
+    public static class ClientBuilderExtensions
     {
         /// <summary>
-        /// Configure silo to use indexing using a configure action.
+        /// Configure cluster to use indexing using a configure action.
         /// </summary>
-        public static ISiloHostBuilder UseIndexing(this ISiloHostBuilder builder, Action<IndexingOptions> configureOptions)
+        public static IClientBuilder UseIndexing(this IClientBuilder builder, Action<IndexingOptions> configureOptions)
         {
             return builder.ConfigureServices(services => services.UseIndexing(ob => ob.Configure(configureOptions)))
                 .ConfigureApplicationParts(parts => parts.AddApplicationPart(typeof(SiloBuilderExtensions).Assembly));
         }
 
         /// <summary>
-        /// Configure silo to use indexing using a configuration builder.
+        /// Configure cluster to use indexing using a configuration builder.
         /// </summary>
-        public static ISiloHostBuilder UseIndexing(this ISiloHostBuilder builder, Action<OptionsBuilder<IndexingOptions>> configureAction = null)
+        public static IClientBuilder UseIndexing(this IClientBuilder builder, Action<OptionsBuilder<IndexingOptions>> configureAction = null)
         {
             return builder.ConfigureServices(services => services.UseIndexing(configureAction))
                 .ConfigureApplicationParts(parts => parts.AddApplicationPart(typeof(SiloBuilderExtensions).Assembly));
         }
 
         /// <summary>
-        /// Configure silo services to use indexing using a configuration builder.
+        /// Configure cluster services to use indexing using a configuration builder.
         /// </summary>
         private static IServiceCollection UseIndexing(this IServiceCollection services, Action<OptionsBuilder<IndexingOptions>> configureAction = null)
         {
             configureAction?.Invoke(services.AddOptions<IndexingOptions>());
             services.AddSingleton<IndexFactory>()
                     .AddFromExisting<IIndexFactory, IndexFactory>();
-            services.AddSingleton<SiloIndexManager>()
-                    .AddFromExisting<ILifecycleParticipant<ISiloLifecycle>, SiloIndexManager>();
-            services.AddFromExisting<IndexManager, SiloIndexManager>();
+            services.AddSingleton<IndexManager>()
+                    .AddFromExisting<ILifecycleParticipant<IClusterClientLifecycle>, IndexManager>();
             return services;
         }
     }

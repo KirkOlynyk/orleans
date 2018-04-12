@@ -4,61 +4,54 @@ using Orleans.ApplicationParts;
 using Orleans.Runtime;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Orleans.Indexing
 {
-    class IndexManager : ILifecycleParticipant<ISiloLifecycle>
+    /// <summary>
+    /// This class may be instantiated internally in the ClusterClient as well as in the Silo.
+    /// </summary>
+    internal class IndexManager : ILifecycleParticipant<IClusterClientLifecycle>
     {
         internal IApplicationPartManager ApplicationPartManager;
 
-        internal CachedTypeResolver CachedTypeResolver { get; private set; }
-
-        internal SiloAddress SiloAddress => this.Silo.SiloAddress;
+        internal CachedTypeResolver CachedTypeResolver { get; }
 
         internal IDictionary<Type, IDictionary<string, Tuple<object, object, object>>> Indexes { get; private set; }    // vv2 TODO strongly type this
 
-        // Explicit dependency on ServiceProvider is needed so we can retrieve Silo after ctor returns; see comments on Silo property.
+        // Explicit dependency on ServiceProvider is needed so we can retrieve SiloIndexManager.__silo after ctor returns; see comments there.
         // Also, in some cases this is passed through non-injected interfaces such as Hash classes.
-        internal IServiceProvider ServiceProvider { get; private set; }
+        internal IServiceProvider ServiceProvider { get; }
 
-        internal ICatalog Catalog => this.Silo.Catalog;
-
-        internal IGrainFactory GrainFactory => this.RuntimeClient.InternalGrainFactory;
+        internal IGrainFactory GrainFactory { get; }
 
         internal IGrainTypeResolver GrainTypeResolver => this.RuntimeClient.GrainTypeResolver;
 
-        // Note: this.Silo must not be called until the Silo ctor has returned to the ServiceProvider which then
-        // sets the Singleton; if called during the Silo ctor, the Singleton is not found so another Silo is
-        // constructed. Thus we cannot have the Silo on the IndexManager ctor params or retrieve it during
-        // IndexManager ctor, because ISiloLifecycle participants are constructed during the Silo ctor.
-        internal Silo Silo => this.__silo ?? (this.__silo = this.ServiceProvider.GetRequiredService<Silo>());
-        private Silo __silo;
+        // Note: For similar reasons as SiloIndexManager.__silo, __indexFactory relies on 'this' to have returned from its ctor.
+        internal IndexFactory IndexFactory => this.__indexFactory ?? (__indexFactory = this.ServiceProvider.GetRequiredService<IndexFactory>());
+        private IndexFactory __indexFactory;
 
-        internal IRuntimeClient RuntimeClient { get; private set; }
+        internal IRuntimeClient RuntimeClient { get; }
 
-        internal ISiloStatusOracle SiloStatusOracle { get; private set; }
+        internal ILoggerFactory LoggerFactory { get; }
 
-        internal ILoggerFactory LoggerFactory { get; private set; }
-
-        internal IndexFactory IndexFactory { get; private set; }
-
-        public IndexManager(IServiceProvider sp, IApplicationPartManager apm, IRuntimeClient rc, ISiloStatusOracle sso, ILoggerFactory lf)
+        public IndexManager(IServiceProvider sp, IGrainFactory gf, IApplicationPartManager apm, ILoggerFactory lf)
         {
             this.ServiceProvider = sp;
+            this.RuntimeClient = sp.GetRequiredService<IRuntimeClient>();
+            this.GrainFactory = gf;
             this.ApplicationPartManager = apm;
-            this.RuntimeClient = rc;
-            this.SiloStatusOracle = sso;
             this.LoggerFactory = lf;
             this.CachedTypeResolver = new CachedTypeResolver();
-            this.IndexFactory = new IndexFactory(this, this.GrainFactory, this.RuntimeClient);
         }
 
-        public void Participate(ISiloLifecycle lifecycle)
+        public void Participate(IClusterClientLifecycle lifecycle)
         {
-            lifecycle.Subscribe(this.GetType().FullName, ServiceLifecycleStage.RuntimeGrainServices, ct => OnStartAsync(ct), ct => OnStopAsync(ct));
+            if (!(this is SiloIndexManager))
+            {
+                lifecycle.Subscribe(this.GetType().FullName, ServiceLifecycleStage.RuntimeGrainServices, ct => this.OnStartAsync(ct), ct => this.OnStopAsync(ct));
+            }
         }
 
         /// <summary>
@@ -74,10 +67,7 @@ namespace Orleans.Indexing
         /// <summary>
         /// This method is called at the begining of the process of uninitializing runtime services.
         /// </summary>
-        public virtual Task OnStopAsync(CancellationToken ct)
-        {
-            return Task.CompletedTask;  //vv2 nothing yet
-        }
+        public virtual Task OnStopAsync(CancellationToken ct) => Task.CompletedTask;
 
         internal static IndexManager GetIndexManager(ref IndexManager indexManager, IServiceProvider serviceProvider)
             => indexManager ?? (indexManager = GetIndexManager(serviceProvider));
@@ -85,18 +75,10 @@ namespace Orleans.Indexing
         internal static IndexManager GetIndexManager(IServiceProvider serviceProvider)
             => serviceProvider.GetRequiredService<IndexManager>();
 
-        internal Task<Dictionary<SiloAddress, SiloStatus>> GetSiloHosts(bool onlyActive = false)
-            => this.GrainFactory.GetGrain<IManagementGrain>(0).GetHosts(onlyActive);
+        internal static SiloIndexManager GetSiloIndexManager(ref SiloIndexManager siloIndexManager, IServiceProvider serviceProvider)
+            => siloIndexManager ?? (siloIndexManager = GetSiloIndexManager(serviceProvider));
 
-        internal SiloAddress[] GetSiloAddresses(SiloAddress[] silos)
-            => (silos != null && silos.Length > 0)
-                ? silos
-                : this.SiloStatusOracle.GetApproximateSiloStatuses(true).Select(s => s.Key).ToArray();
-
-        internal ISiloControl GetSiloControlReference(SiloAddress siloAddress)
-            => this.GetSystemTarget<ISiloControl>(Constants.SiloControlId, siloAddress);
-
-        internal T GetSystemTarget<T>(GrainId grainId, SiloAddress siloAddress) where T: ISystemTarget
-            => this.RuntimeClient.InternalGrainFactory.GetSystemTarget<T>(grainId, siloAddress);
+        internal static SiloIndexManager GetSiloIndexManager(IServiceProvider serviceProvider)
+            => (SiloIndexManager)serviceProvider.GetRequiredService<IndexManager>();    // Throws an invalid cast operation if we're not on a Silo
     }
 }

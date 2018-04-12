@@ -26,12 +26,12 @@ namespace Orleans.Indexing
     internal class ActiveHashIndexPartitionedPerSiloBucketImpl/*<K, V>*/ : SystemTarget, IActiveHashIndexPartitionedPerSiloBucket/*<K, V> where V : IIndexableGrain*/
     {
         private HashIndexBucketState<K, V> state;
-        private readonly IndexManager indexManager;
+        private readonly SiloIndexManager siloIndexManager;
         private readonly ILogger logger;
         private readonly string _parentIndexName;
 
-        public ActiveHashIndexPartitionedPerSiloBucketImpl(IndexManager indexManager, string parentIndexName, GrainId grainId)
-            : base(grainId, indexManager.SiloAddress, indexManager.LoggerFactory)
+        public ActiveHashIndexPartitionedPerSiloBucketImpl(SiloIndexManager siloIndexManager, string parentIndexName, GrainId grainId)
+            : base(grainId, siloIndexManager.SiloAddress, siloIndexManager.LoggerFactory)
         {
             state = new HashIndexBucketState<K, V>
             {
@@ -41,8 +41,8 @@ namespace Orleans.Indexing
             };
 
             _parentIndexName = parentIndexName;
-            this.indexManager = indexManager;
-            this.logger = indexManager.LoggerFactory.CreateLoggerWithFullCategoryName<ActiveHashIndexPartitionedPerSiloBucketImpl>();
+            this.siloIndexManager = siloIndexManager;
+            this.logger = siloIndexManager.LoggerFactory.CreateLoggerWithFullCategoryName<ActiveHashIndexPartitionedPerSiloBucketImpl>();
         }
 
         public async Task<bool> DirectApplyIndexUpdateBatch(Immutable<IDictionary<IIndexableGrain, IList<IMemberUpdate>>> iUpdates, bool isUnique, IndexMetaData idxMetaData, SiloAddress siloAddress = null)
@@ -154,7 +154,7 @@ namespace Orleans.Indexing
         {
             state.IndexStatus = IndexStatus.Disposed;
             state.IndexMap.Clear();
-            //vv2err UnregisterSystemTarget not available     this.indexManager.Silo.UnregisterSystemTarget(this);
+            this.siloIndexManager.Silo.UnregisterSystemTarget(this);
             return Task.CompletedTask;
         }
 

@@ -367,7 +367,7 @@ namespace Orleans.Indexing
             IList<Type> iGrainTypes = GetIIndexableGrainTypes();
             foreach (var iGrainType in iGrainTypes)
             {
-                var indexes = base.IndexManager.IndexFactory.GetIndexes(iGrainType);
+                var indexes = base.SiloIndexManager.IndexFactory.GetIndexes(iGrainType);
                 foreach (var idxInfo in indexes.Values)
                 {
                     if (idxInfo.Item1 is ITotalIndex)

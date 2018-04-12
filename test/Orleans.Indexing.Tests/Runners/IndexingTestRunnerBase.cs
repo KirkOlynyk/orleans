@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Orleans.TestingHost;
 using System.Threading.Tasks;
 using System.Threading;
+using Orleans.Runtime;
 
 namespace Orleans.Indexing.Tests
 {
@@ -16,11 +17,13 @@ namespace Orleans.Indexing.Tests
 
         internal IGrainFactory GrainFactory => this.fixture.GrainFactory;
 
-        internal IIndexFactory IndexFactory { get; private set; }
+        internal IIndexFactory IndexFactory { get; }
 
         internal ILoggerFactory LoggerFactory { get; }
 
         protected TestCluster HostedCluster => this.fixture.HostedCluster;
+
+        internal IndexingTestSchedulingContext OutsideSchedulingContext = new IndexingTestSchedulingContext();
 
         protected IndexingTestRunnerBase(BaseIndexingFixture fixture, ITestOutputHelper output)
         {
@@ -52,5 +55,22 @@ namespace Orleans.Indexing.Tests
             }
             return Task.CompletedTask;
         }
+    }
+
+    internal class IndexingTestSchedulingContext : ISchedulingContext
+    {
+        public SchedulingContextType ContextType => SchedulingContextType.Activation;
+
+        public string Name => this.GetType().Name;
+
+        public bool IsSystemPriorityContext => false;
+
+        public string DetailedStatus() => this.ToString();
+
+        #region IEquatable<ISchedulingContext> Members
+
+        public bool Equals(ISchedulingContext other) => base.Equals(other);
+
+        #endregion
     }
 }

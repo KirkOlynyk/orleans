@@ -69,6 +69,11 @@ namespace Orleans.Runtime
             return FindOrCreateGrainId(UniqueKey.NewSystemTargetKey(systemGrainId));
         }
 
+        internal static GrainId GetSystemTargetGrainId(int typeData, string systemGrainId)
+        {
+            return FindOrCreateGrainId(UniqueKey.NewSystemTargetKey(systemGrainId, typeData));
+        }
+
         internal static GrainId GetGrainId(long typeCode, long primaryKey, string keyExt=null)
         {
             return FindOrCreateGrainId(UniqueKey.NewKey(primaryKey, 

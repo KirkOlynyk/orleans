@@ -20,21 +20,19 @@ namespace Orleans.Indexing
     //TODO: basically, this class does not even need to be a grain, but it's not possible to call a SystemTarget from a non-grain
     public class DirectStorageManagedIndexImpl<K, V> : Grain, IDirectStorageManagedIndex<K, V> where V : class, IIndexableGrain
     {
-        private IStorageProvider _storageProvider;
+        private IGrainStorage _grainStorage;
         private string grainImplClass;
 
         private string _indexName;
         private string _indexedField;
         //private bool _isUnique; //TODO: missing support for the uniqueness feature
 
-        private readonly IndexManager indexManager;
-        private readonly ILogger logger;
+        // IndexManager (and therefore logger) cannot be set in ctor because Grain activation has not yet set base.Runtime.
+        internal IndexManager IndexManager => IndexManager.GetIndexManager(ref __indexManager, base.ServiceProvider);
+        private IndexManager __indexManager;
 
-        DirectStorageManagedIndexImpl()
-        {
-            this.indexManager = IndexManager.GetIndexManager(base.ServiceProvider);
-            this.logger = this.indexManager.LoggerFactory.CreateLoggerWithFullCategoryName<DirectStorageManagedIndexImpl<K, V>>();
-        }
+        private ILogger Logger => __logger ?? (__logger = this.IndexManager.LoggerFactory.CreateLoggerWithFullCategoryName<DirectStorageManagedIndexImpl<K, V>>());
+        private ILogger __logger;
 
         public override Task OnActivateAsync()
         {
@@ -61,11 +59,11 @@ namespace Orleans.Indexing
 
         private async Task<List<V>> LookupGrainReferences(K key)
         {
-            EnsureStorageProvider();
-            dynamic indexableStorageProvider = _storageProvider;
+            EnsureGrainStorage();
+            dynamic indexableStorageProvider = _grainStorage;
 
             List<GrainReference> resultReferences = await indexableStorageProvider.Lookup<K>(grainImplClass, _indexedField, key);
-            return resultReferences.Select(grain => this.indexManager.RuntimeClient.InternalGrainFactory.Cast<V>(grain)).ToList();
+            return resultReferences.Select(grain => this.IndexManager.RuntimeClient.InternalGrainFactory.Cast<V>(grain)).ToList();
         }
 
         public async Task<V> LookupUnique(K key)
@@ -89,17 +87,17 @@ namespace Orleans.Indexing
 
         async Task<IOrleansQueryResult<IIndexableGrain>> IIndexInterface.Lookup(object key) => await Lookup((K)key);
 
-        private void EnsureStorageProvider()
+        private void EnsureGrainStorage()
         {
-            if (_storageProvider == null)
+            if (_grainStorage == null)
             {
-                var implementation = TypeCodeMapper.GetImplementation(this.indexManager.RuntimeClient, typeof(V));
+                var implementation = TypeCodeMapper.GetImplementation(this.IndexManager.RuntimeClient, typeof(V));
                 if (implementation == null || (grainImplClass = implementation.GrainClass) == null ||
-                        !this.indexManager.CachedTypeResolver.TryResolveType(grainImplClass, out Type implType))
+                        !this.IndexManager.CachedTypeResolver.TryResolveType(grainImplClass, out Type implType))
                 {
                     throw new IndexException("The grain implementation class " + implementation.GrainClass + " for grain interface " + TypeUtils.GetFullName(typeof(V)) + " was not resolved.");
                 }
-                _storageProvider = null; //vv2err Catalog.SetupStorageProvider not implementable: this.indexManager.RuntimeClient.Catalog.SetupStorageProvider(implType);
+                _grainStorage = implType.GetGrainStorage(this.IndexManager.ServiceProvider);
             }
         }
     }

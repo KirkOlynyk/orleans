@@ -10,17 +10,14 @@ namespace Orleans.Indexing
     {
         private IIndexWorkflowQueueHandler _base;
 
-        internal IndexWorkflowQueueHandlerSystemTarget(IndexManager indexManager, Type iGrainType, int queueSeqNum, bool isDefinedAsFaultTolerantGrain)
-            : base(IndexWorkflowQueueHandlerBase.CreateIndexWorkflowQueueHandlerGrainId(iGrainType, queueSeqNum), indexManager.SiloAddress, indexManager.LoggerFactory)
+        internal IndexWorkflowQueueHandlerSystemTarget(SiloIndexManager siloIndexManager, Type iGrainType, int queueSeqNum, bool isDefinedAsFaultTolerantGrain)
+            : base(IndexWorkflowQueueHandlerBase.CreateIndexWorkflowQueueHandlerGrainId(iGrainType, queueSeqNum), siloIndexManager.SiloAddress, siloIndexManager.LoggerFactory)
         {
-            _base = new IndexWorkflowQueueHandlerBase(indexManager, iGrainType, queueSeqNum, indexManager.SiloAddress,
-                                                      isDefinedAsFaultTolerantGrain, this.AsWeaklyTypedReference());
+            GrainReference thisRef = this.AsGrainReference(siloIndexManager.SiloRuntimeClient.GrainReferenceRuntime, siloIndexManager.SiloAddress, out GrainId grainId);
+            _base = new IndexWorkflowQueueHandlerBase(siloIndexManager, iGrainType, queueSeqNum, siloIndexManager.SiloAddress, isDefinedAsFaultTolerantGrain, thisRef);
         }
 
-        public Task HandleWorkflowsUntilPunctuation(Immutable<IndexWorkflowRecordNode> workflowRecordsHead)
-        {
-            return _base.HandleWorkflowsUntilPunctuation(workflowRecordsHead);
-        }
+        public Task HandleWorkflowsUntilPunctuation(Immutable<IndexWorkflowRecordNode> workflowRecordsHead) => _base.HandleWorkflowsUntilPunctuation(workflowRecordsHead);
 
         public Task Initialize(IIndexWorkflowQueue oldParentSystemTarget)
         {

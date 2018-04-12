@@ -24,9 +24,9 @@ using Orleans.Configuration.Overrides;
 namespace Orleans.Storage
 {
     /// <summary>
-    /// Simple stroge storage for writing grain state data to Azure table storage.
+    /// Simple storage for writing grain state data to Azure table storage.
     /// </summary>
-    public class AzureTableGrainStorage : IGrainStorage, IRestExceptionDecoder, ILifecycleParticipant<ISiloLifecycle>
+    public class AzureTableGrainStorage : IExtendedGrainStorage, IRestExceptionDecoder, ILifecycleParticipant<ISiloLifecycle>
     {
         private readonly AzureTableStorageOptions options;
         private readonly ClusterOptions clusterOptions;
@@ -92,6 +92,14 @@ namespace Orleans.Storage
         /// <summary> Write state data function for this storage provider. </summary>
         /// <see cref="IGrainStorage.WriteStateAsync"/>
         public async Task WriteStateAsync(string grainType, GrainReference grainReference, IGrainState grainState)
+            => await WriteStateAsync(grainType, grainReference, grainState, useEtag: true);
+
+        /// <summary> Write state data function for this storage provider without checking the eTag. </summary>
+        /// <see cref="IGrainStorage.WriteStateAsync"/>
+        public async Task WriteStateWithoutEtagCheckAsync(string grainType, GrainReference grainReference, IGrainState grainState)
+            => await WriteStateAsync(grainType, grainReference, grainState, useEtag: false);
+
+        private async Task WriteStateAsync(string grainType, GrainReference grainReference, IGrainState grainState, bool useEtag)
         {
             if (tableDataManager == null) throw new ArgumentException("GrainState-Table property not initialized");
 
@@ -104,13 +112,15 @@ namespace Orleans.Storage
             var record = new GrainStateRecord { Entity = entity, ETag = grainState.ETag };
             try
             {
-                await DoOptimisticUpdate(() => tableDataManager.Write(record), grainType, grainReference, this.options.TableName, grainState.ETag).ConfigureAwait(false);
+                await DoOptimisticUpdate(() => useEtag ? tableDataManager.Write(record) : tableDataManager.WriteWithoutEtagCheck(record),
+                                         grainType, grainReference, this.options.TableName, grainState.ETag).ConfigureAwait(false);
                 grainState.ETag = record.ETag;
             }
             catch (Exception exc)
             {
+                var usedEtag = useEtag ? string.Empty : " (not used)";
                 logger.Error((int)AzureProviderErrorCode.AzureTableProvider_WriteError,
-                    $"Error Writing: GrainType={grainType} Grainid={grainReference} ETag={grainState.ETag} to Table={this.options.TableName} Exception={exc.Message}", exc);
+                    $"Error Writing: GrainType={grainType} Grainid={grainReference} ETag={grainState.ETag}{usedEtag} to Table={this.options.TableName} Exception={exc.Message}", exc);
                 throw;
             }
         }
@@ -444,6 +454,13 @@ namespace Orleans.Storage
                     await tableManager.CreateTableEntryAsync(entity).ConfigureAwait(false) :
                     await tableManager.UpdateTableEntryAsync(entity, record.ETag).ConfigureAwait(false);
                 record.ETag = eTag;
+            }
+
+            public Task WriteWithoutEtagCheck(GrainStateRecord record)
+            {
+                var entity = record.Entity;
+                if (logger.IsEnabled(LogLevel.Trace)) logger.Trace((int)AzureProviderErrorCode.AzureTableProvider_Storage_Writing, "Writing: PartitionKey={0} RowKey={1} to Table={2} with ETag={3} (not used)", entity.PartitionKey, entity.RowKey, TableName, record.ETag);
+                return tableManager.UpsertTableEntryAsync(entity);
             }
 
             public async Task Delete(GrainStateRecord record)

@@ -20,11 +20,11 @@ namespace Orleans.Indexing
         public static OutputGrainInterfaceType GetGrain<OutputGrainInterfaceType>(this IGrainFactory gf, string grainID, Type grainInterfaceType) where OutputGrainInterfaceType : IGrain
         {
             Type interfaceType = grainInterfaceType;
-            var grainTypeResolver = RuntimeClient.Current.GrainTypeResolver;    //vv2err RuntimeClient.Current
+            var grainTypeResolver = RuntimeClient.Current.GrainTypeResolver;    //vv2if RuntimeClient.Current
             grainTypeResolver.TryGetGrainClassData(interfaceType, out GrainClassData implementation, "");
             var grainId = TypeCodeMapper.ComposeGrainId(implementation, grainID, interfaceType);
             return ((GrainFactory)gf).Cast<OutputGrainInterfaceType>(((GrainFactory)gf)
-                .MakeGrainReferenceFromType(interfaceType, grainId)); //vv2err .MakeGrainReferenceFromType was made internal in v1
+                .MakeGrainReferenceFromType(interfaceType, grainId)); //vv2if .MakeGrainReferenceFromType was made internal in v1
         }
 #endif
 
@@ -46,7 +46,7 @@ namespace Orleans.Indexing
             Type interfaceType = grainInterfaceType;
             grainTypeResolver.TryGetGrainClassData(interfaceType, out GrainClassData implementation, "");
             var grainId = TypeCodeMapper.ComposeGrainId(implementation, grainID, interfaceType);
-            return default(OutputGrainInterfaceType); //vv2err: .MakeGrainReferenceFromType was made internal in v1: ((GrainFactory)gf).Cast<OutputGrainInterfaceType>(((GrainFactory)gf).MakeGrainReferenceFromType(interfaceType, grainId));
+            return ((GrainFactory)gf).Cast<OutputGrainInterfaceType>(((GrainFactory)gf).MakeGrainReferenceFromType(interfaceType, grainId));
         }
 
         /// <summary>
@@ -67,7 +67,7 @@ namespace Orleans.Indexing
             Type interfaceType = grainInterfaceType;
             grainTypeResolver.TryGetGrainClassData(interfaceType, out GrainClassData implementation, "");
             var grainId = TypeCodeMapper.ComposeGrainId(implementation, grainID, interfaceType);
-            return null; //vv2err: .MakeGrainReferenceFromType was made internal in v1: (IGrain)((GrainFactory)gf).Cast(((GrainFactory)gf).MakeGrainReferenceFromType(interfaceType, grainId), outputGrainInterfaceType);
+            return (IGrain)((GrainFactory)gf).Cast(((GrainFactory)gf).MakeGrainReferenceFromType(interfaceType, grainId), outputGrainInterfaceType);
         }
     }
 }

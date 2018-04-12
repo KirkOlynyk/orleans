@@ -12,6 +12,7 @@ namespace Orleans.Indexing
     internal class ApplicationPartsIndexableGrainLoader
     {
         private readonly IndexManager indexManager;
+        private readonly SiloIndexManager siloIndexManager;
         private readonly ILogger logger;
 
         private readonly Type indexAttrType = typeof(IndexAttribute);
@@ -20,9 +21,12 @@ namespace Orleans.Indexing
         private readonly PropertyInfo isUniqueProperty = typeof(IndexAttribute).GetProperty(nameof(IndexAttribute.IsUnique));
         private readonly PropertyInfo maxEntriesPerBucketProperty = typeof(IndexAttribute).GetProperty(nameof(IndexAttribute.MaxEntriesPerBucket));
 
+        private bool IsInSilo => this.siloIndexManager != null;
+
         internal ApplicationPartsIndexableGrainLoader(IndexManager indexManager)
         {
             this.indexManager = indexManager;
+            this.siloIndexManager = indexManager as SiloIndexManager;
             this.logger = this.indexManager.LoggerFactory.CreateLoggerWithFullCategoryName<ApplicationPartsIndexableGrainLoader>();
         }
 
@@ -132,9 +136,9 @@ namespace Orleans.Indexing
                     }
                 }
                 result.Add(userDefinedIGrain, indexesOnGrain);
-                if (hasNonEagerIndex)
+                if (this.IsInSilo && hasNonEagerIndex)
                 {
-                    IndexFactory.RegisterIndexWorkflowQueues(this.indexManager, userDefinedIGrain, userDefinedGrainImpl);
+                    IndexFactory.RegisterIndexWorkflowQueues(this.siloIndexManager, userDefinedIGrain, userDefinedGrainImpl);
                 }
             }
         }

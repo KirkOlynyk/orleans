@@ -47,14 +47,12 @@ namespace Orleans.Indexing
         protected virtual TProperties Properties { get { return DefaultCreatePropertiesFromState(); } }
         protected TProperties _props;
 
-        internal IndexManager IndexManager { get; private set; }
-        private readonly ILogger logger;
+        // IndexManager (and therefore logger) cannot be set in ctor because Grain activation has not yet set base.Runtime.
+        internal SiloIndexManager SiloIndexManager => IndexManager.GetSiloIndexManager(ref __siloIndexManager, base.ServiceProvider);
+        private SiloIndexManager __siloIndexManager;
 
-        public IndexableGrainNonFaultTolerant()
-        {
-            this.IndexManager = IndexManager.GetIndexManager(base.ServiceProvider);
-            this.logger = this.IndexManager.LoggerFactory.CreateLoggerWithFullCategoryName<IndexableGrainNonFaultTolerant<TState, TProperties>>();
-        }
+        private ILogger Logger => __logger ?? (__logger = this.SiloIndexManager.LoggerFactory.CreateLoggerWithFullCategoryName<IndexableGrainNonFaultTolerant<TState, TProperties>>());
+        private ILogger __logger;
 
         private TProperties DefaultCreatePropertiesFromState()
         {
@@ -89,10 +87,10 @@ namespace Orleans.Indexing
         /// </summary>
         public override Task OnActivateAsync()
         {
-            this.logger.Trace($"Activating indexable grain {Orleans.GrainExtensions.GetGrainId(this)} of type {this.GetIIndexableGrainTypes()[0]} in silo {this.IndexManager.SiloAddress}.");
+            this.Logger.Trace($"Activating indexable grain {Orleans.GrainExtensions.GetGrainId(this)} of type {this.GetIIndexableGrainTypes()[0]} in silo {this.SiloIndexManager.SiloAddress}.");
 
             //load indexes
-            this._iUpdateGens = this.IndexManager.IndexFactory.GetIndexes(GetIIndexableGrainTypes()[0]);
+            this._iUpdateGens = this.SiloIndexManager.IndexFactory.GetIndexes(GetIIndexableGrainTypes()[0]);
 
             //initialized _isThereAnyUniqueIndex field
             InitUniqueIndexCheck();
@@ -121,7 +119,7 @@ namespace Orleans.Indexing
 
         public override Task OnDeactivateAsync()
         {
-            this.logger.Trace($"Deactivating indexable grain {Orleans.GrainExtensions.GetGrainId(this)} of type {this.GetIIndexableGrainTypes()[0]} in silo {this.IndexManager.SiloAddress}.");
+            this.Logger.Trace($"Deactivating indexable grain {Orleans.GrainExtensions.GetGrainId(this)} of type {this.GetIIndexableGrainTypes()[0]} in silo {this.SiloIndexManager.SiloAddress}.");
             return Task.WhenAll(RemoveFromActiveIndexes(), base.OnDeactivateAsync());
         }
 
@@ -446,7 +444,7 @@ namespace Orleans.Indexing
                         }
 
                         //the update task is added to the list of update tasks
-                        updateIndexTasks.Add(((IIndexInterface)idxInfo.Item1).ApplyIndexUpdate(this.IndexManager.RuntimeClient,
+                        updateIndexTasks.Add(((IIndexInterface)idxInfo.Item1).ApplyIndexUpdate(this.SiloIndexManager.RuntimeClient,
                                              updatedGrain, updateToIndex.AsImmutable(), isUniqueIndex, (IndexMetaData)idxInfo.Item2, base.SiloAddress));
                     }
                 }
@@ -654,7 +652,7 @@ namespace Orleans.Indexing
 
             if (!this.WorkflowQueues.TryGetValue(iGrainType, out IIndexWorkflowQueue workflowQ))
             {
-                workflowQ = IndexWorkflowQueueBase.GetIndexWorkflowQueueFromGrainHashCode(this.IndexManager, iGrainType,
+                workflowQ = IndexWorkflowQueueBase.GetIndexWorkflowQueueFromGrainHashCode(this.SiloIndexManager, iGrainType,
                         this.AsReference<IIndexableGrain>(this.GrainFactory, iGrainType).GetHashCode(), base.SiloAddress);
                 this.WorkflowQueues.Add(iGrainType, workflowQ);
             }

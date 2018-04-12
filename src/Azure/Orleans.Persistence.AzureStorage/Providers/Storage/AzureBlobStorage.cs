@@ -21,7 +21,7 @@ namespace Orleans.Storage
     /// <summary>
     /// Simple storage provider for writing grain state data to Azure blob storage in JSON format.
     /// </summary>
-    public class AzureBlobGrainStorage : IGrainStorage, ILifecycleParticipant<ISiloLifecycle>
+    public class AzureBlobGrainStorage : IExtendedGrainStorage, ILifecycleParticipant<ISiloLifecycle>
     {
         private JsonSerializerSettings jsonSettings;
 
@@ -109,6 +109,16 @@ namespace Orleans.Storage
         /// <summary> Write state data function for this storage provider. </summary>
         /// <see cref="IGrainStorage.WriteStateAsync"/>
         public async Task WriteStateAsync(string grainType, GrainReference grainId, IGrainState grainState)
+            => await this.WriteStateAsync(grainType, grainId, grainState, useEtag: true);
+
+        /// <summary> Write state data function for this storage provider without checking the eTag. </summary>
+        /// <see cref="IGrainStorage.WriteStateAsync"/>
+        public async Task WriteStateWithoutEtagCheckAsync(string grainType, GrainReference grainId, IGrainState grainState)
+            => await this.WriteStateAsync(grainType, grainId, grainState, useEtag: false);
+
+        /// <summary> Write state data function for this storage provider. </summary>
+        /// <see cref="IGrainStorage.WriteStateAsync"/>
+        private async Task WriteStateAsync(string grainType, GrainReference grainId, IGrainState grainState, bool useEtag)
         {
             var blobName = GetBlobName(grainType, grainId);
             try
@@ -120,16 +130,16 @@ namespace Orleans.Storage
                 var blob = container.GetBlockBlobReference(blobName);
                 blob.Properties.ContentType = "application/json";
 
-                await WriteStateAndCreateContainerIfNotExists(grainType, grainId, grainState, json, blob);
+                await WriteStateAndCreateContainerIfNotExists(grainType, grainId, grainState, json, blob, useEtag);
 
                 if (this.logger.IsEnabled(LogLevel.Trace)) this.logger.Trace((int)AzureProviderErrorCode.AzureBlobProvider_Storage_DataRead, "Written: GrainType={0} Grainid={1} ETag={2} to BlobName={3} in Container={4}", grainType, grainId, grainState.ETag, blobName, container.Name);
             }
             catch (Exception ex)
             {
+                var usedEtag = useEtag ? string.Empty : " (not used)";
                 logger.Error((int)AzureProviderErrorCode.AzureBlobProvider_WriteError,
-                    string.Format("Error writing: GrainType={0} Grainid={1} ETag={2} to BlobName={3} in Container={4} Exception={5}", grainType, grainId, grainState.ETag, blobName, container.Name, ex.Message),
+                    string.Format($"Error writing: GrainType={grainType} Grainid={grainId} ETag={grainState.ETag}{usedEtag} to BlobName={blobName} in Container={container.Name} Exception={ex.Message}"),
                     ex);
-
                 throw;
             }
         }
@@ -162,26 +172,28 @@ namespace Orleans.Storage
             }
         }
 
-        private async Task WriteStateAndCreateContainerIfNotExists(string grainType, GrainReference grainId, IGrainState grainState, string json, CloudBlockBlob blob)
+        private async Task WriteStateAndCreateContainerIfNotExists(string grainType, GrainReference grainId, IGrainState grainState, string json, CloudBlockBlob blob, bool useEtag)
         {
             try
             {
-                await DoOptimisticUpdate(() => blob.UploadTextAsync(json, Encoding.UTF8, AccessCondition.GenerateIfMatchCondition(grainState.ETag), null, null),
-                    blob, grainState.ETag).ConfigureAwait(false);
+                await DoOptimisticUpdate(() => blob.UploadTextAsync(json, Encoding.UTF8, useEtag ? AccessCondition.GenerateIfMatchCondition(grainState.ETag) : null, null, null),
+                    blob, grainState.ETag, useEtag).ConfigureAwait(false);
 
                 grainState.ETag = blob.Properties.ETag;
             }
             catch (StorageException exception) when (exception.IsContainerNotFound())
             {
                 // if the container does not exist, create it, and make another attempt
-                if (this.logger.IsEnabled(LogLevel.Trace)) this.logger.Trace((int)AzureProviderErrorCode.AzureBlobProvider_ContainerNotFound, "Creating container: GrainType={0} Grainid={1} ETag={2} to BlobName={3} in Container={4}", grainType, grainId, grainState.ETag, blob.Name, container.Name);
+                var usedEtag = useEtag ? string.Empty : " (not used)";
+                if (this.logger.IsEnabled(LogLevel.Trace)) this.logger.Trace((int)AzureProviderErrorCode.AzureBlobProvider_ContainerNotFound,
+                    $"Creating container: GrainType={grainType} Grainid={grainId} ETag={grainState.ETag}{usedEtag} to BlobName={blob.Name} in Container={container.Name}");
                 await container.CreateIfNotExistsAsync().ConfigureAwait(false);
 
-                await WriteStateAndCreateContainerIfNotExists(grainType, grainId, grainState, json, blob).ConfigureAwait(false);
+                await WriteStateAndCreateContainerIfNotExists(grainType, grainId, grainState, json, blob, useEtag).ConfigureAwait(false);
             }
         }
 
-        private static async Task DoOptimisticUpdate(Func<Task> updateOperation, CloudBlob blob, string currentETag)
+        private static async Task DoOptimisticUpdate(Func<Task> updateOperation, CloudBlob blob, string currentETag, bool useEtag = true)
         {
             try
             {
@@ -189,7 +201,9 @@ namespace Orleans.Storage
             }
             catch (StorageException ex) when (ex.IsPreconditionFailed() || ex.IsConflict())
             {
-                throw new InconsistentStateException($"Blob storage condition not Satisfied.  BlobName: {blob.Name}, Container: {blob.Container?.Name}, CurrentETag: {currentETag}", "Unknown", currentETag, ex);
+                var usedEtag = useEtag ? string.Empty : " (not used)";
+                throw new InconsistentStateException($"Blob storage condition not Satisfied.  BlobName: {blob.Name}, Container: {blob.Container?.Name}, CurrentETag: {currentETag}{usedEtag}",
+                                                      "Unknown", currentETag, ex);
             }
         }
 

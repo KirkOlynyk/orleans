@@ -20,18 +20,17 @@ namespace Orleans.Indexing
     public class ActiveHashIndexPartitionedPerSiloImpl<K, V> : Grain, IActiveHashIndexPartitionedPerSilo<K, V> where V : class, IIndexableGrain
     {
         private IndexStatus _status;
-        private readonly IndexManager indexManager;
-        private readonly ILogger logger;
 
-        public ActiveHashIndexPartitionedPerSiloImpl()
-        {
-            this.indexManager = IndexManager.GetIndexManager(base.ServiceProvider);
-            this.logger = this.indexManager.LoggerFactory.CreateLoggerWithFullCategoryName<ActiveHashIndexPartitionedPerSiloImpl<K, V>>();
-        }
+        // IndexManager (and therefore logger) cannot be set in ctor because Grain activation has not yet set base.Runtime.
+        internal SiloIndexManager SiloIndexManager => IndexManager.GetSiloIndexManager(ref __siloIndexManager, base.ServiceProvider);
+        private SiloIndexManager __siloIndexManager;
 
-        internal static void InitPerSilo(IndexManager indexManager, string indexName, bool isUnique)
+        private ILogger Logger => __logger ?? (__logger = this.SiloIndexManager.LoggerFactory.CreateLoggerWithFullCategoryName<ActiveHashIndexPartitionedPerSiloImpl<K, V>>());
+        private ILogger __logger;
+
+        internal static void InitPerSilo(SiloIndexManager siloIndexManager, string indexName, bool isUnique)
         {
-            indexManager.Silo.RegisterSystemTarget(new ActiveHashIndexPartitionedPerSiloBucketImpl(indexManager, indexName, GetGrainID(indexName)));
+            siloIndexManager.Silo.RegisterSystemTarget(new ActiveHashIndexPartitionedPerSiloBucketImpl(siloIndexManager, indexName, GetGrainID(indexName)));
         }
 
         public override Task OnActivateAsync()
@@ -86,18 +85,18 @@ namespace Orleans.Indexing
             GrainId grainID = GetGrainID(IndexUtils.GetIndexNameFromIndexGrain(this));
 
             // Get and Dispose() all silos
-            Dictionary<SiloAddress, SiloStatus> hosts = await this.indexManager.GetSiloHosts(true);
-            await Task.WhenAll(hosts.Keys.Select(sa => this.indexManager.GetSystemTarget<IActiveHashIndexPartitionedPerSiloBucket>(grainID, sa).Dispose()));
+            Dictionary<SiloAddress, SiloStatus> hosts = await this.SiloIndexManager.GetSiloHosts(true);
+            await Task.WhenAll(hosts.Keys.Select(sa => this.SiloIndexManager.GetSystemTarget<IActiveHashIndexPartitionedPerSiloBucket>(grainID, sa).Dispose()));
         }
 
         public Task<bool> IsAvailable() => Task.FromResult(_status == IndexStatus.Available);
 
         async Task<IOrleansQueryResult<IIndexableGrain>> IIndexInterface.Lookup(object key)
         {
-            logger.Trace($"Eager index lookup called for key = {key}");
+            Logger.Trace($"Eager index lookup called for key = {key}");
 
             //get all silos
-            Dictionary<SiloAddress, SiloStatus> hosts = await this.indexManager.GetSiloHosts(true);
+            Dictionary<SiloAddress, SiloStatus> hosts = await this.SiloIndexManager.GetSiloHosts(true);
             IEnumerable<IIndexableGrain>[] queriesToSilos = await Task.WhenAll(GetResultQueries(hosts, key));
             return new OrleansQueryResult<V>(queriesToSilos.SelectMany(res => res.Select(e => e.AsReference<V>())).ToList());
         }
@@ -113,7 +112,7 @@ namespace Orleans.Indexing
             foreach (SiloAddress siloAddress in hosts.Keys)
             {
                 //query each silo
-                queriesToSilos.Add(this.indexManager.GetSystemTarget<IActiveHashIndexPartitionedPerSiloBucket>(
+                queriesToSilos.Add(this.SiloIndexManager.GetSystemTarget<IActiveHashIndexPartitionedPerSiloBucket>(
                     grainID,
                     siloAddress
                 ).Lookup(/*result, */key)); //TODO: because of a bug in OrleansStream, a SystemTarget cannot work with streams. It should be fixed later.
@@ -130,10 +129,10 @@ namespace Orleans.Indexing
 
         async Task IIndexInterface.Lookup(IOrleansQueryResultStream<IIndexableGrain> result, object key)
         {
-            logger.Trace($"Streamed index lookup called for key = {key}");
+            Logger.Trace($"Streamed index lookup called for key = {key}");
 
             //get all silos
-            Dictionary<SiloAddress, SiloStatus> hosts = await this.indexManager.GetSiloHosts(true);
+            Dictionary<SiloAddress, SiloStatus> hosts = await this.SiloIndexManager.GetSiloHosts(true);
             ISet<Task<IOrleansQueryResult<IIndexableGrain>>> queriesToSilos = GetResultQueries(hosts, key);
 
             //TODO: After fixing the problem with OrleansStream, this part is not needed anymore. TODO find out what that problem is

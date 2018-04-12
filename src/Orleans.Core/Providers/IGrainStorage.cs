@@ -34,6 +34,20 @@ namespace Orleans.Storage
     }
 
     /// <summary>
+    /// Interface to be implemented for an extended storage able to write Orleans grain state data
+    /// without checking its ETag, in addition to the read and write operations of the storage interface.
+    /// </summary>
+    public interface IExtendedGrainStorage : IGrainStorage
+    {
+        /// <summary>Write data function for this storage that does not check ETag before update (if there already exists a prior state).</summary>
+        /// <param name="grainType">Type of this grain [fully qualified class name]</param>
+        /// <param name="grainReference">Grain reference object for this grain.</param>
+        /// <param name="grainState">State data object to be written for this grain.</param>
+        /// <returns>Completion promise for the Write operation on the specified grain.</returns>
+        Task WriteStateWithoutEtagCheckAsync(string grainType, GrainReference grainReference, IGrainState grainState);
+    }
+
+    /// <summary>
     /// Interface to be optionally implemented by storage to return richer exception details.
     /// TODO: Remove this interface.  Move to decorator pattern for monitoring purposes. - jbragg
     /// </summary>
