@@ -10,19 +10,19 @@ namespace Orleans.Indexing
     internal class IndexWorkflowQueueHandlerBase : IIndexWorkflowQueueHandler
     {
         private IIndexWorkflowQueue __workflowQueue;
-        private IIndexWorkflowQueue WorkflowQueue { get { return __workflowQueue ?? InitIndexWorkflowQueue(); } }
+        private IIndexWorkflowQueue WorkflowQueue => __workflowQueue ?? InitIndexWorkflowQueue();
 
         private int _queueSeqNum;
         private Type _iGrainType;
 
         private bool _isDefinedAsFaultTolerantGrain;
         private bool _hasAnyTotalIndex;
-        private bool HasAnyTotalIndex { get { if (__indexes == null) { InitIndexes(); } return _hasAnyTotalIndex; } }
-        private bool IsFaultTolerant { get { return _isDefinedAsFaultTolerantGrain && HasAnyTotalIndex; } }
+        private bool HasAnyTotalIndex { get { EnsureIndexes(); return _hasAnyTotalIndex; } }
+        private bool IsFaultTolerant => _isDefinedAsFaultTolerantGrain && HasAnyTotalIndex;
 
         private IDictionary<string, Tuple<object, object, object>> __indexes;
 
-        private IDictionary<string, Tuple<object, object, object>> Indexes { get { return __indexes ?? InitIndexes(); } }
+        private IDictionary<string, Tuple<object, object, object>> Indexes => EnsureIndexes();
 
         private SiloAddress _silo;
         private IndexManager _indexManager;
@@ -48,11 +48,7 @@ namespace Orleans.Indexing
                 var workflows = workflowRecords.Value;
                 while (workflows != null)
                 {
-                    Dictionary<IIndexableGrain, HashSet<Guid>> grainsToActiveWorkflows = null;
-                    if (IsFaultTolerant)
-                    {
-                        grainsToActiveWorkflows = await GetActiveWorkflowsListsFromGrains(workflows);
-                    }
+                    var grainsToActiveWorkflows = IsFaultTolerant ? await GetActiveWorkflowsListsFromGrains(workflows) : null;
                     var updatesToIndexes = CreateAMapForUpdatesToIndexes();
                     PopulateUpdatesToIndexes(workflows, updatesToIndexes, grainsToActiveWorkflows);
                     await Task.WhenAll(PrepareIndexUpdateTasks(updatesToIndexes));
@@ -70,14 +66,7 @@ namespace Orleans.Indexing
         }
 
         private IList<Task> RemoveFromActiveWorkflowsInGrainsTasks(Dictionary<IIndexableGrain, HashSet<Guid>> grainsToActiveWorkflows)
-        {
-            IList<Task> tasks = new List<Task>();
-            foreach (var pair in grainsToActiveWorkflows)
-            {
-                tasks.Add(pair.Key.RemoveFromActiveWorkflowIds(pair.Value));
-            }
-            return tasks;
-        }
+            => grainsToActiveWorkflows.Select(pair => pair.Key.RemoveFromActiveWorkflowIds(pair.Value)).ToList();
 
         private IList<Task<bool>> PrepareIndexUpdateTasks(Dictionary<string, IDictionary<IIndexableGrain, IList<IMemberUpdate>>> updatesToIndexes)
         {
@@ -195,45 +184,26 @@ namespace Orleans.Indexing
             return updatesToIndexes;
         }
 
-        private IDictionary<string, Tuple<object, object, object>> InitIndexes()
+        private IDictionary<string, Tuple<object, object, object>> EnsureIndexes()
         {
-            __indexes = _indexManager.IndexFactory.GetIndexes(_iGrainType);
-            foreach (var idxInfo in __indexes.Values)
+            if (__indexes == null)
             {
-                if (idxInfo.Item1 is ITotalIndex)
-                {
-                    _hasAnyTotalIndex = true;
-                    return __indexes;
-                }
+                __indexes = _indexManager.IndexFactory.GetIndexes(_iGrainType);
+                _hasAnyTotalIndex = __indexes.Values.Any(idxInfo => idxInfo.Item1 is ITotalIndex);
             }
             return __indexes;
         }
 
         private IIndexWorkflowQueue InitIndexWorkflowQueue()
-        {
-            __workflowQueue = _parent.IsSystemTarget
-                ? _indexManager.RuntimeClient.InternalGrainFactory.GetSystemTarget<IIndexWorkflowQueue>(IndexWorkflowQueueBase.CreateIndexWorkflowQueueGrainId(_iGrainType, _queueSeqNum), _silo)
-                : _indexManager.GrainFactory.GetGrain<IIndexWorkflowQueue>(IndexWorkflowQueueBase.CreateIndexWorkflowQueuePrimaryKey(_iGrainType, _queueSeqNum));
-            return __workflowQueue;
-        }
+            => __workflowQueue = _parent.IsSystemTarget
+                    ? _indexManager.RuntimeClient.InternalGrainFactory.GetSystemTarget<IIndexWorkflowQueue>(IndexWorkflowQueueBase.CreateIndexWorkflowQueueGrainId(_iGrainType, _queueSeqNum), _silo)
+                    : _indexManager.GrainFactory.GetGrain<IIndexWorkflowQueue>(IndexWorkflowQueueBase.CreateIndexWorkflowQueuePrimaryKey(_iGrainType, _queueSeqNum));
 
         public static GrainId CreateIndexWorkflowQueueHandlerGrainId(Type grainInterfaceType, int queueSeqNum)
-        {
-            return IndexExtensions.GetSystemTargetGrainId(IndexingConstants.INDEX_WORKFLOW_QUEUE_HANDLER_SYSTEM_TARGET_TYPE_CODE,
-                                                          IndexWorkflowQueueBase.CreateIndexWorkflowQueuePrimaryKey(grainInterfaceType, queueSeqNum));
-        }
-
-        public IIndexWorkflowQueueHandler GetIndexWorkflowQueueFromGrainHashCode(Type grainInterfaceType, int grainHashCode, SiloAddress siloAddress)   //vv2 TODO--is this used?
-        {
-            return _indexManager.RuntimeClient.InternalGrainFactory.GetSystemTarget<IIndexWorkflowQueueHandler>(
-                CreateIndexWorkflowQueueHandlerGrainId(grainInterfaceType, grainHashCode),
-                siloAddress
-            );
-        }
+            => IndexExtensions.GetSystemTargetGrainId(IndexingConstants.INDEX_WORKFLOW_QUEUE_HANDLER_SYSTEM_TARGET_TYPE_CODE,
+                                                      IndexWorkflowQueueBase.CreateIndexWorkflowQueuePrimaryKey(grainInterfaceType, queueSeqNum));
 
         public Task Initialize(IIndexWorkflowQueue oldParentSystemTarget)
-        {
-            throw new NotSupportedException();
-        }
+            => throw new NotSupportedException();
     }
 }

@@ -4,6 +4,7 @@ using Orleans.Runtime;
 using Orleans.Storage;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -46,9 +47,8 @@ namespace Orleans.Indexing
         private int _queueSeqNum;
         private Type _iGrainType;
 
-        //0: uninitialized, 1: has some Total Indexes, -1: does not have any Total Index
-        private sbyte __hasAnyTotalIndex;
-        private bool HasAnyTotalIndex => __hasAnyTotalIndex == 0 ? InitHasAnyTotalIndex() : __hasAnyTotalIndex > 0;
+        private bool HasAnyTotalIndex => GetHasAnyTotalIndex();
+        private bool? __hasAnyTotalIndex = null;
 
         private bool _isDefinedAsFaultTolerantGrain;
         private bool IsFaultTolerant => _isDefinedAsFaultTolerantGrain && HasAnyTotalIndex;
@@ -80,11 +80,10 @@ namespace Orleans.Indexing
 
         public const int BATCH_SIZE = int.MaxValue;
 
-        public static int NUM_AVAILABLE_INDEX_WORKFLOW_QUEUES { get { return Environment.ProcessorCount; } }
+        public static int NUM_AVAILABLE_INDEX_WORKFLOW_QUEUES => Environment.ProcessorCount;
 
         private SiloAddress _silo;
         private IndexManager _siloIndexManager;
-
         private GrainReference _parent;
 
         internal IndexWorkflowQueueBase(SiloIndexManager siloIndexManager, Type grainInterfaceType, int queueSequenceNumber, SiloAddress silo,
@@ -100,7 +99,6 @@ namespace Orleans.Indexing
             _isHandlerWorkerIdle = 1;
 
             _isDefinedAsFaultTolerantGrain = isDefinedAsFaultTolerantGrain;
-            __hasAnyTotalIndex = 0;
 
             _writeLock = new AsyncLock();
             _writeRequestIdGen = 0;
@@ -111,14 +109,11 @@ namespace Orleans.Indexing
             _parent = parent;
         }
 
-        private IIndexWorkflowQueueHandler InitWorkflowQueueHandler()
-        {
-            __handler = _parent.IsSystemTarget
+        private IIndexWorkflowQueueHandler InitWorkflowQueueHandler() 
+            => __handler = _parent.IsSystemTarget
                 ? _siloIndexManager.RuntimeClient.InternalGrainFactory.GetSystemTarget<IIndexWorkflowQueueHandler>(
                         IndexWorkflowQueueHandlerBase.CreateIndexWorkflowQueueHandlerGrainId(_iGrainType, _queueSeqNum), _silo)
                 : _siloIndexManager.GrainFactory.GetGrain<IIndexWorkflowQueueHandler>(CreateIndexWorkflowQueuePrimaryKey(_iGrainType, _queueSeqNum));
-            return __handler;
-        }
 
         public Task AddAllToQueue(Immutable<List<IndexWorkflowRecord>> workflowRecords)
         {
@@ -291,25 +286,17 @@ namespace Orleans.Indexing
             }
         }
 
-        private bool InitHasAnyTotalIndex() // vv2 convert to bool? and LINQ
+        private bool GetHasAnyTotalIndex()
         {
-            var indexes = _siloIndexManager.IndexFactory.GetIndexes(_iGrainType);
-            foreach (var idxInfo in indexes.Values)
+            if (!__hasAnyTotalIndex.HasValue)
             {
-                if (idxInfo.Item1 is ITotalIndex)
-                {
-                    __hasAnyTotalIndex = 1;
-                    return true;
-                }
+                __hasAnyTotalIndex = _siloIndexManager.IndexFactory.GetIndexes(_iGrainType).Values.Any(indexInfo => indexInfo.Item1 is ITotalIndex);
             }
-            __hasAnyTotalIndex = -1;
-            return false;
+            return __hasAnyTotalIndex.Value;
         }
 
         private IGrainStorage GetGrainStorage()
-        {
-            return __grainStorage = typeof(IndexWorkflowQueueSystemTarget).GetGrainStorage(_siloIndexManager.ServiceProvider);
-        }
+            => __grainStorage = typeof(IndexWorkflowQueueSystemTarget).GetGrainStorage(_siloIndexManager.ServiceProvider);
 
         public Task<Immutable<List<IndexWorkflowRecord>>> GetRemainingWorkflowsIn(HashSet<Guid> activeWorkflowsSet)
         {
@@ -327,21 +314,15 @@ namespace Orleans.Indexing
         }
 
         public Task Initialize(IIndexWorkflowQueue oldParentSystemTarget)
-        {
-            throw new NotSupportedException();
-        }
+            => throw new NotSupportedException();
 
-#region STATIC HELPER FUNCTIONS
-        public static GrainId CreateIndexWorkflowQueueGrainId(Type grainInterfaceType, int queueSeqNum)
-        {
-            return IndexExtensions.GetSystemTargetGrainId(IndexingConstants.INDEX_WORKFLOW_QUEUE_SYSTEM_TARGET_TYPE_CODE,
-                                          CreateIndexWorkflowQueuePrimaryKey(grainInterfaceType, queueSeqNum));
-        }
+        #region STATIC HELPER FUNCTIONS
+        public static GrainId CreateIndexWorkflowQueueGrainId(Type grainInterfaceType, int queueSeqNum) 
+            => IndexExtensions.GetSystemTargetGrainId(IndexingConstants.INDEX_WORKFLOW_QUEUE_SYSTEM_TARGET_TYPE_CODE,
+                                                      CreateIndexWorkflowQueuePrimaryKey(grainInterfaceType, queueSeqNum));
 
         public static string CreateIndexWorkflowQueuePrimaryKey(Type grainInterfaceType, int queueSeqNum)
-        {
-            return TypeUtils.GetFullName(grainInterfaceType) + "-" + queueSeqNum;
-        }
+            => TypeUtils.GetFullName(grainInterfaceType) + "-" + queueSeqNum;
 
         public static GrainId GetIndexWorkflowQueueGrainIdFromGrainHashCode(Type grainInterfaceType, int grainHashCode)
         {
@@ -351,12 +332,10 @@ namespace Orleans.Indexing
         }
 
         public static IIndexWorkflowQueue GetIndexWorkflowQueueFromGrainHashCode(SiloIndexManager siloIndexManager, Type grainInterfaceType, int grainHashCode, SiloAddress siloAddress)
-        {
-            return siloIndexManager.GetSystemTarget<IIndexWorkflowQueue>(
-                GetIndexWorkflowQueueGrainIdFromGrainHashCode(grainInterfaceType, grainHashCode),
-                siloAddress
-            );
-        }
-#endregion STATIC HELPER FUNCTIONS
+            => siloIndexManager.GetSystemTarget<IIndexWorkflowQueue>(
+                    GetIndexWorkflowQueueGrainIdFromGrainHashCode(grainInterfaceType, grainHashCode),
+                    siloAddress
+                );
+        #endregion STATIC HELPER FUNCTIONS
     }
 }

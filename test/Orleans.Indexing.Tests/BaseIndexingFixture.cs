@@ -19,7 +19,7 @@ namespace Orleans.Indexing.Tests
         {
             return hostBuilder.AddMemoryGrainStorage(IndexingTestConstants.GrainStore)
                               .AddMemoryGrainStorage(IndexingTestConstants.MemoryStore)
-                              .AddMemoryGrainStorage("PubSubStore") // vv2 TODO why do we need this
+                              .AddMemoryGrainStorage("PubSubStore") // PubSubStore service is run for silo startup
                               .AddMemoryGrainStorage(IndexingConstants.INDEXING_WORKFLOWQUEUE_STORAGE_PROVIDER_NAME)
                               .AddMemoryGrainStorage(IndexingConstants.INDEXING_STORAGE_PROVIDER_NAME)
                               .AddSimpleMessageStreamProvider(IndexingConstants.INDEXING_STREAM_PROVIDER_NAME)

@@ -36,10 +36,9 @@ namespace Orleans.Indexing
         /// <returns>the type of the index</returns>
         public Type GetIndexType() => this._indexType;
 
-#if false //vv2 not used? IsStatelessWorker
+#if false // TODO not used? IsStatelessWorker
         /// <summary>
-        /// Determines whether the index grain is a stateless worker
-        /// or not. This piece of information can impact the relationship
+        /// Determines whether the index grain is a stateless worker or not. This piece of information can impact the relationship
         /// between index handlers and the index. 
         /// </summary>
         /// <returns>the result of whether the current index is

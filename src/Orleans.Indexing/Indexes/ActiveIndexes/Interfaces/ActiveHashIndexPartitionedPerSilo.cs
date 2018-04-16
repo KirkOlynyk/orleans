@@ -10,9 +10,8 @@ namespace Orleans.Indexing
     }
 
     /// <summary>
-    /// The interface for <see cref="ActiveHashIndexPartitionedPerSiloBucketImpl"/> system target,
-    /// which is created in order to guide Orleans to find the grain instances
-    /// more efficiently.
+    /// The interface for the <see cref="ActiveHashIndexPartitionedPerSiloBucketImpl"/> system target,
+    /// which is created in order to guide Orleans to find the grain instances more efficiently.
     /// 
     /// Generic SystemTargets are not supported yet, and that's why the interface is non-generic.
     /// </summary>

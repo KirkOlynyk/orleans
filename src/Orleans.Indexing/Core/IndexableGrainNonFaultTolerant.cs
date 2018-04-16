@@ -61,11 +61,11 @@ namespace Orleans.Indexing
                 return (TProperties)(object)this.State;
             }
 
-            if (this._props == null)    // vv2 TODO: return if this is not null?
+            // Copy named property values from this.State to _props. The set of property names will not change.
+            if (this._props == null)
             {
                 this._props = new TProperties();
             }
-
             foreach (PropertyInfo p in typeof(TProperties).GetProperties())
             {
                 p.SetValue(this._props, typeof(TState).GetProperty(p.Name).GetValue(this.State));

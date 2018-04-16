@@ -49,15 +49,7 @@ namespace Orleans.Indexing
         {
             logger.Trace($"ParentIndex {_parentIndexName}: Started calling DirectApplyIndexUpdateBatch with the following parameters: isUnique = {isUnique}, siloAddress = {siloAddress}, iUpdates = {MemberUpdate.UpdatesToString(iUpdates.Value)}", isUnique, siloAddress);
 
-            IDictionary<IIndexableGrain, IList<IMemberUpdate>> updates = iUpdates.Value;
-            Task[] updateTasks = new Task[updates.Count()];
-            int i = 0;
-            foreach (var kv in updates) // vv2:  updates.Select(kv => DirectApplyIndexUpdates(kv.Key, kv.Value, isUnique, idxMetaData, siloAddress));
-            {
-                updateTasks[i] = DirectApplyIndexUpdates(kv.Key, kv.Value, isUnique, idxMetaData, siloAddress);
-                ++i;
-            }
-            await Task.WhenAll(updateTasks);
+            await Task.WhenAll(iUpdates.Value.Select(kvp => DirectApplyIndexUpdates(kvp.Key, kvp.Value, isUnique, idxMetaData, siloAddress)));
 
             logger.Trace($"Finished calling DirectApplyIndexUpdateBatch with the following parameters: isUnique = {isUnique}, siloAddress = {siloAddress}, iUpdates = {MemberUpdate.UpdatesToString(iUpdates.Value)}");
 
