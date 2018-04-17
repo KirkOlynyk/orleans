@@ -95,13 +95,10 @@ namespace Orleans.Indexing
         /// <returns>the IndexInterface with the specified name on the given grain interface type</returns>
         public IIndexInterface GetIndex(Type iGrainType, string indexName)
         {
-            if (GetIndexes(iGrainType).TryGetValue(indexName, out Tuple<object, object, object> index))
-            {
-                return (IIndexInterface)index.Item1;
-            }
-
             // It should never happen that the indexes are not loaded if the index is registered in the index registry
-            throw new IndexException(string.Format("Index \"{0}\" does not exist for {1}.", indexName, iGrainType));
+            return GetGrainIndexes(iGrainType).TryGetValue(indexName, out IndexInfo indexInfo)
+                ? indexInfo.IndexInterface
+                : throw new IndexException(string.Format("Index \"{0}\" does not exist for {1}.", indexName, iGrainType));
         }
 
         #endregion IIndexFactory
@@ -112,22 +109,12 @@ namespace Orleans.Indexing
         /// Provides the index information for a given grain interface type.
         /// </summary>
         /// <param name="iGrainType">The target grain interface type</param>
-        /// <returns>the index information for the given grain type T.
-        /// The index information is a dictionary from indexIDs defined
-        /// on a grain interface to a triple. The triple consists of:
-        /// 1) the index object (that implements IndexInterface,
-        /// 2) the IndexMetaData object for this index, and
-        /// 3) the IndexUpdateGenerator instance for this index.
-        /// This triple is untyped, because IndexInterface, IndexMetaData
-        /// and IndexUpdateGenerator types are not visible in this project.
-        /// 
-        /// This method returns an empty dictionary if the OrleansIndexing 
-        /// project is not available.</returns>
-        internal IDictionary<string, Tuple<object, object, object>> GetIndexes(Type iGrainType)
+        /// <returns>A per-grain index registry, which may be empty if the grain does not have indexes.</returns>
+        internal NamedIndexMap GetGrainIndexes(Type iGrainType)
         {
-            return this.indexManager.Indexes.TryGetValue(iGrainType, out IDictionary<string, Tuple<object, object, object>> indexes)
-                ? indexes
-                : new Dictionary<string, Tuple<object, object, object>>();
+            return this.indexManager.IndexRegistry.TryGetValue(iGrainType, out NamedIndexMap grainIndexes)
+                ? grainIndexes
+                : new NamedIndexMap();
         }
 
         /// <summary>
@@ -141,13 +128,8 @@ namespace Orleans.Indexing
         /// each bucket of a distributed index, if this index type is a distributed one.</param>
         /// <param name="indexedProperty">the PropertyInfo object for the indexed field.
         /// This object helps in creating a default instance of IndexUpdateGenerator.</param>
-        /// <returns>A triple that consists of:
-        /// 1) the index object (that implements IndexInterface
-        /// 2) the IndexMetaData object for this index, and
-        /// 3) the IndexUpdateGenerator instance for this index.
-        /// This triple is untyped, because IndexInterface, IndexMetaData
-        /// and IndexUpdateGenerator types are not visible in the core project.</returns>
-        internal Tuple<object, object, object> CreateIndex(Type idxType, string indexName, bool isUniqueIndex, bool isEager, int maxEntriesPerBucket, PropertyInfo indexedProperty)
+        /// <returns>An <see cref="IndexInfo"/> for the specified idxType and indexName.</returns>
+        internal IndexInfo CreateIndex(Type idxType, string indexName, bool isUniqueIndex, bool isEager, int maxEntriesPerBucket, PropertyInfo indexedProperty)
         {
             Type iIndexType = idxType.GetGenericType(typeof(IIndexInterface<,>));
             if (iIndexType == null)
@@ -183,7 +165,7 @@ namespace Orleans.Indexing
                     : throw new IndexException(string.Format("{0} is neither a grain nor a class. Index \"{1}\" cannot be created.", idxType, indexName));
             }
 
-            return Tuple.Create((object)index, (object)new IndexMetaData(idxType, isUniqueIndex, isEager, maxEntriesPerBucket), (object)CreateIndexUpdateGenFromProperty(indexedProperty));
+            return new IndexInfo(index, new IndexMetaData(idxType, isUniqueIndex, isEager, maxEntriesPerBucket), CreateIndexUpdateGenFromProperty(indexedProperty));
         }
 
         internal static void RegisterIndexWorkflowQueues(SiloIndexManager siloIndexManager, Type iGrainType, Type grainImplType)

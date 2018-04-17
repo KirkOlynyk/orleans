@@ -17,12 +17,12 @@ namespace Orleans.Indexing
 
         private bool _isDefinedAsFaultTolerantGrain;
         private bool _hasAnyTotalIndex;
-        private bool HasAnyTotalIndex { get { EnsureIndexes(); return _hasAnyTotalIndex; } }
+        private bool HasAnyTotalIndex { get { EnsureGrainIndexes(); return _hasAnyTotalIndex; } }
         private bool IsFaultTolerant => _isDefinedAsFaultTolerantGrain && HasAnyTotalIndex;
 
-        private IDictionary<string, Tuple<object, object, object>> __indexes;
+        private NamedIndexMap __grainIndexes;
 
-        private IDictionary<string, Tuple<object, object, object>> Indexes => EnsureIndexes();
+        private NamedIndexMap GrainIndexes => EnsureGrainIndexes();
 
         private SiloAddress _silo;
         private IndexManager _indexManager;
@@ -34,7 +34,7 @@ namespace Orleans.Indexing
             _queueSeqNum = queueSeqNum;
             _isDefinedAsFaultTolerantGrain = isDefinedAsFaultTolerantGrain;
             _hasAnyTotalIndex = false;
-            __indexes = null;
+            __grainIndexes = null;
             __workflowQueue = null;
             _silo = silo;
             _indexManager = indexManager;
@@ -71,15 +71,14 @@ namespace Orleans.Indexing
         private IList<Task<bool>> PrepareIndexUpdateTasks(Dictionary<string, IDictionary<IIndexableGrain, IList<IMemberUpdate>>> updatesToIndexes)
         {
             IList<Task<bool>> updateIndexTasks = new List<Task<bool>>();
-            foreach (var indexEntry in Indexes)
+            foreach (var indexEntry in GrainIndexes)
             {
                 var idxInfo = indexEntry.Value;
                 var updatesToIndex = updatesToIndexes[indexEntry.Key];
                 if (updatesToIndex.Count() > 0)
                 {
-                    updateIndexTasks.Add(((IIndexInterface)idxInfo.Item1).ApplyIndexUpdateBatch(
-                                                _indexManager.RuntimeClient, updatesToIndex.AsImmutable(),
-                                                ((IndexMetaData)idxInfo.Item2).IsUniqueIndex(), (IndexMetaData)idxInfo.Item2, _silo));
+                    updateIndexTasks.Add(idxInfo.IndexInterface.ApplyIndexUpdateBatch(_indexManager.RuntimeClient, updatesToIndex.AsImmutable(),
+                                                                                      idxInfo.MetaData.IsUniqueIndex(), idxInfo.MetaData, _silo));
                 }
             }
 
@@ -94,17 +93,8 @@ namespace Orleans.Indexing
             {
                 IndexWorkflowRecord workflowRec = currentWorkflow.WorkflowRecord;
                 IIndexableGrain g = workflowRec.Grain;
-                bool existsInActiveWorkflows = false;
-                if (faultTolerant)
-                {
-                    if (grainsToActiveWorkflows.TryGetValue(g, out HashSet<Guid> activeWorkflowRecs))
-                    {
-                        if (activeWorkflowRecs.Contains(workflowRec.WorkflowId))
-                        {
-                            existsInActiveWorkflows = true;
-                        }
-                    }
-                }
+                bool existsInActiveWorkflows = faultTolerant && grainsToActiveWorkflows.TryGetValue(g, out HashSet<Guid> activeWorkflowRecs)
+                                                             && activeWorkflowRecs.Contains(workflowRec.WorkflowId);
 
                 foreach (var updates in currentWorkflow.WorkflowRecord.MemberUpdates)
                 {
@@ -123,12 +113,11 @@ namespace Orleans.Indexing
                         {
                             updatesList.Add(updt);
                         }
-                        //if the workflow record does not exist in the list of active work-flows
-                        //and the index is fault-tolerant, we should make sure that tentative updates
-                        //to unique indexes are undone
-                        else if (((IndexMetaData)Indexes[index].Item2).IsUniqueIndex())
+                        // If the workflow record does not exist in the list of active work-flows and the index is fault-tolerant,
+                        // we should make sure that tentative updates to unique indexes are undone.
+                        else if (GrainIndexes[index].MetaData.IsUniqueIndex())
                         {
-                            //reverse a possible remaining tentative record from the index
+                            // Reverse a possible remaining tentative record from the index
                             updatesList.Add(new MemberUpdateReverseTentative(updt));
                         }
                     }
@@ -174,24 +163,17 @@ namespace Orleans.Indexing
         }
 
         private Dictionary<string, IDictionary<IIndexableGrain, IList<IMemberUpdate>>> CreateAMapForUpdatesToIndexes()
-        {
-            var updatesToIndexes = new Dictionary<string, IDictionary<IIndexableGrain, IList<IMemberUpdate>>>();
-            foreach (string index in Indexes.Keys)
-            {
-                updatesToIndexes.Add(index, new Dictionary<IIndexableGrain, IList<IMemberUpdate>>());
-            }
+            => GrainIndexes.Keys.Select(key => new { key, dict = new Dictionary<IIndexableGrain, IList<IMemberUpdate>>() as IDictionary<IIndexableGrain, IList<IMemberUpdate>> })
+                                .ToDictionary(it => it.key, it => it.dict);
 
-            return updatesToIndexes;
-        }
-
-        private IDictionary<string, Tuple<object, object, object>> EnsureIndexes()
+        private NamedIndexMap EnsureGrainIndexes()
         {
-            if (__indexes == null)
+            if (__grainIndexes == null)
             {
-                __indexes = _indexManager.IndexFactory.GetIndexes(_iGrainType);
-                _hasAnyTotalIndex = __indexes.Values.Any(idxInfo => idxInfo.Item1 is ITotalIndex);
+                __grainIndexes = _indexManager.IndexFactory.GetGrainIndexes(_iGrainType);
+                _hasAnyTotalIndex = __grainIndexes.HasAnyTotalIndex;
             }
-            return __indexes;
+            return __grainIndexes;
         }
 
         private IIndexWorkflowQueue InitIndexWorkflowQueue()

@@ -3,7 +3,6 @@ using Microsoft.Extensions.Logging;
 using Orleans.ApplicationParts;
 using Orleans.Runtime;
 using System;
-using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -18,7 +17,7 @@ namespace Orleans.Indexing
 
         internal CachedTypeResolver CachedTypeResolver { get; }
 
-        internal IDictionary<Type, IDictionary<string, Tuple<object, object, object>>> Indexes { get; private set; }    // vv2 TODO strongly type this
+        internal IndexRegistry IndexRegistry { get; private set; }
 
         // Explicit dependency on ServiceProvider is needed so we can retrieve SiloIndexManager.__silo after ctor returns; see comments there.
         // Also, in some cases this is passed through non-injected interfaces such as Hash classes.
@@ -59,8 +58,8 @@ namespace Orleans.Indexing
         /// </summary>
         public virtual Task OnStartAsync(CancellationToken ct)
         {
-            return (this.Indexes == null)
-                ? Task.Run(() => this.Indexes = new ApplicationPartsIndexableGrainLoader(this).GetGrainClassIndexes())
+            return this.IndexRegistry == null
+                ? Task.Run(() => this.IndexRegistry = new ApplicationPartsIndexableGrainLoader(this).GetGrainClassIndexes())
                 : Task.CompletedTask;
         }
 

@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -31,43 +30,30 @@ namespace Orleans.Indexing
         }
 
         /// <summary>
-        /// This method crawls the assemblies and looks for the index
-        /// definitions (determined by extending IIndexable{TProperties}
+        /// This method crawls the assemblies and looks for the index definitions (determined by extending the IIndexableGrain{TProperties}
         /// interface and adding annotations to properties in TProperties).
-        /// 
-        /// In order to avoid having any dependency on OrleansIndexing
-        /// project, all the required types are loaded via reflection.
         /// </summary>
-        /// <returns>A dictionary of grain interface types to their
-        /// corresponding index information. The index information is
-        /// a dictionary from index IDs defined on a grain interface to
-        /// a triple. The triple consists of: 1) the index object (that
-        /// implements IndexInterface, 2) the IndexMetaData object for
-        /// this index, and 3) the IndexUpdateGenerator instance for this index.
-        /// This triple is untyped, because IndexInterface, IndexMetaData
-        /// and IndexUpdateGenerator types are not visible in this project.
-        /// 
-        /// This method returns an empty dictionary if the OrleansIndexing 
-        /// project is not available.
-        /// </returns>
-        public IDictionary<Type, IDictionary<string, Tuple<object, object, object>>> GetGrainClassIndexes()
+        /// <returns>An index registry for the silo. </returns>
+        public IndexRegistry GetGrainClassIndexes()
         {
             Type[] grainTypes = this.indexManager.ApplicationPartManager.ApplicationParts.OfType<AssemblyPart>()
                                     .SelectMany(part => TypeUtils.GetTypes(part.Assembly, TypeUtils.IsConcreteGrainClass, this.logger))
                                     .ToArray();
 
-            var result = new Dictionary<Type, IDictionary<string, Tuple<object, object, object>>>();
+            var registry = new IndexRegistry();
             foreach (var grainType in grainTypes)
             {
-                if (result.ContainsKey(grainType))
-                    throw new InvalidOperationException($"Precondition violated: GetLoadedGrainTypes should not return a duplicate type ({TypeUtils.GetFullName(grainType)})");
-                GetIndexesForASingleGrainType(result, grainType);
+                if (registry.ContainsKey(grainType))
+                {
+                    throw new InvalidOperationException($"Precondition violated: GetGrainClassIndexes should not encounter a duplicate type ({TypeUtils.GetFullName(grainType)})");
+                }
+                GetIndexesForASingleGrainType(registry, grainType);
             }
-            return result;
+            return registry;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void GetIndexesForASingleGrainType(Dictionary<Type, IDictionary<string, Tuple<object, object, object>>> result, Type grainType)
+        private void GetIndexesForASingleGrainType(IndexRegistry registry, Type grainType)
         {
             Type[] interfaces = grainType.GetInterfaces();
             int numInterfaces = interfaces.Length;
@@ -89,7 +75,7 @@ namespace Orleans.Indexing
                         for (int j = 0; j < numInterfaces; ++j)
                         {
                             Type userDefinedIGrain = interfaces[j];
-                            CreateIndexesForASingleInterfaceOfAGrainType(result, iIndexableGrain, propertiesArg, userDefinedIGrain, grainType);
+                            CreateIndexesForASingleInterfaceOfAGrainType(registry, iIndexableGrain, propertiesArg, userDefinedIGrain, grainType);
                         }
                     }
                     break;
@@ -98,20 +84,19 @@ namespace Orleans.Indexing
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void CreateIndexesForASingleInterfaceOfAGrainType(Dictionary<Type, IDictionary<string, Tuple<object, object, object>>> result,
-                                                        Type iIndexableGrain, Type propertiesArg, Type userDefinedIGrain, Type userDefinedGrainImpl)
+        private void CreateIndexesForASingleInterfaceOfAGrainType(IndexRegistry registry, Type iIndexableGrain, Type propertiesArg, Type userDefinedIGrain, Type userDefinedGrainImpl)
         {
             // If the given interface is a user-defined interface extending IIndexableGrain<TProperties>
-            if (iIndexableGrain != userDefinedIGrain && iIndexableGrain.IsAssignableFrom(userDefinedIGrain) && !result.ContainsKey(userDefinedIGrain))
+            if (iIndexableGrain != userDefinedIGrain && iIndexableGrain.IsAssignableFrom(userDefinedIGrain) && !registry.ContainsKey(userDefinedIGrain))
             {
                 // Check either:
                 // - all indexes are defined as lazy, -or-
                 // - all indexes are defined as lazy and none of them are Total Index (because Total Indexes cannot be lazy)
                 CheckAllIndexesAreEitherLazyOrEager(propertiesArg, userDefinedIGrain, userDefinedGrainImpl);
 
-                IDictionary<string, Tuple<object, object, object>> indexesOnGrain = new Dictionary<string, Tuple<object, object, object>>();
                 // All the properties in TProperties are scanned for Index annotation.
                 // If found, the index is created using the information provided in the annotation.
+                NamedIndexMap indexesOnGrain = new NamedIndexMap();
                 var hasNonEagerIndex = false;
                 foreach (PropertyInfo p in propertiesArg.GetProperties())
                 {
@@ -119,6 +104,11 @@ namespace Orleans.Indexing
                     foreach (var indexAttr in indexAttrs)
                     {
                         string indexName = "__" + p.Name;
+                        if (indexesOnGrain.ContainsKey(indexName))
+                        {
+                            throw new InvalidOperationException($"An index named {indexName} already exists for user-defined grain interface {userDefinedIGrain.Name}");
+                        }
+
                         Type indexType = (Type)this.indexTypeProperty.GetValue(indexAttr);
                         if (indexType.IsGenericTypeDefinition)
                         {
@@ -130,12 +120,11 @@ namespace Orleans.Indexing
                         if (!isEager) hasNonEagerIndex = true;
                         bool isUnique = (bool)isUniqueProperty.GetValue(indexAttr);
                         int maxEntriesPerBucket = (int)maxEntriesPerBucketProperty.GetValue(indexAttr);
-                        var index = this.indexManager.IndexFactory.CreateIndex(indexType, indexName, isUnique, isEager, maxEntriesPerBucket, p);
-                        indexesOnGrain.Add(indexName, index);
+                        indexesOnGrain[indexName] = this.indexManager.IndexFactory.CreateIndex(indexType, indexName, isUnique, isEager, maxEntriesPerBucket, p);
                         this.logger.Info($"Index created: Interface = {userDefinedIGrain.Name}, property = {propertiesArg.Name}, index = {indexName}");
                     }
                 }
-                result.Add(userDefinedIGrain, indexesOnGrain);
+                registry[userDefinedIGrain] = indexesOnGrain;
                 if (this.IsInSilo && hasNonEagerIndex)
                 {
                     IndexFactory.RegisterIndexWorkflowQueues(this.siloIndexManager, userDefinedIGrain, userDefinedGrainImpl);

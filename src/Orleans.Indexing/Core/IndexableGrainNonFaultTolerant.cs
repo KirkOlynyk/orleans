@@ -22,25 +22,22 @@ namespace Orleans.Indexing
     public abstract class IndexableGrainNonFaultTolerant<TState, TProperties> : Grain<TState>, IIndexableGrain<TProperties> where TProperties : new() where TState : new()
     {
         /// <summary>
-        /// an immutable cached version of IIndexUpdateGenerator instances
-        /// for the current indexes on the grain.
-        /// The tuple contains Index, IndexMetaData, IndexUpdateGenerator
+        /// An immutable cached version of IndexInfo (containing IIndexUpdateGenerator) instances for the current indexes on the grain.
         /// </summary>
-        protected IDictionary<string, Tuple<object, object, object>> _iUpdateGens;
+        private NamedIndexMap _grainIndexes;
 
         /// <summary>
-        /// This flag defines whether there is any unique
-        /// index defined for this indexable grain
+        /// This flag defines whether there is any unique index defined for this indexable grain
         /// </summary>
         protected bool _isThereAnyUniqueIndex;
 
         /// <summary>
-        /// an immutable copy of before-images of the indexed fields
+        /// An immutable copy of before-images of the indexed fields
         /// </summary>
         protected Immutable<IDictionary<string, object>> _beforeImages;
 
         /// <summary>
-        /// a cached grain interface type, which is cached on the first call to getIGrainType()
+        /// A cached grain interface type, which is cached on the first call to getIGrainType()
         /// </summary>
         protected IList<Type> _iGrainTypes = null;
 
@@ -90,10 +87,8 @@ namespace Orleans.Indexing
             this.Logger.Trace($"Activating indexable grain {Orleans.GrainExtensions.GetGrainId(this)} of type {this.GetIIndexableGrainTypes()[0]} in silo {this.SiloIndexManager.SiloAddress}.");
 
             //load indexes
-            this._iUpdateGens = this.SiloIndexManager.IndexFactory.GetIndexes(GetIIndexableGrainTypes()[0]);
-
-            //initialized _isThereAnyUniqueIndex field
-            InitUniqueIndexCheck();
+            this._grainIndexes = this.SiloIndexManager.IndexFactory.GetGrainIndexes(GetIIndexableGrainTypes()[0]);
+            this._isThereAnyUniqueIndex = this._grainIndexes.HasAnyUniqueIndex;
 
             //Initialize before images
             this._beforeImages = new Dictionary<string, object>().AsImmutable<IDictionary<string, object>>();
@@ -102,19 +97,6 @@ namespace Orleans.Indexing
             //insert the current grain to the active indexes defined on this grain
             //and at the same time call OnActivateAsync of the base class
             return Task.WhenAll(InsertIntoActiveIndexes(), base.OnActivateAsync());
-        }
-
-        /// <summary>
-        /// initialized the flag indicating whether there is any unique index
-        /// defined on this grain
-        /// </summary>
-        private void InitUniqueIndexCheck()
-        {
-            this._isThereAnyUniqueIndex = false;
-            foreach (var idxInfo in this._iUpdateGens.Values)
-            {
-                this._isThereAnyUniqueIndex = this._isThereAnyUniqueIndex || ((IndexMetaData)idxInfo.Item2).IsUniqueIndex();
-            }
         }
 
         public override Task OnDeactivateAsync()
@@ -181,7 +163,7 @@ namespace Orleans.Indexing
         {
             //if there are no indexes defined on this grain, then only the grain state
             //should be written back to the storage (if requested, otherwise nothing should be done)
-            if (this._iUpdateGens.Count == 0)
+            if (this._grainIndexes.Count == 0)
             {
                 return writeStateIfConstraintsAreNotViolated ? WriteBaseStateAsync() : Task.CompletedTask;
             }
@@ -427,8 +409,8 @@ namespace Orleans.Indexing
                 //if the update is not a no-operation
                 if (updt.Value.GetOperationType() != IndexOperationType.None)
                 {
-                    var idxInfo = this._iUpdateGens[updt.Key];
-                    var isUniqueIndex = ((IndexMetaData)idxInfo.Item2).IsUniqueIndex();
+                    var idxInfo = this._grainIndexes[updt.Key];
+                    var isUniqueIndex = idxInfo.MetaData.IsUniqueIndex();
 
                     //the actual update happens if either the corresponding index is not a unique index
                     //and the caller asks for only updating non-unique indexes, or the corresponding
@@ -444,8 +426,8 @@ namespace Orleans.Indexing
                         }
 
                         //the update task is added to the list of update tasks
-                        updateIndexTasks.Add(((IIndexInterface)idxInfo.Item1).ApplyIndexUpdate(this.SiloIndexManager.RuntimeClient,
-                                             updatedGrain, updateToIndex.AsImmutable(), isUniqueIndex, (IndexMetaData)idxInfo.Item2, base.SiloAddress));
+                        updateIndexTasks.Add(idxInfo.IndexInterface.ApplyIndexUpdate(this.SiloIndexManager.RuntimeClient,
+                                             updatedGrain, updateToIndex.AsImmutable(), isUniqueIndex, idxInfo.MetaData, base.SiloAddress));
                     }
                 }
             }
@@ -479,23 +461,21 @@ namespace Orleans.Indexing
             numberOfUniqueIndexesUpdated = 0;
 
             IDictionary<string, IMemberUpdate> updates = new Dictionary<string, IMemberUpdate>();
-            IDictionary<string, Tuple<object, object, object>> iUpdateGens = this._iUpdateGens;
             {
                 IDictionary<string, object> befImgs = this._beforeImages.Value;
-                foreach (KeyValuePair<string, Tuple<object, object, object>> kvp in iUpdateGens)
+                foreach (var kvp in this._grainIndexes)
                 {
                     var idxInfo = kvp.Value;
-                    if (!onlyUpdateActiveIndexes || !(idxInfo.Item1 is ITotalIndex))
+                    if (!onlyUpdateActiveIndexes || !(idxInfo.IndexInterface is ITotalIndex))
                     {
-                        IMemberUpdate mu = isOnActivate ? ((IIndexUpdateGenerator)idxInfo.Item3).CreateMemberUpdate(befImgs[kvp.Key])
-                                                        : ((IIndexUpdateGenerator)idxInfo.Item3).CreateMemberUpdate(indexableProperties, befImgs[kvp.Key]);
+                        IMemberUpdate mu = isOnActivate ? idxInfo.UpdateGenerator.CreateMemberUpdate(befImgs[kvp.Key])
+                                                        : idxInfo.UpdateGenerator.CreateMemberUpdate(indexableProperties, befImgs[kvp.Key]);
                         if (mu.GetOperationType() != IndexOperationType.None)
                         {
                             updates.Add(kvp.Key, mu);
-                            IndexMetaData indexMetaData = (IndexMetaData)kvp.Value.Item2;
+                            var indexMetaData = kvp.Value.MetaData;
 
-                            //this flag should be the same for all indexes defined
-                            //on a grain and that's why we do not accumulate the
+                            //this flag should be the same for all indexes defined on a grain and that's why we do not accumulate the
                             //changes from different indexes
                             updateIndexesEagerly = indexMetaData.IsEager();
 
@@ -512,11 +492,9 @@ namespace Orleans.Indexing
         }
 
         /// <summary>
-        /// This method finds the IGrain interface that is the lowest one in the 
-        /// interface type hierarchy of the current grain
+        /// This method finds the IGrain interface that is the lowest one in the interface type hierarchy of the current grain
         /// </summary>
-        /// <returns>lowest IGrain interface in the hierarchy
-        /// that the current class implements</returns>
+        /// <returns>lowest IGrain interface in the hierarchy that the current class implements</returns>
         protected IList<Type> GetIIndexableGrainTypes()
         {
             if (this._iGrainTypes == null)
@@ -531,9 +509,8 @@ namespace Orleans.Indexing
                 {
                     Type otherIGrainType = interfaces[i];
 
-                    //iIndexableGrainTp and typedIIndexableGrainTp are ignored when
-                    //checking the descendants of IGrain, because there is no guarantee
-                    //user defined grain interfaces extend these interfaces
+                    //iIndexableGrainTp and typedIIndexableGrainTp are ignored when checking the descendants of IGrain,
+                    // because there is no guarantee user defined grain interfaces extend these interfaces
                     if (iIndexableGrainTp != otherIGrainType && iIndexableGrainTp.IsAssignableFrom(otherIGrainType))
                     {
                         this._iGrainTypes.Add(otherIGrainType);
@@ -544,45 +521,34 @@ namespace Orleans.Indexing
         }
 
         /// <summary>
-        /// This method checks the list of cached indexes, and if
-        /// any index does not have a before-image, it will create
-        /// one for it. As before-images are stored as an immutable
-        /// field, a new map is created in this process.
+        /// This method checks the list of cached indexes, and if any index does not have a before-image, it will create
+        /// one for it. As before-images are stored as an immutable field, a new map is created in this process.
         /// 
-        /// This method is called on activation of the grain, and when the
-        /// UpdateIndexes method detects an inconsistency between the indexes
-        /// in the index handler and the cached indexes of the current grain.
+        /// This method is called on activation of the grain, and when the UpdateIndexes method detects an inconsistency
+        /// between the indexes in the index handler and the cached indexes of the current grain.
         /// </summary>
         private void AddMissingBeforeImages()
         {
-            IDictionary<string, Tuple<object, object, object>> iUpdateGens = this._iUpdateGens;
             IDictionary<string, object> oldBefImgs = this._beforeImages.Value;
             IDictionary<string, object> newBefImgs = new Dictionary<string, object>();
-            foreach (KeyValuePair<string, Tuple<object, object, object>> idxOp in iUpdateGens)
+            foreach (var idxOp in this._grainIndexes)
             {
                 var indexID = idxOp.Key;
-                if (!oldBefImgs.ContainsKey(indexID))
-                {
-                    newBefImgs.Add(indexID, ((IIndexUpdateGenerator)idxOp.Value.Item3).ExtractIndexImage(this.Properties));
-                }
-                else
-                {
-                    newBefImgs.Add(indexID, oldBefImgs[indexID]);
-                }
+                var oldBefImg = oldBefImgs.ContainsKey(indexID)
+                    ? oldBefImgs[indexID]
+                    : idxOp.Value.UpdateGenerator.ExtractIndexImage(this.Properties);
+                newBefImgs.Add(indexID, oldBefImg);
             }
             this._beforeImages = newBefImgs.AsImmutable();
         }
 
         /// <summary>
-        /// This method assumes that a set of changes is applied to the
-        /// indexes, and then it replaces the current before-images with
-        /// after-images produced by the update.
+        /// This method assumes that a set of changes is applied to the indexes, and then it replaces the current before-images
+        /// with after-images produced by the update.
         /// </summary>
-        /// <param name="updates">the member updates that were successfully
-        /// applied to the current indexes</param>
+        /// <param name="updates">the member updates that were successfully applied to the current indexes</param>
         protected void UpdateBeforeImages(IDictionary<string, IMemberUpdate> updates)
         {
-            IDictionary<string, Tuple<object, object, object>> iUpdateGens = this._iUpdateGens;
             IDictionary<string, object> befImgs = new Dictionary<string, object>(this._beforeImages.Value);
             foreach (KeyValuePair<string, IMemberUpdate> updt in updates)
             {
@@ -590,7 +556,7 @@ namespace Orleans.Indexing
                 var opType = updt.Value.GetOperationType();
                 if (opType == IndexOperationType.Update || opType == IndexOperationType.Insert)
                 {
-                    befImgs[indexID] = ((IIndexUpdateGenerator)iUpdateGens[indexID].Item3).ExtractIndexImage(this.Properties);
+                    befImgs[indexID] = _grainIndexes[indexID].UpdateGenerator.ExtractIndexImage(this.Properties);
                 }
                 else if (opType == IndexOperationType.Delete)
                 {
@@ -602,13 +568,11 @@ namespace Orleans.Indexing
 
         protected override async Task WriteStateAsync()
         {
-            //WriteBaseStateAsync should be done before UpdateIndexes, in order to ensure
-            //that only the successfully persisted bits get to be indexed, so we cannot do
-            //these two tasks in parallel
+            // WriteBaseStateAsync should be done before UpdateIndexes, in order to ensure that only the successfully persisted bits get to be indexed,
+            // so we cannot do these two tasks in parallel
             //await Task.WhenAll(WriteBaseStateAsync(), UpdateIndexes());
 
-            // during WriteStateAsync for a stateful indexable grain,
-            // the indexes get updated concurrently while WriteBaseStateAsync is done.
+            // During WriteStateAsync for a stateful indexable grain, the indexes get updated concurrently while WriteBaseStateAsync is done.
             await UpdateIndexes(this.Properties, isOnActivate: false, onlyUpdateActiveIndexes: false, writeStateIfConstraintsAreNotViolated: true);
         }
 
@@ -618,24 +582,16 @@ namespace Orleans.Indexing
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected Task WriteBaseStateAsync()
-        {
-            return base.WriteStateAsync();
-        }
+            => base.WriteStateAsync();
 
         Task<object> IIndexableGrain.ExtractIndexImage(IIndexUpdateGenerator iUpdateGen)
-        {
-            return Task.FromResult(iUpdateGen.ExtractIndexImage(this.Properties));
-        }
+            => Task.FromResult(iUpdateGen.ExtractIndexImage(this.Properties));
 
         public virtual Task<Immutable<HashSet<Guid>>> GetActiveWorkflowIdsList()
-        {
-            throw new NotSupportedException();
-        }
+            => throw new NotSupportedException();
 
         public virtual Task RemoveFromActiveWorkflowIds(HashSet<Guid> removedWorkflowId)
-        {
-            throw new NotSupportedException();
-        }
+            => throw new NotSupportedException();
 
         /// <summary>
         /// Find the corresponding work-flow queue for a given grain interface

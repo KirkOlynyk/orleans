@@ -334,8 +334,7 @@ namespace Orleans.Indexing
             if (!__hasAnyTotalIndex.HasValue)
             { 
                 __hasAnyTotalIndex = this.GetIIndexableGrainTypes()
-                                         .Any(iGrainType => base.SiloIndexManager.IndexFactory.GetIndexes(iGrainType).Values
-                                             .Any(idxInfo => idxInfo.Item1 is ITotalIndex));
+                                         .Any(iGrainType => base.SiloIndexManager.IndexFactory.GetGrainIndexes(iGrainType).HasAnyTotalIndex);
             }
             return __hasAnyTotalIndex.Value;
         }

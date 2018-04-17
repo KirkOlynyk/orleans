@@ -1,16 +1,13 @@
 ﻿namespace Orleans.Indexing
 {
     /// <summary>
-    /// This interface specifies a method that each index should define 
-    /// for extracting the part of the grain state it is interested in. 
-    /// The interface also specifies a method creating an update object
-    /// after an update happens on the indexed grain
+    /// This interface specifies a method that each index should define for extracting the part of the grain state it is interested in. 
+    /// The interface also specifies a method creating an update object after an update happens on the indexed grain
     /// </summary>
     public interface IIndexUpdateGenerator
     {
         /// <summary>
-        /// Extracts some part of the state of the grain that this
-        /// index is interested in
+        /// Extracts some part of the state of the grain that this index is interested in
         /// </summary>
         /// <param name="indexedGrainProperties">the grain from which we want to extract some state to be indexed</param>
         /// <returns>an encapsulation of the part of the grain state that this index is interested in</returns>
@@ -35,9 +32,7 @@
     public abstract class IIndexUpdateGenerator<K, TProperties> : IIndexUpdateGenerator
     {
         object IIndexUpdateGenerator.ExtractIndexImage(object indexedGrainProperties)
-        {
-            return ExtractIndexImage((TProperties)indexedGrainProperties);
-        }
+            => ExtractIndexImage((TProperties)indexedGrainProperties);
 
         /// <summary>
         /// This method is the typed version of ExtractIndexImage
@@ -47,14 +42,10 @@
         abstract public K ExtractIndexImage(TProperties indexedGrainProperties);
 
         IMemberUpdate IIndexUpdateGenerator.CreateMemberUpdate(object indexedGrainProperties, object beforeImage)
-        {
-            return CreateMemberUpdate((TProperties)indexedGrainProperties, (K)beforeImage);
-        }
+            => CreateMemberUpdate((TProperties)indexedGrainProperties, (K)beforeImage);
 
         IMemberUpdate IIndexUpdateGenerator.CreateMemberUpdate(object afterImage)
-        {
-            return CreateMemberUpdate((K)afterImage);
-        }
+            => CreateMemberUpdate((K)afterImage);
 
         /// <summary>
         /// This method is the typed version of CreateMemberUpdate

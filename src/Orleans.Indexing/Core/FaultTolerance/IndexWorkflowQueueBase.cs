@@ -290,7 +290,7 @@ namespace Orleans.Indexing
         {
             if (!__hasAnyTotalIndex.HasValue)
             {
-                __hasAnyTotalIndex = _siloIndexManager.IndexFactory.GetIndexes(_iGrainType).Values.Any(indexInfo => indexInfo.Item1 is ITotalIndex);
+                __hasAnyTotalIndex = _siloIndexManager.IndexFactory.GetGrainIndexes(_iGrainType).HasAnyTotalIndex;
             }
             return __hasAnyTotalIndex.Value;
         }

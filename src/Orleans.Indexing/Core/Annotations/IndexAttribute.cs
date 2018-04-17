@@ -31,10 +31,8 @@ namespace Orleans.Indexing
         /// <summary>
         /// The constructor for Index.
         /// </summary>
-        /// <param name="isEager">Determines whether the index should be
-        /// updated eagerly upon any change in the indexed grains. Otherwise,
-        /// the update propagation happens lazily after applying the update
-        /// to the grain itself.</param>
+        /// <param name="isEager">Determines whether the index should be updated eagerly upon any change in the indexed grains. Otherwise,
+        /// the update propagation happens lazily after applying the update to the grain itself.</param>
         public IndexAttribute(bool isEager) : this(typeof(IActiveHashIndexSingleBucket<,>), isEager, false)
         {
         }
