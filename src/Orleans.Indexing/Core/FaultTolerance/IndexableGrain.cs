@@ -29,16 +29,16 @@ namespace Orleans.Indexing
     {
         protected new TState State
         {
-            get { return base.State.UserState; }
-            set { base.State.UserState = value; }
+            get => base.State.UserState;
+            set => base.State.UserState = value;
         }
 
-        protected override TProperties Properties { get { return DefaultCreatePropertiesFromState(); } }
+        protected override TProperties Properties => DefaultCreatePropertiesFromState();
 
         internal override IDictionary<Type, IIndexWorkflowQueue> WorkflowQueues
         {
-            get { return base.State.WorkflowQueues; }
-            set { base.State.WorkflowQueues = value; }
+            get => base.State.WorkflowQueues;
+            set => base.State.WorkflowQueues = value;
         }
 
         private bool HasAnyTotalIndex => GetHasAnyTotalIndex();
@@ -78,38 +78,30 @@ namespace Orleans.Indexing
         {
             if (this.HasAnyTotalIndex)
             {
-                // If there is any update to the indexes we go ahead and updates the indexes
+                // If there is any update to the indexes we go ahead and update the indexes
                 if (updates.Count() > 0)
                 {
                     IList<Type> iGrainTypes = GetIIndexableGrainTypes();
-                    IIndexableGrain thisGrain = this.AsReference<IIndexableGrain>(this.GrainFactory);
+                    var thisGrain = this.AsReference<IIndexableGrain>(this.GrainFactory);
                     Guid workflowId = GenerateUniqueWorkflowId();
 
                     if (updateIndexesEagerly)
                     {
-                        throw new InvalidOperationException("Fault tolerant indexes cannot be updated eagerly. This misconfiguration should have been cur on silo startup. Check SiloAssemblyLoader for the reason.");
+                        throw new InvalidOperationException("Fault tolerant indexes cannot be updated eagerly. This misconfiguration should have been detected on silo startup." +
+                                                            " Check ApplicationPartsIndexableGrainLoader for the reason.");
                     }
 
-                    // Update the indexes lazily. This is the first step, because workflow record should be persisted in the workflow-queue first.
+                    // Update the indexes lazily. This is the first step, because its workflow record should be persisted in the workflow-queue first.
                     // The reason for waiting here is to make sure that the workflow record in the workflow queue is correctly persisted.
                     await ApplyIndexUpdatesLazily(updates, iGrainTypes, thisGrain, workflowId);
 
-                    // If any unique index is defined on this grain and at least one of them is updated.
+                    // Apply any unique index updates eagerly.
                     if (numberOfUniqueIndexesUpdated > 0)
                     {
-                        //try
-                        //{
-                        //    //update the unique indexes eagerly
-                        //    //if there were more than one unique index, the updates to the unique indexes should be tentative in order not to
-                        //    //become visible to readers before making sure that all uniqueness constraints are satisfied
-                        await ApplyIndexUpdatesEagerly(iGrainTypes, thisGrain, updates, true, false, true);
-                        //}
-                        //catch (UniquenessConstraintViolatedException ex)
-                        //{
-                        //    //nothing should be done as tentative records are going to be removed by WorkflowQueueHandler
-                        //    //the exception is thrown back to the user code.
-                        //    throw ex;
-                        //}
+                        // If there is more than one unique index to update, then updates to the unique indexes should be tentative
+                        // so they are not visible to readers before making sure that all uniqueness constraints are satisfied.
+                        // UniquenessConstraintViolatedExceptions propagate; any tentative records will be removed by WorkflowQueueHandler.
+                        await ApplyIndexUpdatesEagerly(iGrainTypes, thisGrain, updates, UpdateIndexType.Unique, updateIndexesTentatively: true);
                     }
 
                     // Finally, the grain state is persisted if requested.
@@ -130,7 +122,7 @@ namespace Orleans.Indexing
                     await WriteBaseStateAsync();
                 }
             }
-            else
+            else // !this.HasAnyTotalIndex
             {
                 await base.ApplyIndexUpdates(updates, updateIndexesEagerly, onlyUniqueIndexesWereUpdated, numberOfUniqueIndexesUpdated, writeStateIfConstraintsAreNotViolated);
             }
@@ -144,11 +136,7 @@ namespace Orleans.Indexing
         {
             // A copy of WorkflowQueues is required, because we want to iterate over it and add/remove elements from/to it.
             var copyOfWorkflowQueues = new Dictionary<Type, IIndexWorkflowQueue>(this.WorkflowQueues);
-            var tasks = new List<Task<IEnumerable<Guid>>>();
-            foreach (var wfqEntry in copyOfWorkflowQueues)
-            {
-                tasks.Add(HandleRemainingWorkflows(wfqEntry.Key, wfqEntry.Value));
-            }
+            var tasks = copyOfWorkflowQueues.Select(wfqEntry => HandleRemainingWorkflows(wfqEntry.Key, wfqEntry.Value));
             return Task.WhenAll(tasks).ContinueWith(t => t.Result.SelectMany(res => res));
         }
 
@@ -306,7 +294,6 @@ namespace Orleans.Indexing
             {
                 workflowId = Guid.NewGuid();
             }
-
             return workflowId;
         }
 

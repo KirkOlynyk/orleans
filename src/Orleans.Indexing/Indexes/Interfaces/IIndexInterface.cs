@@ -25,7 +25,6 @@ namespace Orleans.Indexing
         [AlwaysInterleave]
         Task<bool> DirectApplyIndexUpdate(IIndexableGrain updatedGrain, Immutable<IMemberUpdate> iUpdate, bool isUnique, IndexMetaData idxMetaData, SiloAddress siloAddress = null);
 
-
         /// <summary>
         /// This method applies a batch of given updates to the current index.
         /// </summary>

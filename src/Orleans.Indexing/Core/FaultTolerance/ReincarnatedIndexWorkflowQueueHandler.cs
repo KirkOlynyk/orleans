@@ -43,8 +43,6 @@ namespace Orleans.Indexing
         }
 
         public Task HandleWorkflowsUntilPunctuation(Immutable<IndexWorkflowRecordNode> workflowRecordsHead)
-        {
-            return _base.HandleWorkflowsUntilPunctuation(workflowRecordsHead);
-        }
+            => _base.HandleWorkflowsUntilPunctuation(workflowRecordsHead);
     }
 }

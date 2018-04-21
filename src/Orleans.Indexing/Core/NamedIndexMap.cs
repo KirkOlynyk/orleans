@@ -25,7 +25,7 @@ namespace Orleans.Indexing
         internal bool Any(Func<IndexInfo, bool> pred) => this.IndexesByName.Values.Any(pred);
 
         internal bool HasAnyTotalIndex => this.Any(indexInfo => indexInfo.IndexInterface is ITotalIndex);
-        internal bool HasAnyUniqueIndex => this.Any(indexInfo => indexInfo.MetaData.IsUniqueIndex());
+        internal bool HasAnyUniqueIndex => this.Any(indexInfo => indexInfo.MetaData.IsUniqueIndex);
 
         internal IEnumerable<string> Keys => this.IndexesByName.Keys;
 

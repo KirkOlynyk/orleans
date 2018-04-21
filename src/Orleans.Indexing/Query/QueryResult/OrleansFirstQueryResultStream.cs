@@ -8,8 +8,7 @@ namespace Orleans.Indexing
 {
     /// <summary>
     /// This class limits the query result to a single record.
-    /// As soon as the single record is found, it stops the
-    /// underlying stream.
+    /// As soon as the single record is found, it stops the underlying stream.
     /// </summary>
     /// <typeparam name="TIGrain">type of grain for query result</typeparam>
     [Serializable]
@@ -24,12 +23,8 @@ namespace Orleans.Indexing
         {
         }
 
-        //creates a temporary new stream for the query result,
-        //when a stream is not provided from caller
-        private static IAsyncStream<TIGrain> CreateNewStream()
-        {
-            throw new NotImplementedException();
-        }
+        // Creates a temporary new stream for the query result, when a stream is not provided from caller
+        private static IAsyncStream<TIGrain> CreateNewStream() => throw new NotImplementedException();
 
         public override async Task OnNextAsync(TIGrain item, StreamSequenceToken token = null)
         {

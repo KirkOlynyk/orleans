@@ -13,24 +13,12 @@ namespace Orleans.Indexing
     {
         protected IEnumerable<TIGrain> _results;
 
-        public OrleansQueryResult(IEnumerable<TIGrain> results)
-        {
-            this._results = results;
-        }
+        public OrleansQueryResult(IEnumerable<TIGrain> results) => this._results = results;
 
-        public void Dispose()
-        {
-            this._results = null;
-        }
+        public void Dispose() => this._results = null;
 
-        public IEnumerator<TIGrain> GetEnumerator()
-        {
-            return this._results.GetEnumerator();
-        }
+        public IEnumerator<TIGrain> GetEnumerator() => this._results.GetEnumerator();
 
-        IEnumerator IEnumerable.GetEnumerator()
-        {
-            return this._results.GetEnumerator();
-        }
+        IEnumerator IEnumerable.GetEnumerator() => this._results.GetEnumerator();
     }
 }

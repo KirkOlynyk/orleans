@@ -129,8 +129,7 @@ namespace Orleans.Indexing
 
         public Task AddToQueue(Immutable<IndexWorkflowRecord> workflow)
         {
-            IndexWorkflowRecord newWorkflow = workflow.Value;
-            AddToQueueNonPersistent(newWorkflow);
+            AddToQueueNonPersistent(workflow.Value);
 
             InitiateWorkerThread();
             return IsFaultTolerant ? PersistState() : Task.CompletedTask;
@@ -162,15 +161,13 @@ namespace Orleans.Indexing
 
         private void RemoveFromQueueNonPersistent(IndexWorkflowRecord newWorkflow)
         {
-            IndexWorkflowRecordNode current = queueState.State.WorkflowRecordsHead;
-            while (current != null)
+            for (var current = queueState.State.WorkflowRecordsHead; current != null; current = current.Next)
             {
                 if (newWorkflow.Equals(current.WorkflowRecord))
                 {
                     current.Remove(ref queueState.State.WorkflowRecordsHead, ref _workflowRecordsTail);
                     return;
                 }
-                current = current.Next;
             }
         }
 
@@ -301,14 +298,12 @@ namespace Orleans.Indexing
         public Task<Immutable<List<IndexWorkflowRecord>>> GetRemainingWorkflowsIn(HashSet<Guid> activeWorkflowsSet)
         {
             var result = new List<IndexWorkflowRecord>();
-            IndexWorkflowRecordNode current = queueState.State.WorkflowRecordsHead;
-            while (current != null)
+            for (var current = queueState.State.WorkflowRecordsHead; current != null; current = current.Next)
             {
                 if (activeWorkflowsSet.Contains(current.WorkflowRecord.WorkflowId))
                 {
                     result.Add(current.WorkflowRecord);
                 }
-                current = current.Next;
             }
             return Task.FromResult(result.AsImmutable());
         }

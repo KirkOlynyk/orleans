@@ -11,13 +11,11 @@ namespace Orleans.Indexing
     public static class IndexUtils
     {
         /// <summary>
-        /// A utility function for getting the index grainID,
-        /// which is a simple concatenation of the grain
+        /// A utility function for getting the index grainID, which is a simple concatenation of the grain
         /// interface type and indexName
         /// </summary>
         /// <param name="grainType">the grain interface type</param>
-        /// <param name="indexName">the name of the index, which
-        /// is the identifier of the index</param>
+        /// <param name="indexName">the name of the index, which is the identifier of the index</param>
         /// <returns>index grainID</returns>
         public static string GetIndexGrainID(Type grainType, string indexName)
             => string.Format("{0}-{1}", TypeUtils.GetFullName(grainType), indexName);
@@ -47,8 +45,7 @@ namespace Orleans.Indexing
         }
 
         /// <summary>
-        /// This method is a central place for finding the
-        /// indexes defined on a getter method of a given
+        /// This method is a central place for finding the indexes defined on a getter method of a given
         /// grain interface.
         /// </summary>
         /// <typeparam name="IGrainType">the given grain interface type</typeparam>
@@ -58,8 +55,7 @@ namespace Orleans.Indexing
             => GetIndexNameOnInterfaceGetter(typeof(IGrainType), grainInterfaceMethod);
 
         /// <summary>
-        /// This method is a central place for finding the
-        /// indexes defined on a getter method of a given
+        /// This method is a central place for finding the indexes defined on a getter method of a given
         /// grain interface.
         /// </summary>
         /// <param name="grainType">the given grain interface type</param>

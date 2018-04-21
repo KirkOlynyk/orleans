@@ -1,5 +1,4 @@
 using System;
-using Orleans.Indexing;
 
 namespace Orleans.Indexing.Tests
 {
@@ -8,7 +7,7 @@ namespace Orleans.Indexing.Tests
     {
         public int Score { get; set; }
 
-        [ActiveIndex(ActiveIndexType.HashIndexPartitionedBySilo/*, IsEager: false*/)]
+        [ActiveIndex(ActiveIndexType.HashIndexPartitionedBySilo/*, IsEager = false*/)]
         public string Location { get; set; }
     }
 

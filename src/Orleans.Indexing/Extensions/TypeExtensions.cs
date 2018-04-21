@@ -8,25 +8,19 @@ namespace Orleans.Indexing
         /// <summary>
         /// Checks whether a givenType is assignable to a genericInterfaceType
         /// </summary>
-        /// <param name="givenType">the give type, which is
-        /// going to be tested</param>
-        /// <param name="genericInterfaceType">the generic
-        /// interface to be checked against</param>
+        /// <param name="givenType">the give type, which is going to be tested</param>
+        /// <param name="genericInterfaceType">the generic interface to be checked against</param>
         /// <returns></returns>
         public static bool IsAssignableToGenericType(this Type givenType, Type genericInterfaceType)
-        {
-            return givenType.GetInterfaces().Any(t => t.IsGenericType && t.GetGenericTypeDefinition() == genericInterfaceType) ||
+            => givenType.GetInterfaces().Any(t => t.IsGenericType && t.GetGenericTypeDefinition() == genericInterfaceType) ||
                    givenType.BaseType != null && (givenType.BaseType.IsGenericType && givenType.BaseType.GetGenericTypeDefinition() == genericInterfaceType ||
                                                   givenType.BaseType.IsAssignableToGenericType(genericInterfaceType));
-        }
 
         /// <summary>
-        /// This method finds a concrete generic type given a non-concrete 
-        /// genericInterfaceType by looking into the type hierarchy of a givenType
+        /// This method finds a concrete generic type given a non-concrete genericInterfaceType by looking into the type hierarchy of a givenType
         /// </summary>
         /// <param name="givenType">the concrete type</param>
-        /// <param name="genericInterfaceType">the non-concrete 
-        /// generic interface</param>
+        /// <param name="genericInterfaceType">the non-concrete generic interface</param>
         /// <returns></returns>
         public static Type GetGenericType(this Type givenType, Type genericInterfaceType)
         {
@@ -39,12 +33,12 @@ namespace Orleans.Indexing
             }
 
             if (givenType.IsGenericType && givenType.GetGenericTypeDefinition() == genericInterfaceType)
+            {
                 return givenType;
+            }
 
             Type baseType = givenType.BaseType;
-            if (baseType == null) return null;
-
-            return GetGenericType(baseType, genericInterfaceType);
+            return baseType == null ? null : GetGenericType(baseType, genericInterfaceType);
         }
     }
 }

@@ -123,19 +123,17 @@ namespace Orleans.Indexing
         }
 
         public Task Lookup(IOrleansQueryResultStream<V> result, K key)
-        {
-            return ((IIndexInterface)this).Lookup(result.Cast<IIndexableGrain>(), key);
-        }
+            => ((IIndexInterface)this).Lookup(result.Cast<IIndexableGrain>(), key);
 
         async Task IIndexInterface.Lookup(IOrleansQueryResultStream<IIndexableGrain> result, object key)
         {
             Logger.Trace($"Streamed index lookup called for key = {key}");
 
-            //get all silos
+            // Get all silos
             Dictionary<SiloAddress, SiloStatus> hosts = await this.SiloIndexManager.GetSiloHosts(true);
             ISet<Task<IOrleansQueryResult<IIndexableGrain>>> queriesToSilos = GetResultQueries(hosts, key);
 
-            //TODO: After fixing the problem with OrleansStream, this part is not needed anymore. TODO find out what that problem is
+            //TODO: After fixing the problem with OrleansStream, this part is not needed anymore.
             while (queriesToSilos.Count > 0)
             {
                 // Identify the first task that completes.

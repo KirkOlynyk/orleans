@@ -25,35 +25,21 @@ namespace Orleans.Indexing
 
         // Accept a queryResult instance which we shall observe
         public OrleansQueryResultStreamCaster(IOrleansQueryResultStream<FromTP> stream)
-        {
-            this._stream = stream;
-        }
+            => this._stream = stream;
 
-        public IOrleansQueryResultStream<TOGrain> Cast<TOGrain>() where TOGrain : IIndexableGrain
-        {
-            if (typeof(TOGrain) == typeof(FromTP)) return (IOrleansQueryResultStream<TOGrain>)this._stream;
-            return new OrleansQueryResultStreamCaster<FromTP, TOGrain>(this._stream);
-        }
+        public IOrleansQueryResultStream<TOGrain> Cast<TOGrain>() where TOGrain : IIndexableGrain 
+            => typeof(TOGrain) == typeof(FromTP)
+                ? (IOrleansQueryResultStream<TOGrain>)this._stream
+                : new OrleansQueryResultStreamCaster<FromTP, TOGrain>(this._stream);
 
-        public void Dispose()
-        {
-            this._stream.Dispose();
-        }
+        public void Dispose() => this._stream.Dispose();
 
-        public Task OnCompletedAsync()
-        {
-            return this._stream.OnCompletedAsync();
-        }
+        public Task OnCompletedAsync() => this._stream.OnCompletedAsync();
 
-        public Task OnErrorAsync(Exception ex)
-        {
-            return this._stream.OnErrorAsync(ex);
-        }
+        public Task OnErrorAsync(Exception ex) => this._stream.OnErrorAsync(ex);
 
         public Task OnNextAsync(ToTP item, StreamSequenceToken token = null)
-        {
-            return this._stream.OnNextAsync(item.AsReference<FromTP>(), token);
-        }
+            => this._stream.OnNextAsync(item.AsReference<FromTP>(), token);
 
         public Task OnNextBatchAsync(IEnumerable<ToTP> batch, StreamSequenceToken token = null)
         {
@@ -63,13 +49,9 @@ namespace Orleans.Indexing
         }
 
         public Task<StreamSubscriptionHandle<ToTP>> SubscribeAsync(IAsyncObserver<ToTP> observer)
-        {
-            throw new NotSupportedException();
-        }
+            => throw new NotSupportedException();
 
         public Task<StreamSubscriptionHandle<ToTP>> SubscribeAsync(IAsyncObserver<ToTP> observer, StreamSequenceToken token, StreamFilterPredicate filterFunc = null, object filterData = null)
-        {
-            throw new NotSupportedException();
-        }
+            => throw new NotSupportedException();
     }
 }

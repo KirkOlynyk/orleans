@@ -48,8 +48,7 @@ namespace Orleans.Indexing
 
         public IndexWorkflowRecordNode AppendPunctuation(ref IndexWorkflowRecordNode tail)
         {
-            //we never append a punctuation to an existing punctuation.
-            //It should never be requested
+            // We never append a punctuation to an existing punctuation; it should never be requested.
             if (IsPunctuation()) throw new WorkflowIndexException("Adding a punctuation to a work-flow queue that already has a punctuation is not allowed.");
 
             var punctuation = new IndexWorkflowRecordNode();
@@ -76,15 +75,12 @@ namespace Orleans.Indexing
             Prev = null;
         }
 
-        internal bool IsPunctuation()
-        {
-            return WorkflowRecord == null;
-        }
+        internal bool IsPunctuation() => WorkflowRecord == null;
 
         public override string ToString()
         {
             int count = 0;
-            StringBuilder res = new StringBuilder();
+            var res = new StringBuilder();
             IndexWorkflowRecordNode curr = this;
             do
             {
@@ -99,7 +95,7 @@ namespace Orleans.Indexing
         public string ToStringReverse()
         {
             int count = 0;
-            StringBuilder res = new StringBuilder();
+            var res = new StringBuilder();
             IndexWorkflowRecordNode curr = this;
             do
             {

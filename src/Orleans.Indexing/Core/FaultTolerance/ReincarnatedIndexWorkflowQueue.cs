@@ -44,28 +44,18 @@ namespace Orleans.Indexing
         }
 
         public Task AddAllToQueue(Immutable<List<IndexWorkflowRecord>> workflowRecords)
-        {
-            return _base.AddAllToQueue(workflowRecords);
-        }
+            => _base.AddAllToQueue(workflowRecords);
 
         public Task AddToQueue(Immutable<IndexWorkflowRecord> workflowRecord)
-        {
-            return _base.AddToQueue(workflowRecord);
-        }
+            => _base.AddToQueue(workflowRecord);
 
         public Task<Immutable<List<IndexWorkflowRecord>>> GetRemainingWorkflowsIn(HashSet<Guid> activeWorkflowsSet)
-        {
-            return _base.GetRemainingWorkflowsIn(activeWorkflowsSet);
-        }
+            => _base.GetRemainingWorkflowsIn(activeWorkflowsSet);
 
         public Task<Immutable<IndexWorkflowRecordNode>> GiveMoreWorkflowsOrSetAsIdle()
-        {
-            return _base.GiveMoreWorkflowsOrSetAsIdle();
-        }
+            => _base.GiveMoreWorkflowsOrSetAsIdle();
 
         public Task RemoveAllFromQueue(Immutable<List<IndexWorkflowRecord>> workflowRecords)
-        {
-            return _base.RemoveAllFromQueue(workflowRecords);
-        }
+            => _base.RemoveAllFromQueue(workflowRecords);
     }
 }

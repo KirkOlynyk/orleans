@@ -65,8 +65,7 @@ namespace Orleans.Indexing
             => call.Arguments.Count() == 2 && call.Method.ReflectedType.Equals(typeof(Queryable)) && call.Method.Name == "Where";
 
         /// <summary>
-        /// This method tries to pull out the index name and
-        /// lookup value from the given expression tree.
+        /// This method tries to pull out the index name and lookup value from the given expression tree.
         /// </summary>
         /// <param name="exprTree">the given expression tree</param>
         /// <param name="iGrainType">the grain interface type</param>
@@ -114,8 +113,7 @@ namespace Orleans.Indexing
         }
 
         /// <summary>
-        /// This method tries to pull out the index name from
-        /// a given field expression.
+        /// This method tries to pull out the index name from a given field expression.
         /// </summary>
         /// <param name="exprTree">the original expression tree</param>
         /// <param name="iGrainType">the grain interface type</param>
@@ -139,10 +137,7 @@ namespace Orleans.Indexing
 
         #region IOrleansQueryProvider
 
-        public object Execute(Expression expression)
-        {
-            throw new NotImplementedException();
-        }
+        public object Execute(Expression expression) => throw new NotImplementedException();
 
         /// <summary>
         /// Executes the query represented by a specified expression tree.

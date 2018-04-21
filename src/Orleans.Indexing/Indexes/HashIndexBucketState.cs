@@ -18,10 +18,8 @@ namespace Orleans.Indexing
         public Dictionary<K, HashIndexSingleBucketEntry<V>> IndexMap { set; get; }
 
         /// <summary>
-        /// Contains the status of the index regarding
-        /// its population process, which can be either
-        /// UnderConstruction or Available. Available means
-        /// that the index has already been populated.
+        /// Contains the status of the index regarding its population process, which can be either
+        /// UnderConstruction or Available. Available means that the index has already been populated.
         /// </summary>
         public IndexStatus IndexStatus { set; get; }
 
@@ -29,7 +27,7 @@ namespace Orleans.Indexing
     }
 
     /// <summary>
-    /// Represent an index entry in the hash-index
+    /// Represents an index entry in the hash-index
     /// </summary>
     /// <typeparam name="T">the type of elements stored in
     /// the entry</typeparam>
@@ -37,10 +35,8 @@ namespace Orleans.Indexing
     public sealed class HashIndexSingleBucketEntry<T>
     {
         /// <summary>
-        /// The set of values associated with a single key
-        /// of the hash-index. The hash-set can contain more
-        /// than one value if there is no uniqueness constraint
-        /// on the hash-index
+        /// The set of values associated with a single key of the hash-index. The hash-set can contain more
+        /// than one value if there is no uniqueness constraint on the hash-index.
         /// </summary>
         public HashSet<T> Values = new HashSet<T>();
 
@@ -55,13 +51,11 @@ namespace Orleans.Indexing
             {
                 SetTentativeDelete();
             }
-            //in order to make the index update operations idempotent, the unique
-            //indexes can only do their action if the index entry is still marked
-            //as tentative. Otherwise, it means that tentative flag is removed
-            //by an earlier attempt and should not be done again.
-            //There is no concern about non-unique indexes, because they cannot
-            //affect the operations among different grains and fail the operations
-            //on other grains.
+
+            // In order to make the index update operations idempotent, the unique indexes can only do their action if the index entry is
+            // still marked as tentative. Otherwise, it means that tentative flag was removed by an earlier attempt and should not be done again.
+            // There is no concern about non-unique indexes, because they cannot affect the operations among different grains and therefore
+            // cannot fail the operations on other grains.
             else if (!isUniqueIndex || IsTentative())
             {
                 ClearTentativeFlag();
@@ -76,42 +70,24 @@ namespace Orleans.Indexing
             {
                 SetTentativeInsert();
             }
-            //this condition check is not necessary, because if the flag is set,
-            //we will unset it, and if it's unset, we will unset it again, which is a no-op
+
+            // This condition check is not necessary: if the flag is set, we will unset it, and if it's unset, we will unset it again, which is a no-op.
             else //if(!isUniqueIndex || isTentative())
             {
                 ClearTentativeFlag();
             }
         }
 
-        internal bool IsTentative()
-        {
-            return IsTentativeDelete() || IsTentativeInsert();
-        }
+        internal bool IsTentative() => IsTentativeDelete() || IsTentativeInsert();
 
-        internal bool IsTentativeDelete()
-        {
-            return this.TentativeOperationType == TENTATIVE_TYPE_DELETE;
-        }
+        internal bool IsTentativeDelete() => this.TentativeOperationType == TENTATIVE_TYPE_DELETE;
 
-        internal bool IsTentativeInsert()
-        {
-            return this.TentativeOperationType == TENTATIVE_TYPE_INSERT;
-        }
+        internal bool IsTentativeInsert() => this.TentativeOperationType == TENTATIVE_TYPE_INSERT;
 
-        internal void SetTentativeDelete()
-        {
-            this.TentativeOperationType = TENTATIVE_TYPE_DELETE;
-        }
+        internal void SetTentativeDelete() => this.TentativeOperationType = TENTATIVE_TYPE_DELETE;
 
-        internal void SetTentativeInsert()
-        {
-            this.TentativeOperationType = TENTATIVE_TYPE_INSERT;
-        }
+        internal void SetTentativeInsert() => this.TentativeOperationType = TENTATIVE_TYPE_INSERT;
 
-        internal void ClearTentativeFlag()
-        {
-            this.TentativeOperationType = TENTATIVE_TYPE_NONE;
-        }
+        internal void ClearTentativeFlag() => this.TentativeOperationType = TENTATIVE_TYPE_NONE;
     }
 }

@@ -6,9 +6,6 @@ namespace Orleans.Indexing
 {
     /// <summary>
     /// A simple implementation of a single-bucket in-memory hash-index
-    /// 
-    /// Generic SystemTargets are not supported yet, and that's why the
-    /// implementation is non-generic.
     /// </summary>
     /// <typeparam name="K">type of hash-index key</typeparam>
     /// <typeparam name="V">type of grain that is being indexed</typeparam>

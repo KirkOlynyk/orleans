@@ -16,8 +16,7 @@ namespace Orleans.Indexing
         private int _maxEntriesPerBucket;
 
         /// <summary>
-        /// Constructs an IndexMetaData, which currently only
-        /// consists of the type of the index
+        /// Constructs an IndexMetaData, which currently only consists of the type of the index
         /// </summary>
         /// <param name="indexType">Type of the index implementation class.</param>
         /// <param name="isEager">Determines whether the index should be updated eagerly upon any change in the indexed grains. Otherwise,
@@ -33,9 +32,6 @@ namespace Orleans.Indexing
             this._maxEntriesPerBucket = maxEntriesPerBucket;
         }
 
-        /// <returns>the type of the index</returns>
-        public Type GetIndexType() => this._indexType;
-
 #if false // TODO not used? IsStatelessWorker
         /// <summary>
         /// Determines whether the index grain is a stateless worker or not. This piece of information can impact the relationship
@@ -43,7 +39,7 @@ namespace Orleans.Indexing
         /// </summary>
         /// <returns>the result of whether the current index is
         /// a stateless worker or not</returns>
-        public bool IsIndexStatelessWorker() => IsStatelessWorker(Type.GetType(TypeCodeMapper.GetImplementation(this._indexType).GrainClass));
+        public bool IsIndexStatelessWorker => IsStatelessWorker(Type.GetType(TypeCodeMapper.GetImplementation(this._indexType).GrainClass));
 
         /// <summary>
         /// A helper function that determines whether a given grain type is annotated with StatelessWorker annotation or not.
@@ -57,14 +53,12 @@ namespace Orleans.Indexing
         }
 #endif
 
-        public bool IsUniqueIndex() =>this._isUniqueIndex;
+        public bool IsUniqueIndex => this._isUniqueIndex;
 
-        public bool IsEager() => this._isEager;
+        public bool IsEager => this._isEager;
 
-        public int GetMaxEntriesPerBucket() => this._maxEntriesPerBucket;
+        public bool IsChainedBuckets => this._maxEntriesPerBucket > 0;
 
-        public bool IsChainedBuckets() => this._maxEntriesPerBucket > 0;
-
-        public bool IsCreatingANewBucketNecessary(int currentSize) => IsChainedBuckets() && currentSize >= this._maxEntriesPerBucket;
+        internal bool IsCreatingANewBucketNecessary(int currentSize) => this.IsChainedBuckets && currentSize >= this._maxEntriesPerBucket;
     }
 }
