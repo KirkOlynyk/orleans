@@ -5,8 +5,7 @@ namespace Orleans.Indexing
     internal static class HashIndexBucketUtils
     {
         /// <summary>
-        /// This method contains the common functionality for updating
-        /// hash-index bucket.
+        /// This method contains the common functionality for updating the hash-index bucket.
         /// </summary>
         /// <typeparam name="K">key type</typeparam>
         /// <typeparam name="V">value type</typeparam>
@@ -16,13 +15,10 @@ namespace Orleans.Indexing
         /// <param name="isUniqueIndex">a flag to indicate whether the hash-index has a uniqueness constraint</param>
         /// <param name="idxMetaData">the index metadata</param>
         internal static bool UpdateBucket<K, V>(V updatedGrain, IMemberUpdate iUpdate, HashIndexBucketState<K, V> state, bool isUniqueIndex, IndexMetaData idxMetaData) where V : IIndexableGrain
-        {
-            return UpdateBucket(updatedGrain, iUpdate, state, isUniqueIndex, idxMetaData, out K befImg, out HashIndexSingleBucketEntry<V> befEntry, out bool fixIndexUnavailableOnDelete);
-        }
+            => UpdateBucket(updatedGrain, iUpdate, state, isUniqueIndex, idxMetaData, out K befImg, out HashIndexSingleBucketEntry<V> befEntry, out bool fixIndexUnavailableOnDelete);
 
         /// <summary>
-        /// This method contains the common functionality for updating
-        /// hash-index bucket.
+        /// This method contains the common functionality for updating the hash-index bucket.
         /// </summary>
         /// <typeparam name="K">key type</typeparam>
         /// <typeparam name="V">value type</typeparam>
@@ -34,8 +30,9 @@ namespace Orleans.Indexing
         /// <param name="befImg">output parameter: the before-image</param>
         /// <param name="befEntry">output parameter: the index entry containing the before-image</param>
         /// <param name="fixIndexUnavailableOnDelete">output parameter: this variable determines whether
-        /// index was still unavailable when we received a delete operation</param>
-        internal static bool UpdateBucket<K, V>(V updatedGrain, IMemberUpdate update, HashIndexBucketState<K, V> state, bool isUniqueIndex, IndexMetaData idxMetaData, out K befImg, out HashIndexSingleBucketEntry<V> befEntry, out bool fixIndexUnavailableOnDelete) where V : IIndexableGrain
+        ///             the index was still unavailable when we received a delete operation</param>
+        internal static bool UpdateBucket<K, V>(V updatedGrain, IMemberUpdate update, HashIndexBucketState<K, V> state, bool isUniqueIndex, IndexMetaData idxMetaData, out K befImg,
+                                                out HashIndexSingleBucketEntry<V> befEntry, out bool fixIndexUnavailableOnDelete) where V : IIndexableGrain
         {
             fixIndexUnavailableOnDelete = false;
             befImg = default(K);
@@ -68,7 +65,9 @@ namespace Orleans.Indexing
                         {
                             if (isUniqueIndex && aftEntry.Values.Count > 0)
                             {
-                                throw new UniquenessConstraintViolatedException(string.Format("The uniqueness property of index is violated after an update operation for before-image = {0}, after-image = {1} and grain = {2}", befImg, aftImg, updatedGrain.GetPrimaryKey()));
+                                throw new UniquenessConstraintViolatedException(string.Format(
+                                        "The uniqueness property of index is violated after an update operation for before-image = {0}, after-image = {1} and grain = {2}",
+                                        befImg, aftImg, updatedGrain.GetPrimaryKey()));
                             }
                             befEntry.Remove(updatedGrain, isTentativeUpdate, isUniqueIndex);
                             aftEntry.Add(updatedGrain, isTentativeUpdate, isUniqueIndex);
@@ -84,7 +83,7 @@ namespace Orleans.Indexing
                 }
                 else
                 {
-                    if (idxMetaData.IsChainedBuckets())
+                    if (idxMetaData.IsChainedBuckets)
                         return false; //not found in this bucket
                     //Insert
                     if (state.IndexMap.TryGetValue(aftImg, out aftEntry))
@@ -127,7 +126,8 @@ namespace Orleans.Indexing
                     {
                         if (isUniqueIndex && aftEntry.Values.Count > 0)
                         {
-                            throw new UniquenessConstraintViolatedException(string.Format("The uniqueness property of index is violated after an insert operation for after-image = {0} and grain = {1}", aftImg, updatedGrain.GetPrimaryKey()));
+                            throw new UniquenessConstraintViolatedException(string.Format("The uniqueness property of index is violated after an insert operation for after-image = {0} and grain = {1}",
+                                                                                           aftImg, updatedGrain.GetPrimaryKey()));
                         }
                         aftEntry.Add(updatedGrain, isTentativeUpdate, isUniqueIndex);
                     }
@@ -163,7 +163,7 @@ namespace Orleans.Indexing
                         fixIndexUnavailableOnDelete = true;
                     }
                 }
-                else if (idxMetaData.IsChainedBuckets())
+                else if (idxMetaData.IsChainedBuckets)
                 {
                     return false; //not found in this bucket
                 }

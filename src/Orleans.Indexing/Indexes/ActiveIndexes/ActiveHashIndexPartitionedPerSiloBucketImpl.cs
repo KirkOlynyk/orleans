@@ -15,8 +15,7 @@ namespace Orleans.Indexing
     /// <summary>
     /// A simple implementation of a single-grain in-memory hash-index.
     /// 
-    /// Generic SystemTargets are not supported yet, and that's why the
-    /// implementation is non-generic.
+    /// TODO: Generic SystemTargets are not supported yet, and that's why the implementation is non-generic.
     /// </summary>
     //Per comments for IActiveHashIndexPartitionedPerSiloBucket, we cannot use generics here.
     //<typeparam name="K">type of hash-index key</typeparam>
@@ -47,12 +46,13 @@ namespace Orleans.Indexing
 
         public async Task<bool> DirectApplyIndexUpdateBatch(Immutable<IDictionary<IIndexableGrain, IList<IMemberUpdate>>> iUpdates, bool isUnique, IndexMetaData idxMetaData, SiloAddress siloAddress = null)
         {
-            logger.Trace($"ParentIndex {_parentIndexName}: Started calling DirectApplyIndexUpdateBatch with the following parameters: isUnique = {isUnique}, siloAddress = {siloAddress}, iUpdates = {MemberUpdate.UpdatesToString(iUpdates.Value)}", isUnique, siloAddress);
+            logger.Trace($"ParentIndex {_parentIndexName}: Started calling DirectApplyIndexUpdateBatch with the following parameters: isUnique = {isUnique}," +
+                         $" siloAddress = {siloAddress}, iUpdates = {MemberUpdate.UpdatesToString(iUpdates.Value)}", isUnique, siloAddress);
 
             await Task.WhenAll(iUpdates.Value.Select(kvp => DirectApplyIndexUpdates(kvp.Key, kvp.Value, isUnique, idxMetaData, siloAddress)));
 
-            logger.Trace($"Finished calling DirectApplyIndexUpdateBatch with the following parameters: isUnique = {isUnique}, siloAddress = {siloAddress}, iUpdates = {MemberUpdate.UpdatesToString(iUpdates.Value)}");
-
+            logger.Trace($"Finished calling DirectApplyIndexUpdateBatch with the following parameters: isUnique = {isUnique}, siloAddress = {siloAddress}," +
+                         $" iUpdates = {MemberUpdate.UpdatesToString(iUpdates.Value)}");
             return true;
         }
 

@@ -3,12 +3,10 @@ using System;
 namespace Orleans.Indexing
 {
     /// <summary>
-    /// The generic attribute for declaring the property fields of an
-    /// indexed grain interface to have an index.
+    /// The generic attribute for declaring the property fields of an indexed grain interface to have an index.
     /// 
-    /// This property should only be used for the index-types introduced
-    /// by third-party libraries. Otherwise, we suggest to use one of the
-    /// following descendants of the IndexAttribute based on your requirements:
+    /// This property should only be used for the index-types introduced by third-party libraries.
+    /// Otherwise, we suggest to use one of the following descendants of the IndexAttribute based on your requirements:
     ///  - ActiveIndexAttribute
     ///  - TotalIndexAttribute
     ///  - StorageManagedIndexAttribute
@@ -19,7 +17,7 @@ namespace Orleans.Indexing
         public Type IndexType { get; set; }
         public bool IsUnique { get; set; }
         public bool IsEager { get; set; }
-        public int MaxEntriesPerBucket { get; protected set; }
+        public int MaxEntriesPerBucket { get; set; }
 
         /// <summary>
         /// The default constructor for Index.
@@ -32,7 +30,7 @@ namespace Orleans.Indexing
         /// The constructor for Index.
         /// </summary>
         /// <param name="isEager">Determines whether the index should be updated eagerly upon any change in the indexed grains. Otherwise,
-        /// the update propagation happens lazily after applying the update to the grain itself.</param>
+        ///     the update propagation happens lazily after applying the update to the grain itself.</param>
         public IndexAttribute(bool isEager) : this(typeof(IActiveHashIndexSingleBucket<,>), isEager, false)
         {
         }
@@ -42,10 +40,10 @@ namespace Orleans.Indexing
         /// </summary>
         /// <param name="indexType">Type of the index implementation class.</param>
         /// <param name="isEager">Determines whether the index should be updated eagerly upon any change in the indexed grains. Otherwise,
-        /// the update propagation happens lazily after applying the update to the grain itself.</param>
+        ///     the update propagation happens lazily after applying the update to the grain itself.</param>
         /// <param name="isUnique">Determines whether the index should maintain a uniqueness constraint.</param>
         /// <param name="maxEntriesPerBucket">The maximum number of entries that should be stored in each bucket of a distributed index. This
-        /// option is only considered if the index is a distributed index. Use -1 to declare no limit.</param>
+        ///     option is only considered if the index is a distributed index. Use -1 to declare no limit.</param>
         public IndexAttribute(Type indexType, bool isEager = false, bool isUnique = false, int maxEntriesPerBucket = -1)
         {
             this.IndexType = indexType;

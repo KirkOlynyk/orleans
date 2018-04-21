@@ -146,18 +146,25 @@ namespace Orleans.Indexing
                     Type indexType = (Type)indexTypeProperty.GetValue(indexAttr);
                     bool isTotalIndex = typeof(ITotalIndex).IsAssignableFrom(indexType);
 
-                    //Total Index cannot be configured as being lazy
                     if (isTotalIndex && isEager)
                     {
-                        throw new InvalidOperationException(string.Format("A Total Index cannot be configured to be updated eagerly. The only option for updating a Total Index is lazy updating. Total Index of type {0} is defined to be updated eagerly on property {1} of class {2} on {3} grain interface.", TypeUtils.GetFullName(indexType), p.Name, TypeUtils.GetFullName(propertiesArg), TypeUtils.GetFullName(userDefinedIGrain)));
+                        throw new InvalidOperationException($"A Total Index cannot be configured to be updated eagerly. The only option for updating a Total Index is lazy updating." +
+                                                            $" Total Index of type {TypeUtils.GetFullName(indexType)} is defined to be updated eagerly on property {p.Name}" +
+                                                            $" of class {TypeUtils.GetFullName(propertiesArg)} on {TypeUtils.GetFullName(userDefinedIGrain)} grain interface.");
                     }
-                    else if (isFaultTolerant && isEager)
+                    if (isFaultTolerant && isEager)
                     {
-                        throw new InvalidOperationException(string.Format("A fault-tolerant grain implementation cannot be configured to eagerly update its indexes. The only option for updating the indexes of a fault-tolerant indexable grain is lazy updating. The index of type {0} is defined to be updated eagerly on property {1} of class {2} on {3} grain implementation class.", TypeUtils.GetFullName(indexType), p.Name, TypeUtils.GetFullName(propertiesArg), TypeUtils.GetFullName(userDefinedGrainImpl)));
+                        throw new InvalidOperationException($"A fault-tolerant grain implementation cannot be configured to eagerly update its indexes." +
+                                                            $" The only option for updating the indexes of a fault-tolerant indexable grain is lazy updating." +
+                                                            $" The index of type {TypeUtils.GetFullName(indexType)} is defined to be updated eagerly on property {p.Name}" +
+                                                            $" of class {TypeUtils.GetFullName(propertiesArg)} on {TypeUtils.GetFullName(userDefinedGrainImpl)} grain implementation class.");
                     }
-                    else if (isEager != isFirstIndexEager)
+                    if (isEager != isFirstIndexEager)
                     {
-                        throw new InvalidOperationException(string.Format("Some indexes on property class {0} of {1} grain interface are defined to be updated eagerly while others are configured as lazy updating. You should fix this by configuring all indexes to be updated lazily or eagerly. If you have at least one Total Index among your indexes, then all other indexes should be configured as lazy, too.", TypeUtils.GetFullName(propertiesArg), TypeUtils.GetFullName(userDefinedIGrain)));
+                        throw new InvalidOperationException($"Some indexes on property class {TypeUtils.GetFullName(propertiesArg)} of {TypeUtils.GetFullName(userDefinedIGrain)}" +
+                                                            $" grain interface are defined to be updated eagerly while others are configured as lazy updating." +
+                                                            $" You must fix this by configuring all indexes to be updated lazily or eagerly." +
+                                                            $" If you have at least one Total Index among your indexes, then all other indexes must be configured as lazy also.");
                     }
                 }
             }

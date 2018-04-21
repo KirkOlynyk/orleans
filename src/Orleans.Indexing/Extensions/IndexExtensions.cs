@@ -9,8 +9,7 @@ namespace Orleans.Indexing
     internal static class IndexExtensions
     {
         /// <summary>
-        /// An extension method to intercept the calls to DirectApplyIndexUpdateBatch
-        /// on an Index
+        /// An extension method to intercept the calls to DirectApplyIndexUpdateBatch on an Index
         /// </summary>
         public static Task<bool> ApplyIndexUpdateBatch(this IIndexInterface index, IRuntimeClient runtimeClient,
                                                         Immutable<IDictionary<IIndexableGrain, IList<IMemberUpdate>>> iUpdates,
@@ -28,8 +27,7 @@ namespace Orleans.Indexing
         }
 
         /// <summary>
-        /// An extension method to intercept the calls to DirectApplyIndexUpdate
-        /// on an Index
+        /// An extension method to intercept the calls to DirectApplyIndexUpdate on an Index
         /// </summary>
         internal static Task<bool> ApplyIndexUpdate(this IIndexInterface index, IRuntimeClient runtimeClient,
                                                     IIndexableGrain updatedGrain, Immutable<IMemberUpdate> update,
@@ -53,6 +51,7 @@ namespace Orleans.Indexing
                                           IndexUtils.GetIndexGrainID(iGrainType, indexName));
         }
 
-        internal static GrainId GetSystemTargetGrainId(int typeData, string systemGrainId) => GrainId.GetSystemTargetGrainId(typeData, systemGrainId);
+        internal static GrainId GetSystemTargetGrainId(int typeData, string systemGrainId)
+            => GrainId.GetSystemTargetGrainId(typeData, systemGrainId);
     }
 }

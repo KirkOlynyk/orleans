@@ -13,17 +13,14 @@ namespace Orleans.Indexing
         /// <param name="gf">the grain factory object</param>
         /// <returns>A strongly typed <c>GrainReference</c> of grain interface type TGrainInterface.</returns>
         public static TGrainInterface AsReference<TGrainInterface>(this IAddressable grain, IGrainFactory gf)
-        {
-            return (grain != null)
+            => (grain != null)
                 ? ((GrainFactory)gf).Cast<TGrainInterface>(grain.AsWeaklyTypedReference())
                 : throw new ArgumentNullException("grain", "Cannot pass null as an argument to AsReference");
-        }
 
         /// <summary>
         /// Converts this grain to the grain interface identified by iGrainType.
         /// 
-        /// Finally, it casts it to the type provided as TGrainInterface.
-        /// The caller should make sure that iGrainType extends TGrainInterface.
+        /// Finally, it casts it to the type provided as TGrainInterface. The caller should make sure that iGrainType extends TGrainInterface.
         /// </summary>
         /// <typeparam name="TGrainInterface">output grain interface type, which iGrainType extends it</typeparam>
         /// <param name="grain">the target grain to be casted</param>
@@ -32,11 +29,9 @@ namespace Orleans.Indexing
         /// <returns>A strongly typed <c>GrainReference</c> of grain interface type iGrainType casted to TGrainInterface.</returns>
         /// <returns></returns>
         public static TGrainInterface AsReference<TGrainInterface>(this IAddressable grain, IGrainFactory gf, Type iGrainType)
-        {
-            return (grain != null)
+            => (grain != null)
                 ? (TGrainInterface)((GrainFactory)gf).Cast(grain.AsWeaklyTypedReference(), iGrainType)
                 : throw new ArgumentNullException("grain", "Cannot pass null as an argument to AsReference");
-        }
 
         private const string WRONG_GRAIN_ERROR_MSG = "Passing a half baked grain as an argument. It is possible that you instantiated a grain class explicitly, as a regular object and not via Orleans runtime or via proper test mocking";
 
@@ -52,10 +47,9 @@ namespace Orleans.Indexing
                     : throw new ArgumentException(WRONG_GRAIN_ERROR_MSG, "grain");
             }
 
-            if (grain is ISystemTargetBase systemTarget)
-                return GrainReference.FromGrainId(systemTarget.GrainId, systemTarget.GrainReferenceRuntime, null, systemTarget.Silo);
-
-            throw new ArgumentException(string.Format("AsWeaklyTypedReference has been called on an unexpected type: {0}.", grain.GetType().FullName), "grain");
+            return grain is ISystemTargetBase systemTarget
+                ? GrainReference.FromGrainId(systemTarget.GrainId, systemTarget.GrainReferenceRuntime, null, systemTarget.Silo)
+                : throw new ArgumentException(string.Format("AsWeaklyTypedReference has been called on an unexpected type: {0}.", grain.GetType().FullName), "grain");
         }
 
         internal static GrainReference AsGrainReference(this ISystemTargetBase grain, IGrainReferenceRuntime grainReferenceRuntime, SiloAddress siloAddress, out GrainId grainId)

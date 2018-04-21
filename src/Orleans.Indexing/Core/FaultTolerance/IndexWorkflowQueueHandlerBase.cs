@@ -78,7 +78,7 @@ namespace Orleans.Indexing
                 if (updatesToIndex.Count() > 0)
                 {
                     updateIndexTasks.Add(idxInfo.IndexInterface.ApplyIndexUpdateBatch(_indexManager.RuntimeClient, updatesToIndex.AsImmutable(),
-                                                                                      idxInfo.MetaData.IsUniqueIndex(), idxInfo.MetaData, _silo));
+                                                                                      idxInfo.MetaData.IsUniqueIndex, idxInfo.MetaData, _silo));
                 }
             }
 
@@ -115,7 +115,7 @@ namespace Orleans.Indexing
                         }
                         // If the workflow record does not exist in the list of active work-flows and the index is fault-tolerant,
                         // we should make sure that tentative updates to unique indexes are undone.
-                        else if (GrainIndexes[index].MetaData.IsUniqueIndex())
+                        else if (GrainIndexes[index].MetaData.IsUniqueIndex)
                         {
                             // Reverse a possible remaining tentative record from the index
                             updatesList.Add(new MemberUpdateReverseTentative(updt));

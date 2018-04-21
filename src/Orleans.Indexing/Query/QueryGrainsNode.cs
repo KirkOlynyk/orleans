@@ -13,9 +13,9 @@ namespace Orleans.Indexing
     /// </summary>
     public abstract class QueryGrainsNode
     {
-        public IIndexFactory IndexFactory { get; private set; }
+        public IIndexFactory IndexFactory { get; }
 
-        public IStreamProvider StreamProvider { get; private set; }
+        public IStreamProvider StreamProvider { get; }
 
         public QueryGrainsNode(IIndexFactory indexFactory, IStreamProvider streamProvider)
         {
@@ -40,8 +40,7 @@ namespace Orleans.Indexing
         public virtual IQueryProvider Provider => new OrleansQueryProvider<TIGrain, TProperties>();
 
         /// <summary>
-        /// This method gets the result of executing the query
-        /// on this query object
+        /// This method gets the result of executing the query on this query object
         /// </summary>
         /// <returns>the query result</returns>
         public abstract Task ObserveResults(IAsyncBatchObserver<TIGrain> observer);
@@ -49,9 +48,7 @@ namespace Orleans.Indexing
         public abstract Task<IOrleansQueryResult<TIGrain>> GetResults();
 
         public IEnumerator<TProperties> GetEnumerator()
-        {
-            throw new NotSupportedException("GetEnumerator is not supported on QueryGrainsNode.");
-        }
+            => throw new NotSupportedException("GetEnumerator is not supported on QueryGrainsNode.");
 
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
     }

@@ -13,8 +13,7 @@ namespace Orleans.Indexing
     public interface IHashIndexInterface<K, V> : IIndexInterface<K, V> where V : IIndexableGrain
     {
         /// <summary>
-        /// This method retrieves the unique result of a lookup into the
-        /// hash-index
+        /// This method retrieves the unique result of a lookup into the hash-index
         /// </summary>
         /// <param name="key">the lookup key</param>
         /// <returns>the result of lookup into the hash-index</returns>

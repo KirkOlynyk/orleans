@@ -10,7 +10,6 @@ namespace Orleans.Indexing
     public class QueryIndexedGrainsNode<TIGrain, TProperties> : QueryGrainsNode<TIGrain, TProperties> where TIGrain : IIndexableGrain
     {
         private string _indexName;
-
         private object _param;
 
         public QueryIndexedGrainsNode(IIndexFactory indexFactory, IStreamProvider streamProvider, string indexName, object param) : base(indexFactory, streamProvider)

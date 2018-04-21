@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Orleans.Concurrency;
@@ -32,7 +33,8 @@ namespace Orleans.Indexing
 
         public async Task<bool> DirectApplyIndexUpdateBatch(Immutable<IDictionary<IIndexableGrain, IList<IMemberUpdate>>> iUpdates, bool isUnique, IndexMetaData idxMetaData, SiloAddress siloAddress = null)
         {
-            logger.Trace($"Started calling DirectApplyIndexUpdateBatch with the following parameters: isUnique = {isUnique}, siloAddress = {siloAddress}, iUpdates = {MemberUpdate.UpdatesToString(iUpdates.Value)}");
+            logger.Trace($"Started calling DirectApplyIndexUpdateBatch with the following parameters: isUnique = {isUnique}, siloAddress = {siloAddress}," +
+                         $" iUpdates = {MemberUpdate.UpdatesToString(iUpdates.Value)}");
 
             IDictionary<IIndexableGrain, IList<IMemberUpdate>> updates = iUpdates.Value;
             IDictionary<int, IDictionary<IIndexableGrain, IList<IMemberUpdate>>> bucketUpdates = new Dictionary<int, IDictionary<IIndexableGrain, IList<IMemberUpdate>>>();
@@ -71,14 +73,14 @@ namespace Orleans.Indexing
                 }
             }
 
-            List<Task> updateTasks = new List<Task>();
-            foreach (var kv in bucketUpdates)
+            var results = await Task.WhenAll(bucketUpdates.Select(kv =>
             {
                 BucketT bucket = GetGrain(IndexUtils.GetIndexGrainID(typeof(V), this._indexName) + "_" + kv.Key);
-                updateTasks.Add(bucket.DirectApplyIndexUpdateBatch(kv.Value.AsImmutable(), isUnique, idxMetaData, siloAddress));
-            }
-            await Task.WhenAll(updateTasks);
-            logger.Trace($"Finished calling DirectApplyIndexUpdateBatch with the following parameters: isUnique = {isUnique}, siloAddress = {siloAddress}, iUpdates = {MemberUpdate.UpdatesToString(iUpdates.Value)}");
+                return bucket.DirectApplyIndexUpdateBatch(kv.Value.AsImmutable(), isUnique, idxMetaData, siloAddress);
+            }));
+
+            logger.Trace($"Finished calling DirectApplyIndexUpdateBatch with the following parameters: isUnique = {isUnique}, siloAddress = {siloAddress}," +
+                         $" iUpdates = {MemberUpdate.UpdatesToString(iUpdates.Value)}, results = '{string.Join(", ", results)}'");
 
             return true;
         }
@@ -188,6 +190,7 @@ namespace Orleans.Indexing
             return targetBucket.Lookup(key);
         }
 
-        async Task<IOrleansQueryResult<IIndexableGrain>> IIndexInterface.Lookup(object key) => await Lookup((K)key);
+        async Task<IOrleansQueryResult<IIndexableGrain>> IIndexInterface.Lookup(object key)
+            => await Lookup((K)key);
     }
 }
