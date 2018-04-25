@@ -63,7 +63,7 @@ namespace Orleans.Indexing
             dynamic indexableStorageProvider = _grainStorage;
 
             List<GrainReference> resultReferences = await indexableStorageProvider.Lookup<K>(grainImplClass, _indexedField, key);
-            return resultReferences.Select(grain => this.IndexManager.RuntimeClient.InternalGrainFactory.Cast<V>(grain)).ToList();
+            return resultReferences.Select(grain => this.IndexManager.InternalGrainFactory.Cast<V>(grain)).ToList();
         }
 
         public async Task<V> LookupUnique(K key)
@@ -91,7 +91,7 @@ namespace Orleans.Indexing
         {
             if (_grainStorage == null)
             {
-                var implementation = TypeCodeMapper.GetImplementation(this.IndexManager.RuntimeClient, typeof(V));
+                var implementation = TypeCodeMapper.GetImplementation(this.IndexManager.GrainTypeResolver, typeof(V));
                 if (implementation == null || (grainImplClass = implementation.GrainClass) == null ||
                         !this.IndexManager.CachedTypeResolver.TryResolveType(grainImplClass, out Type implType))
                 {

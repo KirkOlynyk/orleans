@@ -23,7 +23,7 @@ namespace Orleans.Indexing
 
         public async Task<IEnumerable<IGrain>> GetActiveGrains(Type grainType)
         {
-            string grainTypeName = TypeCodeMapper.GetImplementation(this.SiloIndexManager.RuntimeClient, grainType).GrainClass;
+            string grainTypeName = TypeCodeMapper.GetImplementation(this.SiloIndexManager.GrainTypeResolver, grainType).GrainClass;
 
             IEnumerable<Tuple<GrainId, string, int>> activeGrainList = await GetGrainActivations();
             IEnumerable<IGrain> filteredList = activeGrainList.Where(s => s.Item2.Equals(grainTypeName))

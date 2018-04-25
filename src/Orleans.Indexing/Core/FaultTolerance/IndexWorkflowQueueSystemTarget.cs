@@ -31,7 +31,7 @@ namespace Orleans.Indexing
         internal IndexWorkflowQueueSystemTarget(SiloIndexManager siloIndexManager, Type grainInterfaceType, int queueSequenceNumber, bool isDefinedAsFaultTolerantGrain)
             : base(IndexWorkflowQueueBase.CreateIndexWorkflowQueueGrainId(grainInterfaceType, queueSequenceNumber), siloIndexManager.SiloAddress, siloIndexManager.LoggerFactory)
         {
-            GrainReference thisRef = this.AsGrainReference(siloIndexManager.SiloRuntimeClient.GrainReferenceRuntime, siloIndexManager.SiloAddress, out GrainId grainId);
+            GrainReference thisRef = this.AsGrainReference(siloIndexManager.GrainReferenceRuntime, siloIndexManager.SiloAddress, out GrainId grainId);
             _base = new IndexWorkflowQueueBase(siloIndexManager, grainInterfaceType, queueSequenceNumber, siloIndexManager.SiloAddress, isDefinedAsFaultTolerantGrain, grainId, thisRef);
         }
 

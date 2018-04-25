@@ -15,7 +15,7 @@ namespace Orleans.Indexing
     {
         internal IApplicationPartManager ApplicationPartManager;
 
-        internal CachedTypeResolver CachedTypeResolver { get; }
+        internal ITypeResolver CachedTypeResolver { get; }
 
         internal IndexRegistry IndexRegistry { get; private set; }
 
@@ -25,24 +25,27 @@ namespace Orleans.Indexing
 
         internal IGrainFactory GrainFactory { get; }
 
-        internal IGrainTypeResolver GrainTypeResolver => this.RuntimeClient.GrainTypeResolver;
+        internal IInternalGrainFactory InternalGrainFactory { get; }
+
+        private IRuntimeClient runtimeClient;
+        internal IGrainTypeResolver GrainTypeResolver => this.runtimeClient.GrainTypeResolver;
 
         // Note: For similar reasons as SiloIndexManager.__silo, __indexFactory relies on 'this' to have returned from its ctor.
         internal IndexFactory IndexFactory => this.__indexFactory ?? (__indexFactory = this.ServiceProvider.GetRequiredService<IndexFactory>());
         private IndexFactory __indexFactory;
 
-        internal IRuntimeClient RuntimeClient { get; }
-
         internal ILoggerFactory LoggerFactory { get; }
 
-        public IndexManager(IServiceProvider sp, IGrainFactory gf, IApplicationPartManager apm, ILoggerFactory lf)
+        public IndexManager(IServiceProvider sp, IGrainFactory gf, IApplicationPartManager apm, ILoggerFactory lf, ITypeResolver typeResolver,
+                            IRuntimeClient rc, IInternalGrainFactory igf)
         {
             this.ServiceProvider = sp;
-            this.RuntimeClient = sp.GetRequiredService<IRuntimeClient>();
             this.GrainFactory = gf;
             this.ApplicationPartManager = apm;
             this.LoggerFactory = lf;
-            this.CachedTypeResolver = new CachedTypeResolver();
+            this.CachedTypeResolver = typeResolver;
+            this.runtimeClient = rc;
+            this.InternalGrainFactory = igf;
         }
 
         public void Participate(IClusterClientLifecycle lifecycle)

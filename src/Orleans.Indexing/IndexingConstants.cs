@@ -2,6 +2,7 @@ namespace Orleans.Indexing
 {
     internal static class IndexingConstants
     {
+        public const string MEMORY_STORAGE_PROVIDER_NAME = "MemoryStore";
         public const string INDEXING_STORAGE_PROVIDER_NAME = "IndexingStorageProvider";
         public const string INDEXING_WORKFLOWQUEUE_STORAGE_PROVIDER_NAME = "IndexingWorkflowQueueStorageProvider";
         public const string INDEXING_STREAM_PROVIDER_NAME = "IndexingStreamProvider";

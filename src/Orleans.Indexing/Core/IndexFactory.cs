@@ -2,7 +2,6 @@ using System;
 using Orleans.Runtime;
 using System.Reflection;
 using Orleans.Streams;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Linq.Expressions;
 
@@ -17,16 +16,14 @@ namespace Orleans.Indexing
         private IndexManager indexManager;
         private SiloIndexManager siloIndexManager;
         private IGrainFactory grainFactory;
-        private IRuntimeClient runtimeClient;
 
         private bool IsInSilo => this.siloIndexManager != null;
 
-        public IndexFactory(IndexManager im, IGrainFactory gf, IRuntimeClient rtc)
+        public IndexFactory(IndexManager im, IGrainFactory gf)
         {
             this.indexManager = im;
             this.siloIndexManager = im as SiloIndexManager;
             this.grainFactory = gf;
-            this.runtimeClient = rtc;
         }
 
         #region IIndexFactory
@@ -147,7 +144,8 @@ namespace Orleans.Indexing
                 index = (IIndexInterface)this.indexManager.GrainFactory.GetGrain(this.indexManager.GrainTypeResolver,
                                                                                 IndexUtils.GetIndexGrainID(grainType, indexName), idxType, idxType);
 
-                var idxImplType = this.indexManager.CachedTypeResolver.ResolveType(TypeCodeMapper.GetImplementation(this.indexManager.RuntimeClient, idxType).GrainClass);
+                var idxImplType = this.indexManager.CachedTypeResolver.ResolveType(
+                                        TypeCodeMapper.GetImplementation(this.indexManager.GrainTypeResolver, idxType).GrainClass);
                 if (idxImplType.IsGenericTypeDefinition)
                     idxImplType = idxImplType.MakeGenericType(iIndexType.GetGenericArguments());
 
