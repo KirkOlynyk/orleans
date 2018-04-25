@@ -83,7 +83,7 @@ namespace Orleans.Indexing
         public static int NUM_AVAILABLE_INDEX_WORKFLOW_QUEUES => Environment.ProcessorCount;
 
         private SiloAddress _silo;
-        private IndexManager _siloIndexManager;
+        private SiloIndexManager _siloIndexManager;
         private GrainReference _parent;
 
         internal IndexWorkflowQueueBase(SiloIndexManager siloIndexManager, Type grainInterfaceType, int queueSequenceNumber, SiloAddress silo,
@@ -111,7 +111,7 @@ namespace Orleans.Indexing
 
         private IIndexWorkflowQueueHandler InitWorkflowQueueHandler() 
             => __handler = _parent.IsSystemTarget
-                ? _siloIndexManager.RuntimeClient.InternalGrainFactory.GetSystemTarget<IIndexWorkflowQueueHandler>(
+                ? _siloIndexManager.GetSystemTarget<IIndexWorkflowQueueHandler>(
                         IndexWorkflowQueueHandlerBase.CreateIndexWorkflowQueueHandlerGrainId(_iGrainType, _queueSeqNum), _silo)
                 : _siloIndexManager.GrainFactory.GetGrain<IIndexWorkflowQueueHandler>(CreateIndexWorkflowQueuePrimaryKey(_iGrainType, _queueSeqNum));
 

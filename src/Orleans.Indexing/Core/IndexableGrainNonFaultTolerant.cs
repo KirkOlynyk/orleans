@@ -369,7 +369,7 @@ namespace Orleans.Indexing
                     IMemberUpdate updateToIndex = updateIndexesTentatively ? new MemberUpdateTentative(updt.Value) : updt.Value;
 
                     // The update task is added to the list of update tasks
-                    updateIndexTasks.Add(idxInfo.IndexInterface.ApplyIndexUpdate(this.SiloIndexManager.RuntimeClient,
+                    updateIndexTasks.Add(idxInfo.IndexInterface.ApplyIndexUpdate(this.SiloIndexManager,
                                             updatedGrain, updateToIndex.AsImmutable(), isUniqueIndex, idxInfo.MetaData, base.SiloAddress));
                 }
             }

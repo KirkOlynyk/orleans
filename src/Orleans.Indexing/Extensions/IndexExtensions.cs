@@ -11,13 +11,13 @@ namespace Orleans.Indexing
         /// <summary>
         /// An extension method to intercept the calls to DirectApplyIndexUpdateBatch on an Index
         /// </summary>
-        public static Task<bool> ApplyIndexUpdateBatch(this IIndexInterface index, IRuntimeClient runtimeClient,
+        public static Task<bool> ApplyIndexUpdateBatch(this IIndexInterface index, SiloIndexManager siloIndexManager,
                                                         Immutable<IDictionary<IIndexableGrain, IList<IMemberUpdate>>> iUpdates,
                                                         bool isUniqueIndex, IndexMetaData idxMetaData, SiloAddress siloAddress = null)
         {
             if (index is IActiveHashIndexPartitionedPerSilo)
             {
-                var bucketInCurrentSilo = runtimeClient.InternalGrainFactory.GetSystemTarget<IActiveHashIndexPartitionedPerSiloBucket>(
+                var bucketInCurrentSilo = siloIndexManager.GetSystemTarget<IActiveHashIndexPartitionedPerSiloBucket>(
                     GetAHashIndexPartitionedPerSiloGrainID(IndexUtils.GetIndexNameFromIndexGrain((IAddressable)index), index.GetType().GetGenericArguments()[1]),
                     siloAddress
                 );
@@ -29,13 +29,13 @@ namespace Orleans.Indexing
         /// <summary>
         /// An extension method to intercept the calls to DirectApplyIndexUpdate on an Index
         /// </summary>
-        internal static Task<bool> ApplyIndexUpdate(this IIndexInterface index, IRuntimeClient runtimeClient,
+        internal static Task<bool> ApplyIndexUpdate(this IIndexInterface index, SiloIndexManager siloIndexManager,
                                                     IIndexableGrain updatedGrain, Immutable<IMemberUpdate> update,
                                                     bool isUniqueIndex, IndexMetaData idxMetaData, SiloAddress siloAddress = null)
         {
             if (index is IActiveHashIndexPartitionedPerSilo)
             {
-                var bucketInCurrentSilo = runtimeClient.InternalGrainFactory.GetSystemTarget<IActiveHashIndexPartitionedPerSiloBucket>(
+                var bucketInCurrentSilo = siloIndexManager.GetSystemTarget<IActiveHashIndexPartitionedPerSiloBucket>(
                     GetAHashIndexPartitionedPerSiloGrainID(IndexUtils.GetIndexNameFromIndexGrain((IAddressable)index), index.GetType().GetGenericArguments()[1]),
                     siloAddress
                 );

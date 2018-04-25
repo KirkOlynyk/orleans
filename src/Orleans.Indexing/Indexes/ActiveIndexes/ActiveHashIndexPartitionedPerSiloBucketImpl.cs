@@ -20,7 +20,7 @@ namespace Orleans.Indexing
     //Per comments for IActiveHashIndexPartitionedPerSiloBucket, we cannot use generics here.
     //<typeparam name="K">type of hash-index key</typeparam>
     //<typeparam name="V">type of grain that is being indexed</typeparam>
-    [StorageProvider(ProviderName = Constants.MEMORY_STORAGE_PROVIDER_NAME)]
+    [StorageProvider(ProviderName = IndexingConstants.MEMORY_STORAGE_PROVIDER_NAME)]
     [Reentrant]
     internal class ActiveHashIndexPartitionedPerSiloBucketImpl/*<K, V>*/ : SystemTarget, IActiveHashIndexPartitionedPerSiloBucket/*<K, V> where V : IIndexableGrain*/
     {

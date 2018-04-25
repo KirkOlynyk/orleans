@@ -16,8 +16,6 @@ namespace Orleans.Indexing
     {
         internal SiloAddress SiloAddress => this.Silo.SiloAddress;
 
-        internal ICatalog Catalog => this.Silo.Catalog;
-
         // Note: this.Silo must not be called until the Silo ctor has returned to the ServiceProvider which then
         // sets the Singleton; if called during the Silo ctor, the Singleton is not found so another Silo is
         // constructed. Thus we cannot have the Silo on the IndexManager ctor params or retrieve it during
@@ -25,15 +23,16 @@ namespace Orleans.Indexing
         internal Silo Silo => __silo ?? (__silo = this.ServiceProvider.GetRequiredService<Silo>());
         private Silo __silo;
 
-        internal ISiloRuntimeClient SiloRuntimeClient { get; }
-
         internal ISiloStatusOracle SiloStatusOracle { get; }
 
-        public SiloIndexManager(ISiloRuntimeClient src, ISiloStatusOracle sso,
-                                IServiceProvider sp, IGrainFactory gf, IApplicationPartManager apm, ILoggerFactory lf)
-            : base(sp, gf, apm, lf)
+        internal IGrainReferenceRuntime GrainReferenceRuntime { get; }
+
+        public SiloIndexManager(IGrainReferenceRuntime grr, ISiloStatusOracle sso,
+                                IServiceProvider sp, IGrainFactory gf, IApplicationPartManager apm, ILoggerFactory lf, ITypeResolver tr,
+                                IRuntimeClient rc, IInternalGrainFactory igf)
+            : base(sp, gf, apm, lf, tr, rc, igf)
         {
-            this.SiloRuntimeClient = src;
+            this.GrainReferenceRuntime = grr;
             this.SiloStatusOracle = sso;
         }
 
@@ -54,6 +53,6 @@ namespace Orleans.Indexing
             => this.GetSystemTarget<ISiloControl>(Constants.SiloControlId, siloAddress);
 
         internal T GetSystemTarget<T>(GrainId grainId, SiloAddress siloAddress) where T : ISystemTarget
-            => this.RuntimeClient.InternalGrainFactory.GetSystemTarget<T>(grainId, siloAddress);
+            => base.InternalGrainFactory.GetSystemTarget<T>(grainId, siloAddress);
     }
 }

@@ -10,8 +10,8 @@ namespace Orleans.Indexing
     {
         private IIndexWorkflowQueueHandler _base;
 
-        internal IndexManager IndexManager => IndexManager.GetIndexManager(ref __indexManager, base.ServiceProvider);
-        private IndexManager __indexManager;
+        internal SiloIndexManager SiloIndexManager => IndexManager.GetSiloIndexManager(ref __siloIndexManager, base.ServiceProvider);
+        private SiloIndexManager __siloIndexManager;
 
         public override Task OnActivateAsync()
         {
@@ -31,11 +31,11 @@ namespace Orleans.Indexing
                                                      " The primary key is '" + oldParentSystemTargetRef.GetPrimaryKeyString() + "'");
                 }
 
-                Type grainInterfaceType = this.IndexManager.CachedTypeResolver.ResolveType(parts[0]);
+                Type grainInterfaceType = this.SiloIndexManager.CachedTypeResolver.ResolveType(parts[0]);
                 int queueSequenceNumber = int.Parse(parts[1]);
 
                 GrainReference thisRef = this.AsWeaklyTypedReference();
-                _base = new IndexWorkflowQueueHandlerBase(this.IndexManager, grainInterfaceType, queueSequenceNumber,
+                _base = new IndexWorkflowQueueHandlerBase(this.SiloIndexManager, grainInterfaceType, queueSequenceNumber,
                                                           oldParentSystemTargetRef.SystemTargetSilo,
                                                           true /*otherwise it shouldn't have reached here!*/, thisRef);
             }

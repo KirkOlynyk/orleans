@@ -9,7 +9,7 @@ namespace Orleans.Indexing
     /// </summary>
     /// <typeparam name="K">type of hash-index key</typeparam>
     /// <typeparam name="V">type of grain that is being indexed</typeparam>
-    [StorageProvider(ProviderName = Constants.MEMORY_STORAGE_PROVIDER_NAME)]
+    [StorageProvider(ProviderName = IndexingConstants.MEMORY_STORAGE_PROVIDER_NAME)]
     [Reentrant]
     public class ActiveHashIndexPartitionedPerKeyBucketImpl<K, V> : HashIndexPartitionedPerKeyBucket<K, V>, IActiveHashIndexPartitionedPerKeyBucket<K, V>
         where V : class, IIndexableGrain
