@@ -23,7 +23,6 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("OrleansCounterControl")]
 [assembly: InternalsVisibleTo("OrleansManager")]
 [assembly: InternalsVisibleTo("OrleansProviders")]
-[assembly: InternalsVisibleTo("Orleans.Indexing")]
 
 [assembly: InternalsVisibleTo("AWSUtils.Tests")]
 [assembly: InternalsVisibleTo("DefaultCluster.Tests")]
@@ -39,7 +38,6 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("TestExtensions")]
 [assembly: InternalsVisibleTo("TestInternalGrainInterfaces")]
 [assembly: InternalsVisibleTo("TestInternalGrains")]
-[assembly: InternalsVisibleTo("Orleans.Indexing.Tests")]
 
 // Legacy provider support
 [assembly: InternalsVisibleTo("Orleans.Core.Legacy")]

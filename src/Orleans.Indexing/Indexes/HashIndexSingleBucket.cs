@@ -18,10 +18,10 @@ namespace Orleans.Indexing
     public abstract class HashIndexSingleBucket<K, V> : Grain<HashIndexBucketState<K, V>>, IHashIndexSingleBucketInterface<K, V> where V : class, IIndexableGrain
     {
         // IndexManager (and therefore logger) cannot be set in ctor because Grain activation has not yet set base.Runtime.
-        internal IndexManager IndexManager => IndexManager.GetIndexManager(ref __indexManager, base.ServiceProvider);
-        private IndexManager __indexManager;
+        internal SiloIndexManager SiloIndexManager => IndexManager.GetSiloIndexManager(ref __siloIndexManager, base.ServiceProvider);
+        private SiloIndexManager __siloIndexManager;
 
-        private ILogger Logger => __logger ?? (__logger = this.IndexManager.LoggerFactory.CreateLoggerWithFullCategoryName<HashIndexSingleBucket<K, V>>());
+        private ILogger Logger => __logger ?? (__logger = this.SiloIndexManager.LoggerFactory.CreateLoggerWithFullCategoryName<HashIndexSingleBucket<K, V>>());
         private ILogger __logger;
 
         public override Task OnActivateAsync()
@@ -108,7 +108,7 @@ namespace Orleans.Indexing
         private async Task DirectApplyIndexUpdateNonPersistent(IIndexableGrain g, IMemberUpdate updt, bool isUniqueIndex, IndexMetaData idxMetaData, SiloAddress siloAddress)
         {
             // The target grain that is updated
-            V updatedGrain = g.AsReference<V>(this.GrainFactory);
+            V updatedGrain = g.AsReference<V>(this.SiloIndexManager);
 
             // Updates the index bucket synchronously (note that no other thread can run concurrently before we reach an await operation,
             // so no concurrency control mechanism (e.g., locking) is required).
@@ -228,7 +228,7 @@ namespace Orleans.Indexing
         {
             this.State.IndexStatus = IndexStatus.Disposed;
             this.State.IndexMap.Clear();
-            this.Runtime.DeactivateOnIdle(this);
+            base.DeactivateOnIdle();
             return Task.CompletedTask;
         }
 

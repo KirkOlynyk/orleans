@@ -84,12 +84,12 @@ namespace Orleans.Indexing
 
         private SiloAddress _silo;
         private SiloIndexManager _siloIndexManager;
-        private GrainReference _parent;
+        private Lazy<GrainReference> _lazyParent;
 
         internal IndexWorkflowQueueBase(SiloIndexManager siloIndexManager, Type grainInterfaceType, int queueSequenceNumber, SiloAddress silo,
-                                        bool isDefinedAsFaultTolerantGrain, GrainId grainId, GrainReference parent)
+                                        bool isDefinedAsFaultTolerantGrain, Func<GrainReference> parentFunc)
         {
-            queueState = new IndexWorkflowQueueState(grainId, silo);
+            queueState = new IndexWorkflowQueueState(silo);
             _iGrainType = grainInterfaceType;
             _queueSeqNum = queueSequenceNumber;
 
@@ -106,13 +106,13 @@ namespace Orleans.Indexing
 
             _silo = silo;
             _siloIndexManager = siloIndexManager;
-            _parent = parent;
+            _lazyParent = new Lazy<GrainReference>(parentFunc, true);
         }
 
         private IIndexWorkflowQueueHandler InitWorkflowQueueHandler() 
-            => __handler = _parent.IsSystemTarget
+            => __handler = _lazyParent.Value.IsSystemTarget
                 ? _siloIndexManager.GetSystemTarget<IIndexWorkflowQueueHandler>(
-                        IndexWorkflowQueueHandlerBase.CreateIndexWorkflowQueueHandlerGrainId(_iGrainType, _queueSeqNum), _silo)
+                        IndexWorkflowQueueHandlerBase.CreateIndexWorkflowQueueHandlerGrainReference(_siloIndexManager, _iGrainType, _queueSeqNum, _silo))
                 : _siloIndexManager.GrainFactory.GetGrain<IIndexWorkflowQueueHandler>(CreateIndexWorkflowQueuePrimaryKey(_iGrainType, _queueSeqNum));
 
         public Task AddAllToQueue(Immutable<List<IndexWorkflowRecord>> workflowRecords)
@@ -249,8 +249,8 @@ namespace Orleans.Indexing
 
                     //write the state back to the storage
                     await (StorageProvider is IExtendedGrainStorage extendedSP
-                        ? extendedSP.WriteStateWithoutEtagCheckAsync("Orleans.Indexing.IndexWorkflowQueue-" + TypeUtils.GetFullName(_iGrainType), _parent, this.queueState)
-                        : StorageProvider.WriteStateAsync("Orleans.Indexing.IndexWorkflowQueue-" + TypeUtils.GetFullName(_iGrainType), _parent, this.queueState));
+                        ? extendedSP.WriteStateWithoutEtagCheckAsync("Orleans.Indexing.IndexWorkflowQueue-" + TypeUtils.GetFullName(_iGrainType), _lazyParent.Value, this.queueState)
+                        : StorageProvider.WriteStateAsync("Orleans.Indexing.IndexWorkflowQueue-" + TypeUtils.GetFullName(_iGrainType), _lazyParent.Value, this.queueState));
                 }
             }
         }
@@ -312,25 +312,22 @@ namespace Orleans.Indexing
             => throw new NotSupportedException();
 
         #region STATIC HELPER FUNCTIONS
-        public static GrainId CreateIndexWorkflowQueueGrainId(Type grainInterfaceType, int queueSeqNum) 
-            => IndexExtensions.GetSystemTargetGrainId(IndexingConstants.INDEX_WORKFLOW_QUEUE_SYSTEM_TARGET_TYPE_CODE,
-                                                      CreateIndexWorkflowQueuePrimaryKey(grainInterfaceType, queueSeqNum));
+        public static GrainReference CreateIndexWorkflowQueueGrainReference(SiloIndexManager siloIndexManager, Type grainInterfaceType, int queueSeqNum, SiloAddress siloAddress)
+            => CreateSystemTargetGrainReference(siloIndexManager, grainInterfaceType, queueSeqNum, siloAddress);
 
         public static string CreateIndexWorkflowQueuePrimaryKey(Type grainInterfaceType, int queueSeqNum)
             => TypeUtils.GetFullName(grainInterfaceType) + "-" + queueSeqNum;
 
-        public static GrainId GetIndexWorkflowQueueGrainIdFromGrainHashCode(Type grainInterfaceType, int grainHashCode)
-        {
-            int queueSeqNum = StorageProviderUtils.PositiveHash(grainHashCode, NUM_AVAILABLE_INDEX_WORKFLOW_QUEUES);
-            return IndexExtensions.GetSystemTargetGrainId(IndexingConstants.INDEX_WORKFLOW_QUEUE_SYSTEM_TARGET_TYPE_CODE,
-                                          CreateIndexWorkflowQueuePrimaryKey(grainInterfaceType, queueSeqNum));
-        }
+        private static GrainReference CreateSystemTargetGrainReference(SiloIndexManager siloIndexManager, Type grainInterfaceType, int queueSeqNum, SiloAddress siloAddress)
+            => siloIndexManager.MakeSystemTargetGrainReference(IndexingConstants.INDEX_WORKFLOW_QUEUE_SYSTEM_TARGET_TYPE_CODE,
+                                                               CreateIndexWorkflowQueuePrimaryKey(grainInterfaceType, queueSeqNum), siloAddress);
 
         public static IIndexWorkflowQueue GetIndexWorkflowQueueFromGrainHashCode(SiloIndexManager siloIndexManager, Type grainInterfaceType, int grainHashCode, SiloAddress siloAddress)
-            => siloIndexManager.GetSystemTarget<IIndexWorkflowQueue>(
-                    GetIndexWorkflowQueueGrainIdFromGrainHashCode(grainInterfaceType, grainHashCode),
-                    siloAddress
-                );
+        {
+            int queueSeqNum = StorageProviderUtils.PositiveHash(grainHashCode, NUM_AVAILABLE_INDEX_WORKFLOW_QUEUES);
+            var grainReference = CreateSystemTargetGrainReference(siloIndexManager, grainInterfaceType, queueSeqNum, siloAddress);
+            return siloIndexManager.GetSystemTarget<IIndexWorkflowQueue>(grainReference);
+        }
         #endregion STATIC HELPER FUNCTIONS
     }
 }

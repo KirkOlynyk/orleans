@@ -29,10 +29,11 @@ namespace Orleans.Indexing
         private IndexWorkflowQueueBase _base;
 
         internal IndexWorkflowQueueSystemTarget(SiloIndexManager siloIndexManager, Type grainInterfaceType, int queueSequenceNumber, bool isDefinedAsFaultTolerantGrain)
-            : base(IndexWorkflowQueueBase.CreateIndexWorkflowQueueGrainId(grainInterfaceType, queueSequenceNumber), siloIndexManager.SiloAddress, siloIndexManager.LoggerFactory)
+            : base(IndexWorkflowQueueBase.CreateIndexWorkflowQueueGrainReference(siloIndexManager, grainInterfaceType, queueSequenceNumber, siloIndexManager.SiloAddress),
+                                                                                 siloIndexManager.LoggerFactory)
         {
-            GrainReference thisRef = this.AsGrainReference(siloIndexManager.GrainReferenceRuntime, siloIndexManager.SiloAddress, out GrainId grainId);
-            _base = new IndexWorkflowQueueBase(siloIndexManager, grainInterfaceType, queueSequenceNumber, siloIndexManager.SiloAddress, isDefinedAsFaultTolerantGrain, grainId, thisRef);
+            _base = new IndexWorkflowQueueBase(siloIndexManager, grainInterfaceType, queueSequenceNumber, siloIndexManager.SiloAddress, isDefinedAsFaultTolerantGrain,
+                                               () => base.GetGrainReference()); // lazy is needed because the runtime isn't attached until Registered
         }
 
         public Task AddAllToQueue(Immutable<List<IndexWorkflowRecord>> workflowRecords) => _base.AddAllToQueue(workflowRecords);

@@ -14,7 +14,7 @@ namespace Orleans.Runtime
     /// <summary>
     /// A collection of utility functions for dealing with Type information.
     /// </summary>
-    internal static class TypeUtils
+    public static class TypeUtils
     {
         /// <summary>
         /// The assembly name of the core Orleans assembly.

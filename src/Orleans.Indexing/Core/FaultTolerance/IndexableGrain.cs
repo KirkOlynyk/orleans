@@ -82,7 +82,7 @@ namespace Orleans.Indexing
                 if (updates.Count() > 0)
                 {
                     IList<Type> iGrainTypes = GetIIndexableGrainTypes();
-                    var thisGrain = this.AsReference<IIndexableGrain>(this.GrainFactory);
+                    var thisGrain = this.AsReference<IIndexableGrain>(this.SiloIndexManager);
                     Guid workflowId = GenerateUniqueWorkflowId();
 
                     if (updateIndexesEagerly)

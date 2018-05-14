@@ -17,7 +17,7 @@ namespace Orleans.Indexing
         /// <param name="grainType">the grain interface type</param>
         /// <param name="indexName">the name of the index, which is the identifier of the index</param>
         /// <returns>index grainID</returns>
-        public static string GetIndexGrainID(Type grainType, string indexName)
+        public static string GetIndexGrainPrimaryKey(Type grainType, string indexName)
             => string.Format("{0}-{1}", TypeUtils.GetFullName(grainType), indexName);
 
         /// <summary>

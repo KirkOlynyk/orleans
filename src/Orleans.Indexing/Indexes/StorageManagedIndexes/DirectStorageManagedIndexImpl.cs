@@ -28,10 +28,10 @@ namespace Orleans.Indexing
         //private bool _isUnique; //TODO: missing support for the uniqueness feature
 
         // IndexManager (and therefore logger) cannot be set in ctor because Grain activation has not yet set base.Runtime.
-        internal IndexManager IndexManager => IndexManager.GetIndexManager(ref __indexManager, base.ServiceProvider);
-        private IndexManager __indexManager;
+        internal SiloIndexManager SiloIndexManager => IndexManager.GetSiloIndexManager(ref __indexManager, base.ServiceProvider);
+        private SiloIndexManager __indexManager;
 
-        private ILogger Logger => __logger ?? (__logger = this.IndexManager.LoggerFactory.CreateLoggerWithFullCategoryName<DirectStorageManagedIndexImpl<K, V>>());
+        private ILogger Logger => __logger ?? (__logger = this.SiloIndexManager.LoggerFactory.CreateLoggerWithFullCategoryName<DirectStorageManagedIndexImpl<K, V>>());
         private ILogger __logger;
 
         public override Task OnActivateAsync()
@@ -63,7 +63,7 @@ namespace Orleans.Indexing
             dynamic indexableStorageProvider = _grainStorage;
 
             List<GrainReference> resultReferences = await indexableStorageProvider.Lookup<K>(grainImplClass, _indexedField, key);
-            return resultReferences.Select(grain => this.IndexManager.InternalGrainFactory.Cast<V>(grain)).ToList();
+            return resultReferences.Select(grain => this.SiloIndexManager.Silo.Cast<V>(grain)).ToList();
         }
 
         public async Task<V> LookupUnique(K key)
@@ -91,13 +91,13 @@ namespace Orleans.Indexing
         {
             if (_grainStorage == null)
             {
-                var implementation = TypeCodeMapper.GetImplementation(this.IndexManager.GrainTypeResolver, typeof(V));
+                var implementation = TypeCodeMapper.GetImplementation(this.SiloIndexManager.GrainTypeResolver, typeof(V));
                 if (implementation == null || (grainImplClass = implementation.GrainClass) == null ||
-                        !this.IndexManager.CachedTypeResolver.TryResolveType(grainImplClass, out Type implType))
+                        !this.SiloIndexManager.CachedTypeResolver.TryResolveType(grainImplClass, out Type implType))
                 {
                     throw new IndexException("The grain implementation class " + implementation.GrainClass + " for grain interface " + TypeUtils.GetFullName(typeof(V)) + " was not resolved.");
                 }
-                _grainStorage = implType.GetGrainStorage(this.IndexManager.ServiceProvider);
+                _grainStorage = implType.GetGrainStorage(this.SiloIndexManager.ServiceProvider);
             }
         }
     }

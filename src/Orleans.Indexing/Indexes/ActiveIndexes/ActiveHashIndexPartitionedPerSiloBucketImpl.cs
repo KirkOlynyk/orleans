@@ -29,8 +29,8 @@ namespace Orleans.Indexing
         private readonly ILogger logger;
         private readonly string _parentIndexName;
 
-        public ActiveHashIndexPartitionedPerSiloBucketImpl(SiloIndexManager siloIndexManager, string parentIndexName, GrainId grainId)
-            : base(grainId, siloIndexManager.SiloAddress, siloIndexManager.LoggerFactory)
+        public ActiveHashIndexPartitionedPerSiloBucketImpl(SiloIndexManager siloIndexManager, string parentIndexName, GrainReference grainReference)
+            : base(grainReference, siloIndexManager.LoggerFactory)
         {
             state = new HashIndexBucketState<K, V>
             {

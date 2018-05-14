@@ -23,17 +23,12 @@ namespace Orleans.Indexing
         internal Silo Silo => __silo ?? (__silo = this.ServiceProvider.GetRequiredService<Silo>());
         private Silo __silo;
 
-        internal ISiloStatusOracle SiloStatusOracle { get; }
+        internal IGrainTypeResolver GrainTypeResolver => __grainTypeResolver ?? (__grainTypeResolver = this.Silo.GrainTypeResolver);
+        private IGrainTypeResolver __grainTypeResolver;
 
-        internal IGrainReferenceRuntime GrainReferenceRuntime { get; }
-
-        public SiloIndexManager(IGrainReferenceRuntime grr, ISiloStatusOracle sso,
-                                IServiceProvider sp, IGrainFactory gf, IApplicationPartManager apm, ILoggerFactory lf, ITypeResolver tr,
-                                IRuntimeClient rc, IInternalGrainFactory igf)
-            : base(sp, gf, apm, lf, tr, rc, igf)
+        public SiloIndexManager(IServiceProvider sp, IGrainFactory gf, IApplicationPartManager apm, ILoggerFactory lf, ITypeResolver tr)
+            : base(sp, gf, apm, lf, tr)
         {
-            this.GrainReferenceRuntime = grr;
-            this.SiloStatusOracle = sso;
         }
 
         public void Participate(ISiloLifecycle lifecycle)
@@ -44,15 +39,20 @@ namespace Orleans.Indexing
         internal Task<Dictionary<SiloAddress, SiloStatus>> GetSiloHosts(bool onlyActive = false)
             => this.GrainFactory.GetGrain<IManagementGrain>(0).GetHosts(onlyActive);
 
-        internal SiloAddress[] GetSiloAddresses(SiloAddress[] silos)
-            => (silos != null && silos.Length > 0)
-                ? silos
-                : this.SiloStatusOracle.GetApproximateSiloStatuses(true).Select(s => s.Key).ToArray();
+        public GrainReference MakeSystemTargetGrainReference(int typeData, string systemGrainId, SiloAddress siloAddress)
+            => this.Silo.MakeSystemTargetGrainReference(typeData, systemGrainId, siloAddress);
 
-        internal ISiloControl GetSiloControlReference(SiloAddress siloAddress)
-            => this.GetSystemTarget<ISiloControl>(Constants.SiloControlId, siloAddress);
+        internal T GetSystemTarget<T>(GrainReference grainReference) where T : ISystemTarget
+            => this.Silo.GetSystemTarget<T>(grainReference);
 
-        internal T GetSystemTarget<T>(GrainId grainId, SiloAddress siloAddress) where T : ISystemTarget
-            => base.InternalGrainFactory.GetSystemTarget<T>(grainId, siloAddress);
+        internal async Task<IEnumerable<Tuple<GrainReference, string, int>>> GetClusterGrainActivations(SiloAddress[] siloAddresses)
+            => await this.Silo.GetClusterGrainActivations(siloAddresses);
+
+        internal OutputGrainInterfaceType GetGrain<OutputGrainInterfaceType>(Guid grainPrimaryKey, Type grainInterfaceType)
+            where OutputGrainInterfaceType : IGrain
+            => this.Silo.GetGrain<OutputGrainInterfaceType>(grainPrimaryKey, grainInterfaceType);
+
+        internal IGrain GetGrain(string grainPrimaryKey, Type grainInterfaceType, Type outputGrainInterfaceType)
+            => this.Silo.GetGrain(grainPrimaryKey, grainInterfaceType, outputGrainInterfaceType);
     }
 }

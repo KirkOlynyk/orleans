@@ -25,27 +25,19 @@ namespace Orleans.Indexing
 
         internal IGrainFactory GrainFactory { get; }
 
-        internal IInternalGrainFactory InternalGrainFactory { get; }
-
-        private IRuntimeClient runtimeClient;
-        internal IGrainTypeResolver GrainTypeResolver => this.runtimeClient.GrainTypeResolver;
-
         // Note: For similar reasons as SiloIndexManager.__silo, __indexFactory relies on 'this' to have returned from its ctor.
         internal IndexFactory IndexFactory => this.__indexFactory ?? (__indexFactory = this.ServiceProvider.GetRequiredService<IndexFactory>());
         private IndexFactory __indexFactory;
 
         internal ILoggerFactory LoggerFactory { get; }
 
-        public IndexManager(IServiceProvider sp, IGrainFactory gf, IApplicationPartManager apm, ILoggerFactory lf, ITypeResolver typeResolver,
-                            IRuntimeClient rc, IInternalGrainFactory igf)
+        public IndexManager(IServiceProvider sp, IGrainFactory gf, IApplicationPartManager apm, ILoggerFactory lf, ITypeResolver typeResolver)
         {
             this.ServiceProvider = sp;
             this.GrainFactory = gf;
             this.ApplicationPartManager = apm;
             this.LoggerFactory = lf;
             this.CachedTypeResolver = typeResolver;
-            this.runtimeClient = rc;
-            this.InternalGrainFactory = igf;
         }
 
         public void Participate(IClusterClientLifecycle lifecycle)

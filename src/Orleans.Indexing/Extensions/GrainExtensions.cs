@@ -10,11 +10,11 @@ namespace Orleans.Indexing
         /// </summary>
         /// <typeparam name="TGrainInterface">The type of the grain interface.</typeparam>
         /// <param name="grain">The grain to convert.</param>
-        /// <param name="gf">the grain factory object</param>
+        /// <param name="siloIndexManager">the Index manager for this silo</param>
         /// <returns>A strongly typed <c>GrainReference</c> of grain interface type TGrainInterface.</returns>
-        public static TGrainInterface AsReference<TGrainInterface>(this IAddressable grain, IGrainFactory gf)
+        internal static TGrainInterface AsReference<TGrainInterface>(this IAddressable grain, SiloIndexManager siloIndexManager) where TGrainInterface: IGrain
             => (grain != null)
-                ? ((GrainFactory)gf).Cast<TGrainInterface>(grain.AsWeaklyTypedReference())
+                ? siloIndexManager.Silo.Cast<TGrainInterface>(grain.AsWeaklyTypedReference())
                 : throw new ArgumentNullException("grain", "Cannot pass null as an argument to AsReference");
 
         /// <summary>
@@ -24,13 +24,13 @@ namespace Orleans.Indexing
         /// </summary>
         /// <typeparam name="TGrainInterface">output grain interface type, which iGrainType extends it</typeparam>
         /// <param name="grain">the target grain to be casted</param>
-        /// <param name="gf">the grain factory object</param>
+        /// <param name="siloIndexManager">the Index manager for this silo</param>
         /// <param name="iGrainType">the grain implementation type</param>
         /// <returns>A strongly typed <c>GrainReference</c> of grain interface type iGrainType casted to TGrainInterface.</returns>
         /// <returns></returns>
-        public static TGrainInterface AsReference<TGrainInterface>(this IAddressable grain, IGrainFactory gf, Type iGrainType)
+        internal static TGrainInterface AsReference<TGrainInterface>(this IAddressable grain, SiloIndexManager siloIndexManager, Type iGrainType) where TGrainInterface: IGrain
             => (grain != null)
-                ? (TGrainInterface)((GrainFactory)gf).Cast(grain.AsWeaklyTypedReference(), iGrainType)
+                ? (TGrainInterface)siloIndexManager.Silo.Cast(grain.AsWeaklyTypedReference(), iGrainType)
                 : throw new ArgumentNullException("grain", "Cannot pass null as an argument to AsReference");
 
         private const string WRONG_GRAIN_ERROR_MSG = "Passing a half baked grain as an argument. It is possible that you instantiated a grain class explicitly, as a regular object and not via Orleans runtime or via proper test mocking";
@@ -38,28 +38,19 @@ namespace Orleans.Indexing
         internal static GrainReference AsWeaklyTypedReference(this IAddressable grain)
         {
             // When called against an instance of a grain reference class, do nothing
-            if (grain is GrainReference reference) return reference;
+            if (grain is GrainReference reference)
+            {
+                return reference;
+            }
 
             if (grain is Grain grainBase)
             {
-                return grainBase.Data?.GrainReference != null
-                    ? grainBase.Data.GrainReference
-                    : throw new ArgumentException(WRONG_GRAIN_ERROR_MSG, "grain");
+                return grainBase.GrainReference ?? throw new ArgumentException(WRONG_GRAIN_ERROR_MSG, "grain");
             }
 
-            return grain is ISystemTargetBase systemTarget
-                ? GrainReference.FromGrainId(systemTarget.GrainId, systemTarget.GrainReferenceRuntime, null, systemTarget.Silo)
+            return grain is SystemTarget systemTarget
+                ? systemTarget.GetGrainReference()
                 : throw new ArgumentException(string.Format("AsWeaklyTypedReference has been called on an unexpected type: {0}.", grain.GetType().FullName), "grain");
-        }
-
-        internal static GrainReference AsGrainReference(this ISystemTargetBase grain, IGrainReferenceRuntime grainReferenceRuntime, SiloAddress siloAddress, out GrainId grainId)
-        {
-            if (grain is ISystemTargetBase systemTarget)
-            {
-                grainId = systemTarget.GrainId;
-                return GrainReference.FromGrainId(grainId, grainReferenceRuntime, null, siloAddress);
-            }
-            throw new ArgumentException(string.Format("AsWeaklyTypedReference has been called on an unexpected type: {0}.", grain.GetType().FullName), "grain");
         }
     }
 }
