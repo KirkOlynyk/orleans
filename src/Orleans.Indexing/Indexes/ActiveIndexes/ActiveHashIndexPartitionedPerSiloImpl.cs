@@ -29,9 +29,7 @@ namespace Orleans.Indexing
         private ILogger __logger;
 
         internal static void InitPerSilo(SiloIndexManager siloIndexManager, string indexName, bool isUnique)
-        {
-            siloIndexManager.Silo.RegisterSystemTarget(new ActiveHashIndexPartitionedPerSiloBucketImpl(siloIndexManager, indexName, GetGrainID(indexName)));
-        }
+            => siloIndexManager.Silo.RegisterSystemTarget(new ActiveHashIndexPartitionedPerSiloBucketImpl(siloIndexManager, indexName, GetGrainReference(siloIndexManager, indexName)));
 
         public override Task OnActivateAsync()
         {
@@ -44,29 +42,20 @@ namespace Orleans.Indexing
         /// because it will be skipped via IndexExtensions.DirectApplyIndexUpdateBatch
         /// </summary>
         public Task<bool> DirectApplyIndexUpdateBatch(Immutable<IDictionary<IIndexableGrain, IList<IMemberUpdate>>> iUpdates, bool isUnique, IndexMetaData idxMetaData, SiloAddress siloAddress = null)
-        {
-            throw new NotSupportedException();
-        }
+            => throw new NotSupportedException();
 
         /// <summary>
         /// DirectApplyIndexUpdate is not supported on ActiveHashIndexPartitionedPerSiloImpl,
         /// because it will be skipped via IndexExtensions.ApplyIndexUpdate
         /// </summary>
         public Task<bool> DirectApplyIndexUpdate(IIndexableGrain g, Immutable<IMemberUpdate> iUpdate, bool isUniqueIndex, IndexMetaData idxMetaData, SiloAddress siloAddress)
-        {
-            throw new NotSupportedException();
-        }
+            => throw new NotSupportedException();
 
-        private static GrainId GetGrainID(string indexName)
-        {
-            return IndexExtensions.GetSystemTargetGrainId(IndexingConstants.HASH_INDEX_PARTITIONED_PER_SILO_BUCKET_SYSTEM_TARGET_TYPE_CODE,
-                                                          IndexUtils.GetIndexGrainID(typeof(V), indexName));
-        }
+        private static GrainReference GetGrainReference(SiloIndexManager siloIndexManager, string indexName, SiloAddress siloAddress = null)
+            => siloIndexManager.MakeSystemTargetGrainReference(IndexingConstants.HASH_INDEX_PARTITIONED_PER_SILO_BUCKET_SYSTEM_TARGET_TYPE_CODE,
+                                                               IndexUtils.GetIndexGrainPrimaryKey(typeof(V), indexName), siloAddress ?? siloIndexManager.SiloAddress);
 
-        public Task<bool> IsUnique()
-        {
-            return Task.FromResult(false);
-        }
+        public Task<bool> IsUnique() => Task.FromResult(false);
 
         public async Task<V> LookupUnique(K key)
         {
@@ -82,11 +71,12 @@ namespace Orleans.Indexing
         public async Task Dispose()
         {
             _status = IndexStatus.Disposed;
-            GrainId grainID = GetGrainID(IndexUtils.GetIndexNameFromIndexGrain(this));
+            var indexName = IndexUtils.GetIndexNameFromIndexGrain(this);
+            GrainReference makeGrainReference(SiloAddress siloAddress) => GetGrainReference(this.SiloIndexManager, indexName, siloAddress);
 
             // Get and Dispose() all silos
             Dictionary<SiloAddress, SiloStatus> hosts = await this.SiloIndexManager.GetSiloHosts(true);
-            await Task.WhenAll(hosts.Keys.Select(sa => this.SiloIndexManager.GetSystemTarget<IActiveHashIndexPartitionedPerSiloBucket>(grainID, sa).Dispose()));
+            await Task.WhenAll(hosts.Keys.Select(sa => this.SiloIndexManager.GetSystemTarget<IActiveHashIndexPartitionedPerSiloBucket>(makeGrainReference(sa)).Dispose()));
         }
 
         public Task<bool> IsAvailable() => Task.FromResult(_status == IndexStatus.Available);
@@ -108,14 +98,13 @@ namespace Orleans.Indexing
             ISet<Task<IOrleansQueryResult<IIndexableGrain>>> queriesToSilos = new HashSet<Task<IOrleansQueryResult<IIndexableGrain>>>();
 
             int i = 0;
-            GrainId grainID = GetGrainID(IndexUtils.GetIndexNameFromIndexGrain(this));
+            var indexName = IndexUtils.GetIndexNameFromIndexGrain(this);
             foreach (SiloAddress siloAddress in hosts.Keys)
             {
                 //query each silo
                 queriesToSilos.Add(this.SiloIndexManager.GetSystemTarget<IActiveHashIndexPartitionedPerSiloBucket>(
-                    grainID,
-                    siloAddress
-                ).Lookup(/*result, */key)); //TODO: because of a bug in OrleansStream, a SystemTarget cannot work with streams. It should be fixed later.
+                    GetGrainReference(this.SiloIndexManager, indexName, siloAddress
+                )).Lookup(/*result, */key)); //TODO: because of a bug in OrleansStream, a SystemTarget cannot work with streams. It should be fixed later.
                 ++i;
             }
 

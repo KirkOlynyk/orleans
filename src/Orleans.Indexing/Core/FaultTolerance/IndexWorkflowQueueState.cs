@@ -9,7 +9,7 @@ namespace Orleans.Indexing
     [Serializable]
     internal class IndexWorkflowQueueState : GrainState<IndexWorkflowQueueEntry>
     {
-        public IndexWorkflowQueueState(GrainId g, SiloAddress silo) : base(new IndexWorkflowQueueEntry(g, silo))
+        public IndexWorkflowQueueState(SiloAddress silo) : base(new IndexWorkflowQueueEntry(silo))
         {
         }
     }
@@ -20,17 +20,14 @@ namespace Orleans.Indexing
     [Serializable]
     internal class IndexWorkflowQueueEntry
     {
-        //updates that must be propagated to indexes.
+        // Updates that must be propagated to indexes.
         internal IndexWorkflowRecordNode WorkflowRecordsHead;
 
-        internal GrainId QueueId;
+        internal SiloAddress Silo { get; }
 
-        internal SiloAddress Silo;
-
-        public IndexWorkflowQueueEntry(GrainId queueId, SiloAddress silo)
+        public IndexWorkflowQueueEntry(SiloAddress silo)
         {
             this.WorkflowRecordsHead = null;
-            this.QueueId = queueId;
             this.Silo = silo;
         }
     }

@@ -4,7 +4,6 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("Orleans.TestingHost")]
 [assembly: InternalsVisibleTo("Orleans.TestingHost.AppDomain")]
 [assembly: InternalsVisibleTo("OrleansCounterControl")]
-[assembly: InternalsVisibleTo("Orleans.Indexing")]
 
 [assembly: InternalsVisibleTo("AWSUtils.Tests")]
 [assembly: InternalsVisibleTo("LoadTestGrains")]

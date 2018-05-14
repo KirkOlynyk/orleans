@@ -43,7 +43,7 @@ namespace Orleans.Runtime
         [NonSerialized]
         private readonly InvokeMethodOptions invokeMethodOptions;
 
-        internal bool IsSystemTarget { get { return GrainId.IsSystemTarget; } }
+        public bool IsSystemTarget { get { return GrainId.IsSystemTarget; } }
 
         internal bool IsObserverReference { get { return GrainId.IsClient; } }
 
@@ -70,7 +70,7 @@ namespace Orleans.Runtime
         /// <summary>
         /// Called from generated code.
         /// </summary>
-        protected internal readonly SiloAddress SystemTargetSilo;
+        public readonly SiloAddress SystemTargetSilo;
 
         [NonSerialized]
         private IGrainReferenceRuntime runtime;

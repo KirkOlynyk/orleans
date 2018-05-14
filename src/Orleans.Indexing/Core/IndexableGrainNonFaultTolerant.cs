@@ -90,7 +90,7 @@ namespace Orleans.Indexing
         /// </summary>
         public override Task OnActivateAsync()
         {
-            this.Logger.Trace($"Activating indexable grain {Orleans.GrainExtensions.GetGrainId(this)} of type {this.GetIIndexableGrainTypes()[0]} in silo {this.SiloIndexManager.SiloAddress}.");
+            this.Logger.Trace($"Activating indexable grain {base.GrainReference} of type {this.GetIIndexableGrainTypes()[0]} in silo {this.SiloIndexManager.SiloAddress}.");
 
             // Load indexes
             this._grainIndexes = this.SiloIndexManager.IndexFactory.GetGrainIndexes(GetIIndexableGrainTypes()[0]);
@@ -106,7 +106,7 @@ namespace Orleans.Indexing
 
         public override Task OnDeactivateAsync()
         {
-            this.Logger.Trace($"Deactivating indexable grain {Orleans.GrainExtensions.GetGrainId(this)} of type {this.GetIIndexableGrainTypes()[0]} in silo {this.SiloIndexManager.SiloAddress}.");
+            this.Logger.Trace($"Deactivating indexable grain {base.GrainReference} of type {this.GetIIndexableGrainTypes()[0]} in silo {this.SiloIndexManager.SiloAddress}.");
             return Task.WhenAll(RemoveFromActiveIndexes(), base.OnDeactivateAsync());
         }
 
@@ -196,7 +196,7 @@ namespace Orleans.Indexing
             if (updates.Count() > 0)
             {
                 IList<Type> iGrainTypes = GetIIndexableGrainTypes();
-                var thisGrain = this.AsReference<IIndexableGrain>(base.GrainFactory);
+                var thisGrain = this.AsReference<IIndexableGrain>(this.SiloIndexManager);
                 bool isThereAtMostOneUniqueIndex = numberOfUniqueIndexesUpdated <= 1;
 
                 // Apply any unique index updates eagerly.
@@ -370,7 +370,7 @@ namespace Orleans.Indexing
 
                     // The update task is added to the list of update tasks
                     updateIndexTasks.Add(idxInfo.IndexInterface.ApplyIndexUpdate(this.SiloIndexManager,
-                                            updatedGrain, updateToIndex.AsImmutable(), isUniqueIndex, idxInfo.MetaData, base.SiloAddress));
+                                            updatedGrain, updateToIndex.AsImmutable(), isUniqueIndex, idxInfo.MetaData, BaseSiloAddress));
                 }
             }
 
@@ -555,11 +555,14 @@ namespace Orleans.Indexing
             if (!this.WorkflowQueues.TryGetValue(iGrainType, out IIndexWorkflowQueue workflowQ))
             {
                 workflowQ = IndexWorkflowQueueBase.GetIndexWorkflowQueueFromGrainHashCode(this.SiloIndexManager, iGrainType,
-                        this.AsReference<IIndexableGrain>(this.GrainFactory, iGrainType).GetHashCode(), base.SiloAddress);
+                        this.AsReference<IIndexableGrain>(this.SiloIndexManager, iGrainType).GetHashCode(), BaseSiloAddress);
                 this.WorkflowQueues.Add(iGrainType, workflowQ);
             }
             return workflowQ;
         }
+
+        // Note: this should be identical to base.SiloAddress as that calls into the runtime
+        private SiloAddress BaseSiloAddress => this.SiloIndexManager.SiloAddress;
     }
 
     /// <summary>

@@ -23,8 +23,6 @@ namespace Orleans.Indexing.Tests
 
         protected TestCluster HostedCluster => this.fixture.HostedCluster;
 
-        internal IndexingTestSchedulingContext OutsideSchedulingContext = new IndexingTestSchedulingContext();
-
         protected IndexingTestRunnerBase(BaseIndexingFixture fixture, ITestOutputHelper output)
         {
             this.fixture = fixture;
@@ -55,22 +53,5 @@ namespace Orleans.Indexing.Tests
             }
             return Task.CompletedTask;
         }
-    }
-
-    internal class IndexingTestSchedulingContext : ISchedulingContext
-    {
-        public SchedulingContextType ContextType => SchedulingContextType.Activation;
-
-        public string Name => this.GetType().Name;
-
-        public bool IsSystemPriorityContext => false;
-
-        public string DetailedStatus() => this.ToString();
-
-        #region IEquatable<ISchedulingContext> Members
-
-        public bool Equals(ISchedulingContext other) => base.Equals(other);
-
-        #endregion
     }
 }

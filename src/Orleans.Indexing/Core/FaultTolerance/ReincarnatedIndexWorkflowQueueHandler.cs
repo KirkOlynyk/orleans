@@ -34,10 +34,10 @@ namespace Orleans.Indexing
                 Type grainInterfaceType = this.SiloIndexManager.CachedTypeResolver.ResolveType(parts[0]);
                 int queueSequenceNumber = int.Parse(parts[1]);
 
-                GrainReference thisRef = this.AsWeaklyTypedReference();
                 _base = new IndexWorkflowQueueHandlerBase(this.SiloIndexManager, grainInterfaceType, queueSequenceNumber,
                                                           oldParentSystemTargetRef.SystemTargetSilo,
-                                                          true /*otherwise it shouldn't have reached here!*/, thisRef);
+                                                          true /*otherwise it shouldn't have reached here!*/,
+                                                          () => this.AsWeaklyTypedReference());
             }
             return Task.CompletedTask;
         }

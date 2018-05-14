@@ -141,19 +141,22 @@ namespace Orleans.Indexing
             IIndexInterface index;
             if (typeof(IGrain).IsAssignableFrom(idxType))
             {
-                index = (IIndexInterface)this.indexManager.GrainFactory.GetGrain(this.indexManager.GrainTypeResolver,
-                                                                                IndexUtils.GetIndexGrainID(grainType, indexName), idxType, idxType);
+                // This must call the static Silo methods because we may not be InSilo.
+                index = (IIndexInterface)Silo.GetGrain(this.grainFactory, IndexUtils.GetIndexGrainPrimaryKey(grainType, indexName), idxType, idxType);
 
-                var idxImplType = this.indexManager.CachedTypeResolver.ResolveType(
-                                        TypeCodeMapper.GetImplementation(this.indexManager.GrainTypeResolver, idxType).GrainClass);
-                if (idxImplType.IsGenericTypeDefinition)
-                    idxImplType = idxImplType.MakeGenericType(iIndexType.GetGenericArguments());
-
-                var initPerSiloMethodInfo = this.IsInSilo ? idxImplType.GetMethod("InitPerSilo", BindingFlags.Static | BindingFlags.NonPublic) : null;
-                if (initPerSiloMethodInfo != null)  // Static method so cannot use an interface
+                if (this.IsInSilo)
                 {
-                    var initPerSiloMethod = (Action<SiloIndexManager, string, bool>)Delegate.CreateDelegate(typeof(Action<SiloIndexManager, string, bool>), initPerSiloMethodInfo);
-                    initPerSiloMethod(this.siloIndexManager, indexName, isUniqueIndex);
+                    var idxImplType = this.indexManager.CachedTypeResolver.ResolveType(
+                                            TypeCodeMapper.GetImplementation(this.siloIndexManager.GrainTypeResolver, idxType).GrainClass);
+                    if (idxImplType.IsGenericTypeDefinition)
+                        idxImplType = idxImplType.MakeGenericType(iIndexType.GetGenericArguments());
+
+                    var initPerSiloMethodInfo = idxImplType.GetMethod("InitPerSilo", BindingFlags.Static | BindingFlags.NonPublic);
+                    if (initPerSiloMethodInfo != null)  // Static method so cannot use an interface
+                    {
+                        var initPerSiloMethod = (Action<SiloIndexManager, string, bool>)Delegate.CreateDelegate(typeof(Action<SiloIndexManager, string, bool>), initPerSiloMethodInfo);
+                        initPerSiloMethod(this.siloIndexManager, indexName, isUniqueIndex);
+                    }
                 }
             }
             else 

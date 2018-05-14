@@ -51,6 +51,11 @@ namespace Orleans.Runtime
         {
         }
 
+        public SystemTarget(GrainReference grainReference, ILoggerFactory loggerFactory)
+            : this(grainReference.GrainId, grainReference.SystemTargetSilo, loggerFactory)
+        {
+        }
+
         internal SystemTarget(GrainId grainId, SiloAddress silo, bool lowPriority, ILoggerFactory loggerFactory)
         {
             this.grainId = grainId;
@@ -71,6 +76,8 @@ namespace Orleans.Runtime
             
             return lastInvoker;
         }
+
+        public GrainReference GetGrainReference() => GrainReference.FromGrainId(((ISystemTargetBase)this).GrainId, ((ISystemTargetBase)this).GrainReferenceRuntime, null, this.Silo);
 
         internal void HandleNewRequest(Message request)
         {
