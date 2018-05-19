@@ -2,6 +2,7 @@ using System;
 using System.Runtime.Serialization;
 using System.Threading.Tasks;
 using Orleans.CodeGeneration;
+using Orleans.Core;
 using Orleans.Serialization;
 
 namespace Orleans.Runtime
@@ -43,7 +44,9 @@ namespace Orleans.Runtime
         [NonSerialized]
         private readonly InvokeMethodOptions invokeMethodOptions;
 
-        public bool IsSystemTarget { get { return GrainId.IsSystemTarget; } }
+        internal bool IsSystemTarget { get { return GrainId.IsSystemTarget; } }
+
+        public bool IsGrainService => this.IsSystemTarget;  // TODO make this distinct
 
         internal bool IsObserverReference { get { return GrainId.IsClient; } }
 
@@ -67,10 +70,14 @@ namespace Orleans.Runtime
 
         internal GrainId GrainId { get; private set; }
 
+        public IGrainIdentity GrainIdentity => this.GrainId;
+
         /// <summary>
         /// Called from generated code.
         /// </summary>
-        public readonly SiloAddress SystemTargetSilo;
+        protected internal readonly SiloAddress SystemTargetSilo;
+
+        public SiloAddress GrainServiceSiloAddress => this.SystemTargetSilo;    // TODO make this distinct
 
         [NonSerialized]
         private IGrainReferenceRuntime runtime;

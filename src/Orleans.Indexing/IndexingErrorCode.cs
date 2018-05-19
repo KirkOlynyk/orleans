@@ -16,11 +16,11 @@ namespace Orleans.Indexing
         IndexingIndexIsNotReadyYet_GrainBucket3 = Indexing + 3,
         IndexingIndexIsNotReadyYet_GrainBucket4 = Indexing + 4,
         IndexingIndexIsNotReadyYet_GrainBucket5 = Indexing + 5,
-        IndexingIndexIsNotReadyYet_SystemTargetBucket1 = Indexing + 6,
-        IndexingIndexIsNotReadyYet_SystemTargetBucket2 = Indexing + 7,
-        IndexingIndexIsNotReadyYet_SystemTargetBucket3 = Indexing + 8,
-        IndexingIndexIsNotReadyYet_SystemTargetBucket4 = Indexing + 9,
-        IndexingIndexIsNotReadyYet_SystemTargetBucket5 = Indexing + 10,
+        IndexingIndexIsNotReadyYet_GrainServiceBucket1 = Indexing + 6,
+        IndexingIndexIsNotReadyYet_GrainServiceBucket2 = Indexing + 7,
+        IndexingIndexIsNotReadyYet_GrainServiceBucket3 = Indexing + 8,
+        IndexingIndexIsNotReadyYet_GrainServiceBucket4 = Indexing + 9,
+        IndexingIndexIsNotReadyYet_GrainServiceBucket5 = Indexing + 10,
     }
 
     internal static class LoggerExtensions

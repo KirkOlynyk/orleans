@@ -63,7 +63,7 @@ namespace Orleans.Indexing
         /// <summary>
         /// This method is used for extracting the whole result of a lookup from an ActiveHashIndexPartitionedPerSiloBucket.
         /// 
-        /// TODO: This should not be necessary if we could call streams from within a SystemTarget, and the stream were efficient enough
+        /// TODO: This should not be necessary if we could call streams from within a GrainService, and the stream were efficient enough
         /// </summary>
         /// <param name="key">the lookup key</param>
         /// <returns>the result of the lookup</returns>
@@ -92,7 +92,7 @@ namespace Orleans.Indexing
         /// <summary>
         /// This method is used for extracting the whole result of a lookup from an ActiveHashIndexPartitionedPerSiloBucket.
         /// 
-        /// TODO: This should not be necessary if we could call streams from within a SystemTarget, and the stream were efficient enough
+        /// TODO: This should not be necessary if we could call streams from within a GrainService, and the stream were efficient enough
         /// </summary>
         /// <param name="key">the lookup key</param>
         /// <returns>the result of the lookup</returns>

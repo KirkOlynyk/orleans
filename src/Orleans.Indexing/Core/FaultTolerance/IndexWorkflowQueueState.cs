@@ -4,7 +4,7 @@ using System;
 namespace Orleans.Indexing
 {
     /// <summary>
-    /// The persistent unit for storing the information for a IndexWorkflowQueueSystemTarget
+    /// The persistent unit for storing the information for an <see cref="IndexWorkflowQueueGrainService"/>
     /// </summary>
     [Serializable]
     internal class IndexWorkflowQueueState : GrainState<IndexWorkflowQueueEntry>
@@ -15,7 +15,7 @@ namespace Orleans.Indexing
     }
 
     /// <summary>
-    /// All the information stored for a single IndexWorkflowQueueSystemTarget
+    /// All the information stored for a single <see cref="IndexWorkflowQueueGrainService"/>
     /// </summary>
     [Serializable]
     internal class IndexWorkflowQueueEntry

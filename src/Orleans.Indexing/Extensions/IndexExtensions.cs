@@ -17,7 +17,7 @@ namespace Orleans.Indexing
         {
             if (index is IActiveHashIndexPartitionedPerSilo)
             {
-                var bucketInCurrentSilo = siloIndexManager.GetSystemTarget<IActiveHashIndexPartitionedPerSiloBucket>(
+                var bucketInCurrentSilo = siloIndexManager.GetGrainService<IActiveHashIndexPartitionedPerSiloBucket>(
                     GetAHashIndexPartitionedPerSiloGrainReference(siloIndexManager,
                                                                   IndexUtils.GetIndexNameFromIndexGrain((IAddressable)index), index.GetType().GetGenericArguments()[1],
                                                                   siloAddress
@@ -36,7 +36,7 @@ namespace Orleans.Indexing
         {
             if (index is IActiveHashIndexPartitionedPerSilo)
             {
-                var bucketInCurrentSilo = siloIndexManager.GetSystemTarget<IActiveHashIndexPartitionedPerSiloBucket>(
+                var bucketInCurrentSilo = siloIndexManager.GetGrainService<IActiveHashIndexPartitionedPerSiloBucket>(
                     GetAHashIndexPartitionedPerSiloGrainReference(siloIndexManager, 
                                                                   IndexUtils.GetIndexNameFromIndexGrain((IAddressable)index), index.GetType().GetGenericArguments()[1],
                                                                   siloAddress
@@ -48,7 +48,7 @@ namespace Orleans.Indexing
 
 
         private static GrainReference GetAHashIndexPartitionedPerSiloGrainReference(SiloIndexManager siloIndexManager, string indexName, Type iGrainType, SiloAddress siloAddress)
-            => siloIndexManager.MakeSystemTargetGrainReference(IndexingConstants.HASH_INDEX_PARTITIONED_PER_SILO_BUCKET_SYSTEM_TARGET_TYPE_CODE,
+            => siloIndexManager.MakeGrainServiceGrainReference(IndexingConstants.HASH_INDEX_PARTITIONED_PER_SILO_BUCKET_GRAIN_SERVICE_TYPE_CODE,
                                                                IndexUtils.GetIndexGrainPrimaryKey(iGrainType, indexName), siloAddress);
     }
 }

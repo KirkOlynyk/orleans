@@ -555,7 +555,6 @@ namespace Orleans.Runtime
             foreach (var grainService in grainServices)
             {
                 await RegisterGrainService(grainService);
-
             }
         }
 
@@ -575,6 +574,36 @@ namespace Orleans.Runtime
 
             await this.scheduler.QueueTask(grainService.Start, grainService.SchedulingContext).WithTimeout(this.initTimeout, $"Starting GrainService failed due to timeout {initTimeout}");
             logger.Info($"Grain Service {service.GetType().FullName} started successfully.");
+        }
+
+        private void UnregisterGrainService<TGrainInterface>(TGrainInterface service) where TGrainInterface: IGrainService
+        {
+            var grainService = (GrainService)(IGrainService)service;
+            UnregisterSystemTarget(service);
+            grainServices.Remove(grainService);
+        }
+
+        private async Task StopGrainService(IGrainService service)
+        {
+            var grainService = (GrainService)service;
+
+            await this.scheduler.QueueTask(grainService.Stop, grainService.SchedulingContext).WithTimeout(this.stopTimeout, $"Stopping GrainService failed due to timeout {initTimeout}");
+            if (this.logger.IsEnabled(LogLevel.Debug))
+            {
+                logger.Debug(String.Format("{0} Grain Service with Id {1} stopped successfully.", grainService.GetType().FullName, grainService.GetPrimaryKeyLong(out string ignored)));
+            }
+        }
+
+        public async Task AddGrainService(IGrainService service)
+        {
+            await RegisterGrainService(service);
+            await StartGrainService(service);
+        }
+
+        public async Task RemoveGrainService<TGrainInterface>(TGrainInterface service) where TGrainInterface : IGrainService
+        {
+            UnregisterGrainService(service);
+            await StopGrainService(service);
         }
 
         private void ConfigureThreadPoolAndServicePointSettings()
@@ -782,11 +811,7 @@ namespace Orleans.Runtime
             }
             foreach (var grainService in grainServices)
             {
-                await this.scheduler.QueueTask(grainService.Stop, grainService.SchedulingContext).WithTimeout(this.stopTimeout, $"Stopping GrainService failed due to timeout {initTimeout}");
-                if (this.logger.IsEnabled(LogLevel.Debug))
-                {
-                    logger.Debug(String.Format("{0} Grain Service with Id {1} stopped successfully.", grainService.GetType().FullName, grainService.GetPrimaryKeyLong(out string ignored)));
-                }
+                await StopGrainService(grainService);
             }
         }
 
@@ -802,22 +827,25 @@ namespace Orleans.Runtime
             this.Stop();
         }
 
-        public void RegisterSystemTarget(SystemTarget target)
+        internal void RegisterSystemTarget(SystemTarget target)
         {
             var providerRuntime = this.Services.GetRequiredService<SiloProviderRuntime>();
             providerRuntime.RegisterSystemTarget(target);
         }
 
-        public void UnregisterSystemTarget(SystemTarget target)
+        private void UnregisterSystemTarget<TGrainInterface>(TGrainInterface target) where TGrainInterface: ISystemTarget
         {
+            var systemTarget = target as SystemTarget;
+            if (systemTarget == null) throw new ArgumentException($"Parameter must be of type {typeof(SystemTarget)}", nameof(target));
             var providerRuntime = this.Services.GetRequiredService<SiloProviderRuntime>();
             providerRuntime.UnregisterSystemTarget(target);
+            this.runtimeClient.InternalGrainFactory.UnregisterSystemTarget<TGrainInterface>(systemTarget);
         }
 
         private ISiloControl GetSiloControlReference(SiloAddress siloAddress)
             => this.runtimeClient.InternalGrainFactory.GetSystemTarget<ISiloControl>(Constants.SiloControlId, siloAddress);
 
-        public T GetSystemTarget<T>(GrainReference grainReference) where T: ISystemTarget
+        public T GetGrainService<T>(GrainReference grainReference) where T: IGrainService
             => this.runtimeClient.InternalGrainFactory.GetSystemTarget<T>(grainReference.GrainId, grainReference.SystemTargetSilo);
 
         private GrainReference MakeGrainReference(GrainId grainId, SiloAddress siloAddress)
@@ -840,8 +868,8 @@ namespace Orleans.Runtime
 
         public IGrainTypeResolver GrainTypeResolver => this.runtimeClient.GrainTypeResolver;
 
-        public GrainReference MakeSystemTargetGrainReference(int typeData, string systemGrainId, SiloAddress siloAddress)
-            => this.MakeGrainReference(GrainId.GetSystemTargetGrainId(typeData, systemGrainId), siloAddress);
+        public GrainReference MakeGrainServiceGrainReference(int typeData, string systemGrainId, SiloAddress siloAddress)
+            => this.MakeGrainReference(GrainId.GetGrainServiceGrainId(typeData, systemGrainId), siloAddress);
 
         public OutputGrainInterfaceType GetGrain<OutputGrainInterfaceType>(Guid grainPrimaryKey, Type grainInterfaceType)
             where OutputGrainInterfaceType : IGrain

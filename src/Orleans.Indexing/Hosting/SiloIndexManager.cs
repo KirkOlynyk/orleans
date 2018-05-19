@@ -2,9 +2,9 @@
 using Microsoft.Extensions.Logging;
 using Orleans.ApplicationParts;
 using Orleans.Runtime;
+using Orleans.Services;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 
 namespace Orleans.Indexing
@@ -39,11 +39,11 @@ namespace Orleans.Indexing
         internal Task<Dictionary<SiloAddress, SiloStatus>> GetSiloHosts(bool onlyActive = false)
             => this.GrainFactory.GetGrain<IManagementGrain>(0).GetHosts(onlyActive);
 
-        public GrainReference MakeSystemTargetGrainReference(int typeData, string systemGrainId, SiloAddress siloAddress)
-            => this.Silo.MakeSystemTargetGrainReference(typeData, systemGrainId, siloAddress);
+        public GrainReference MakeGrainServiceGrainReference(int typeData, string systemGrainId, SiloAddress siloAddress)
+            => this.Silo.MakeGrainServiceGrainReference(typeData, systemGrainId, siloAddress);
 
-        internal T GetSystemTarget<T>(GrainReference grainReference) where T : ISystemTarget
-            => this.Silo.GetSystemTarget<T>(grainReference);
+        internal T GetGrainService<T>(GrainReference grainReference) where T : IGrainService
+            => this.Silo.GetGrainService<T>(grainReference);
 
         internal async Task<IEnumerable<Tuple<GrainReference, string, int>>> GetClusterGrainActivations(SiloAddress[] siloAddresses)
             => await this.Silo.GetClusterGrainActivations(siloAddresses);

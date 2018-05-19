@@ -1,13 +1,14 @@
 ﻿using Orleans.Concurrency;
+using Orleans.Services;
 using System.Threading.Tasks;
 
 namespace Orleans.Indexing
 {
     /// <summary>
-    /// The interface for IndexWorkflowQueueSystemTarget system-target.
+    /// The interface for the <see cref="IndexWorkflowQueueGrainService"/>.
     /// </summary>
     [Unordered]
-    internal interface IIndexWorkflowQueueHandler : ISystemTarget, IGrainWithStringKey
+    internal interface IIndexWorkflowQueueHandler : IGrainService, IGrainWithStringKey
     {
         /// <summary>
         /// Accepts a linked list of work-flow records to handle until reaching a punctuation
@@ -18,7 +19,7 @@ namespace Orleans.Indexing
         /// <summary>
         /// This method is called for initializing the ReincarnatedIndexWorkflowQueueHandler
         /// </summary>
-        /// <param name="oldParentSystemTarget"></param>
-        Task Initialize(IIndexWorkflowQueue oldParentSystemTarget);
+        /// <param name="oldParentGrainService"></param>
+        Task Initialize(IIndexWorkflowQueue oldParentGrainService);
     }
 }

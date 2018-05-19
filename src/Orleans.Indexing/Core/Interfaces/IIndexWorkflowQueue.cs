@@ -2,14 +2,15 @@
 using System.Threading.Tasks;
 using System;
 using System.Collections.Generic;
+using Orleans.Services;
 
 namespace Orleans.Indexing
 {
     /// <summary>
-    /// The interface for IndexWorkflowQueueSystemTarget system-target.
+    /// The interface for the <see cref="IndexWorkflowQueueGrainService"/> GrainService.
     /// </summary>
     [Unordered]
-    internal interface IIndexWorkflowQueue : ISystemTarget, IGrainWithStringKey
+    internal interface IIndexWorkflowQueue : IGrainService, IGrainWithStringKey
     {
         /// <summary>
         /// Adds a workflowRecord, created by an indexable grain, to the queue
@@ -43,7 +44,7 @@ namespace Orleans.Indexing
         /// <summary>
         /// This method is called for initializing the ReincarnatedIndexWorkflowQueue
         /// </summary>
-        /// <param name="oldParentSystemTarget"></param>
-        Task Initialize(IIndexWorkflowQueue oldParentSystemTarget);
+        /// <param name="oldParentGrainService"></param>
+        Task Initialize(IIndexWorkflowQueue oldParentGrainService);
     }
 }
