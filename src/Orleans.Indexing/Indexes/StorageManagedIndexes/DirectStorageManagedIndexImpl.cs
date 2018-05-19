@@ -17,7 +17,7 @@ namespace Orleans.Indexing
     [Reentrant]
     //[StatelessWorker]
     //TODO: because of a bug in OrleansStreams (that streams cannot work with stateless grains), this grain cannot be StatelessWorker. It should be fixed later.
-    //TODO: basically, this class does not even need to be a grain, but it's not possible to call a SystemTarget from a non-grain
+    //TODO: basically, this class does not even need to be a grain, but it's not possible to call a GrainService from a non-grain
     public class DirectStorageManagedIndexImpl<K, V> : Grain, IDirectStorageManagedIndex<K, V> where V : class, IIndexableGrain
     {
         private IGrainStorage _grainStorage;

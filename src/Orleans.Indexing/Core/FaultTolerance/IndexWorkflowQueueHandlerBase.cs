@@ -178,15 +178,15 @@ namespace Orleans.Indexing
         }
 
         private IIndexWorkflowQueue InitIndexWorkflowQueue()
-            => __workflowQueue = _lazyParent.Value.IsSystemTarget
-                    ? _siloIndexManager.GetSystemTarget<IIndexWorkflowQueue>(IndexWorkflowQueueBase.CreateIndexWorkflowQueueGrainReference(_siloIndexManager, _iGrainType, _queueSeqNum, _silo))
+            => __workflowQueue = _lazyParent.Value.IsGrainService
+                    ? _siloIndexManager.GetGrainService<IIndexWorkflowQueue>(IndexWorkflowQueueBase.CreateIndexWorkflowQueueGrainReference(_siloIndexManager, _iGrainType, _queueSeqNum, _silo))
                     : _siloIndexManager.GrainFactory.GetGrain<IIndexWorkflowQueue>(IndexWorkflowQueueBase.CreateIndexWorkflowQueuePrimaryKey(_iGrainType, _queueSeqNum));
 
         public static GrainReference CreateIndexWorkflowQueueHandlerGrainReference(SiloIndexManager siloIndexManager, Type grainInterfaceType, int queueSeqNum, SiloAddress siloAddress)
-            => siloIndexManager.MakeSystemTargetGrainReference(IndexingConstants.INDEX_WORKFLOW_QUEUE_HANDLER_SYSTEM_TARGET_TYPE_CODE,
+            => siloIndexManager.MakeGrainServiceGrainReference(IndexingConstants.INDEX_WORKFLOW_QUEUE_HANDLER_GRAIN_SERVICE_TYPE_CODE,
                                                                IndexWorkflowQueueBase.CreateIndexWorkflowQueuePrimaryKey(grainInterfaceType, queueSeqNum), siloAddress);
 
-        public Task Initialize(IIndexWorkflowQueue oldParentSystemTarget)
+        public Task Initialize(IIndexWorkflowQueue oldParentGrainService)
             => throw new NotSupportedException();
     }
 }

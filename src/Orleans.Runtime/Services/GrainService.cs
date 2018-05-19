@@ -36,6 +36,8 @@ namespace Orleans.Runtime
             }
         }
 
+        public GrainReference GetGrainReference() => GrainReference.FromGrainId(((ISystemTargetBase)this).GrainId, ((ISystemTargetBase)this).GrainReferenceRuntime, null, this.Silo);
+
         /// <summary>Only to make Reflection happy</summary>
         protected GrainService() : base(null, null, null)
         {

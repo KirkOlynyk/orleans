@@ -126,7 +126,7 @@ namespace Orleans.Indexing
         /// <param name="indexedProperty">the PropertyInfo object for the indexed field.
         /// This object helps in creating a default instance of IndexUpdateGenerator.</param>
         /// <returns>An <see cref="IndexInfo"/> for the specified idxType and indexName.</returns>
-        internal IndexInfo CreateIndex(Type idxType, string indexName, bool isUniqueIndex, bool isEager, int maxEntriesPerBucket, PropertyInfo indexedProperty)
+        internal async Task<IndexInfo> CreateIndex(Type idxType, string indexName, bool isUniqueIndex, bool isEager, int maxEntriesPerBucket, PropertyInfo indexedProperty)
         {
             Type iIndexType = idxType.GetGenericType(typeof(IIndexInterface<,>));
             if (iIndexType == null)
@@ -154,8 +154,8 @@ namespace Orleans.Indexing
                     var initPerSiloMethodInfo = idxImplType.GetMethod("InitPerSilo", BindingFlags.Static | BindingFlags.NonPublic);
                     if (initPerSiloMethodInfo != null)  // Static method so cannot use an interface
                     {
-                        var initPerSiloMethod = (Action<SiloIndexManager, string, bool>)Delegate.CreateDelegate(typeof(Action<SiloIndexManager, string, bool>), initPerSiloMethodInfo);
-                        initPerSiloMethod(this.siloIndexManager, indexName, isUniqueIndex);
+                        var initPerSiloMethod = (Func<SiloIndexManager, string, bool, Task>)Delegate.CreateDelegate(typeof(Func<SiloIndexManager, string, bool, Task>), initPerSiloMethodInfo);
+                        await initPerSiloMethod(this.siloIndexManager, indexName, isUniqueIndex);
                     }
                 }
             }
@@ -169,13 +169,13 @@ namespace Orleans.Indexing
             return new IndexInfo(index, new IndexMetaData(idxType, isUniqueIndex, isEager, maxEntriesPerBucket), CreateIndexUpdateGenFromProperty(indexedProperty));
         }
 
-        internal static void RegisterIndexWorkflowQueues(SiloIndexManager siloIndexManager, Type iGrainType, Type grainImplType)
+        internal static async Task RegisterIndexWorkflowQueues(SiloIndexManager siloIndexManager, Type iGrainType, Type grainImplType)
         {
             for (int i = 0; i < IndexWorkflowQueueBase.NUM_AVAILABLE_INDEX_WORKFLOW_QUEUES; ++i)
             {
                 bool isAssignable = typeof(IIndexableGrainFaultTolerant).IsAssignableFrom(grainImplType);
-                siloIndexManager.Silo.RegisterSystemTarget(new IndexWorkflowQueueSystemTarget(siloIndexManager, iGrainType, i, isAssignable));
-                siloIndexManager.Silo.RegisterSystemTarget(new IndexWorkflowQueueHandlerSystemTarget(siloIndexManager, iGrainType, i, isAssignable));
+                await siloIndexManager.Silo.AddGrainService(new IndexWorkflowQueueGrainService(siloIndexManager, iGrainType, i, isAssignable));
+                await siloIndexManager.Silo.AddGrainService(new IndexWorkflowQueueHandlerGrainService(siloIndexManager, iGrainType, i, isAssignable));
             }
         }
 

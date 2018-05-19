@@ -48,8 +48,8 @@ namespace Orleans.Indexing
                 return grainBase.GrainReference ?? throw new ArgumentException(WRONG_GRAIN_ERROR_MSG, "grain");
             }
 
-            return grain is SystemTarget systemTarget
-                ? systemTarget.GetGrainReference()
+            return grain is GrainService grainService
+                ? grainService.GetGrainReference()
                 : throw new ArgumentException(string.Format("AsWeaklyTypedReference has been called on an unexpected type: {0}.", grain.GetType().FullName), "grain");
         }
     }

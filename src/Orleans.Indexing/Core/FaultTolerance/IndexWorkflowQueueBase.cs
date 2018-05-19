@@ -1,40 +1,33 @@
-using Microsoft.Extensions.DependencyInjection;
 using Orleans.Concurrency;
 using Orleans.Runtime;
 using Orleans.Storage;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Orleans.Indexing
 {
     /// <summary>
-    /// To minimize the number of RPCs, we process index updates for each grain
-    /// on the silo where the grain is active. To do this processing, each silo
-    /// has one or more IndexWorkflowQueue system-targets for each grain class,
-    /// up to the number of hardware threads. A system-target is a grain that
+    /// To minimize the number of RPCs, we process index updates for each grain on the silo where the grain is active. To do this processing, each silo
+    /// has one or more <see cref="IndexWorkflowQueueGrainService"/>s for each grain class, up to the number of hardware threads. A GrainService is a grain that
     /// belongs to a specific silo.
-    /// + Each of these system-targets has a queue of workflowRecords, which describe
-    ///   updates that must be propagated to indexes.Each workflowRecord contains
+    /// + Each of these GrainServices has a queue of workflowRecords, which describe updates that must be propagated to indexes. Each workflowRecord contains
     ///   the following information:
     ///    - workflowID: grainID + a sequence number
     ///    - memberUpdates: the updated values of indexed fields
     ///  
-    ///   Ordinarily, these workflowRecords are for grains that are active on
-    ///   IndexWorkflowQueue's silo. (This may not be true for short periods when
-    ///   a grain migrates to another silo or after the silo recovers from failure).
+    ///   Ordinarily, these workflowRecords are for grains that are active on <see cref="IndexWorkflowQueueGrainService"/>'s silo. (This may not be true for
+    ///   short periods when a grain migrates to another silo or after the silo recovers from failure).
     /// 
-    /// + The IndexWorkflowQueue grain Q has a dictionary updatesOnWait is an
-    ///   in-memory dictionary that maps each grain G to the workflowRecords for G
-    ///   that are waiting for be updated
+    /// + The <see cref="IndexWorkflowQueueGrainService"/> grain Q has a dictionary updatesOnWait is an in-memory dictionary that maps each grain G to the
+    ///   workflowRecords for G that are waiting for be updated.
     /// </summary>
     internal class IndexWorkflowQueueBase : IIndexWorkflowQueue
     {
         //the persistent state of IndexWorkflowQueue, including:
         // - doubly linked list of workflowRecordds
-        // - the identity of the IndexWorkflowQueue system target
+        // - the identity of the IndexWorkflowQueue GrainService
         protected IndexWorkflowQueueState queueState;
 
         //the tail of workflowRecords doubly linked list
@@ -110,8 +103,8 @@ namespace Orleans.Indexing
         }
 
         private IIndexWorkflowQueueHandler InitWorkflowQueueHandler() 
-            => __handler = _lazyParent.Value.IsSystemTarget
-                ? _siloIndexManager.GetSystemTarget<IIndexWorkflowQueueHandler>(
+            => __handler = _lazyParent.Value.IsGrainService
+                ? _siloIndexManager.GetGrainService<IIndexWorkflowQueueHandler>(
                         IndexWorkflowQueueHandlerBase.CreateIndexWorkflowQueueHandlerGrainReference(_siloIndexManager, _iGrainType, _queueSeqNum, _silo))
                 : _siloIndexManager.GrainFactory.GetGrain<IIndexWorkflowQueueHandler>(CreateIndexWorkflowQueuePrimaryKey(_iGrainType, _queueSeqNum));
 
@@ -293,7 +286,7 @@ namespace Orleans.Indexing
         }
 
         private IGrainStorage GetGrainStorage()
-            => __grainStorage = typeof(IndexWorkflowQueueSystemTarget).GetGrainStorage(_siloIndexManager.ServiceProvider);
+            => __grainStorage = typeof(IndexWorkflowQueueGrainService).GetGrainStorage(_siloIndexManager.ServiceProvider);
 
         public Task<Immutable<List<IndexWorkflowRecord>>> GetRemainingWorkflowsIn(HashSet<Guid> activeWorkflowsSet)
         {
@@ -308,25 +301,25 @@ namespace Orleans.Indexing
             return Task.FromResult(result.AsImmutable());
         }
 
-        public Task Initialize(IIndexWorkflowQueue oldParentSystemTarget)
+        public Task Initialize(IIndexWorkflowQueue oldParentGrainService)
             => throw new NotSupportedException();
 
         #region STATIC HELPER FUNCTIONS
         public static GrainReference CreateIndexWorkflowQueueGrainReference(SiloIndexManager siloIndexManager, Type grainInterfaceType, int queueSeqNum, SiloAddress siloAddress)
-            => CreateSystemTargetGrainReference(siloIndexManager, grainInterfaceType, queueSeqNum, siloAddress);
+            => CreateGrainServiceGrainReference(siloIndexManager, grainInterfaceType, queueSeqNum, siloAddress);
 
         public static string CreateIndexWorkflowQueuePrimaryKey(Type grainInterfaceType, int queueSeqNum)
             => TypeUtils.GetFullName(grainInterfaceType) + "-" + queueSeqNum;
 
-        private static GrainReference CreateSystemTargetGrainReference(SiloIndexManager siloIndexManager, Type grainInterfaceType, int queueSeqNum, SiloAddress siloAddress)
-            => siloIndexManager.MakeSystemTargetGrainReference(IndexingConstants.INDEX_WORKFLOW_QUEUE_SYSTEM_TARGET_TYPE_CODE,
+        private static GrainReference CreateGrainServiceGrainReference(SiloIndexManager siloIndexManager, Type grainInterfaceType, int queueSeqNum, SiloAddress siloAddress)
+            => siloIndexManager.MakeGrainServiceGrainReference(IndexingConstants.INDEX_WORKFLOW_QUEUE_GRAIN_SERVICE_TYPE_CODE,
                                                                CreateIndexWorkflowQueuePrimaryKey(grainInterfaceType, queueSeqNum), siloAddress);
 
         public static IIndexWorkflowQueue GetIndexWorkflowQueueFromGrainHashCode(SiloIndexManager siloIndexManager, Type grainInterfaceType, int grainHashCode, SiloAddress siloAddress)
         {
             int queueSeqNum = StorageProviderUtils.PositiveHash(grainHashCode, NUM_AVAILABLE_INDEX_WORKFLOW_QUEUES);
-            var grainReference = CreateSystemTargetGrainReference(siloIndexManager, grainInterfaceType, queueSeqNum, siloAddress);
-            return siloIndexManager.GetSystemTarget<IIndexWorkflowQueue>(grainReference);
+            var grainReference = CreateGrainServiceGrainReference(siloIndexManager, grainInterfaceType, queueSeqNum, siloAddress);
+            return siloIndexManager.GetGrainService<IIndexWorkflowQueue>(grainReference);
         }
         #endregion STATIC HELPER FUNCTIONS
     }

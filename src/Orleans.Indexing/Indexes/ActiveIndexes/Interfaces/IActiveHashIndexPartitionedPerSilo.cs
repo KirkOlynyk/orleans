@@ -10,7 +10,7 @@ namespace Orleans.Indexing
     }
 
     /// <summary>
-    /// The interface for the <see cref="ActiveHashIndexPartitionedPerSiloBucketImpl"/> system target,
+    /// The interface for the <see cref="ActiveHashIndexPartitionedPerSiloBucketImplGrainService"/> GrainService,
     /// which is created in order to guide Orleans to find the grain instances more efficiently.
     /// </summary>
     /// <typeparam name="K">type of hash-index key</typeparam>

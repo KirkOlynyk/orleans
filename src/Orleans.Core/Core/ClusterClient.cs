@@ -237,6 +237,10 @@ namespace Orleans
         }
 
         /// <inheritdoc />
+        public void UnregisterSystemTarget<TGrainInterface>(ISystemTargetBase systemTarget) where TGrainInterface : ISystemTarget
+            => this.InternalGrainFactory.UnregisterSystemTarget<TGrainInterface>(systemTarget);
+
+        /// <inheritdoc />
         TGrainInterface IInternalGrainFactory.Cast<TGrainInterface>(IAddressable grain)
         {
             return this.InternalGrainFactory.Cast<TGrainInterface>(grain);

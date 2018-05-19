@@ -21,23 +21,23 @@ namespace Orleans.Indexing
             return base.OnActivateAsync();
         }
 
-        public Task Initialize(IIndexWorkflowQueue oldParentSystemTarget)
+        public Task Initialize(IIndexWorkflowQueue oldParentGrainService)
         {
             if (_base == null)
             {
-                GrainReference oldParentSystemTargetRef = oldParentSystemTarget.AsWeaklyTypedReference();
-                string[] parts = oldParentSystemTargetRef.GetPrimaryKeyString().Split('-');
+                GrainReference oldParentGrainServiceRef = oldParentGrainService.AsWeaklyTypedReference();
+                string[] parts = oldParentGrainServiceRef.GetPrimaryKeyString().Split('-');
                 if (parts.Length != 2)
                 {
-                    throw new WorkflowIndexException("The primary key for IndexWorkflowQueueSystemTarget should only contain a single special character '-', while it contains multiple." +
-                                                     " The primary key is '" + oldParentSystemTargetRef.GetPrimaryKeyString() + "'");
+                    throw new WorkflowIndexException("The primary key for IndexWorkflowQueueGrainService should only contain a single special character '-', while it contains multiple." +
+                                                     " The primary key is '" + oldParentGrainServiceRef.GetPrimaryKeyString() + "'");
                 }
 
                 Type grainInterfaceType = this.SiloIndexManager.CachedTypeResolver.ResolveType(parts[0]);
                 int queueSequenceNumber = int.Parse(parts[1]);
 
                 _base = new IndexWorkflowQueueBase(this.SiloIndexManager, grainInterfaceType, queueSequenceNumber,
-                                                   oldParentSystemTargetRef.SystemTargetSilo, isDefinedAsFaultTolerantGrain:true,
+                                                   oldParentGrainServiceRef.GrainServiceSiloAddress, isDefinedAsFaultTolerantGrain:true,
                                                    parentFunc:() => this.AsWeaklyTypedReference());
             }
             return Task.CompletedTask;

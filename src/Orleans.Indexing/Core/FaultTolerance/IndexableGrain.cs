@@ -20,9 +20,9 @@ namespace Orleans.Indexing
     /// IndexableGrain creates a wrapper around the State class provided by the actual user-grain that extends it.
     /// It adds the following information to it:
     ///  - a list called activeWorkflowsList to the State, which points to the in-flight indexing workflowsIds.
-    ///  - There's a fixed mapping (e.g., a hash function) from grain id to IndexWorkflowQueueSystemTarget
+    ///  - There's a fixed mapping (e.g., a hash function) from a GrainReference to a <see cref="IndexWorkflowQueueGrainService"/>
     ///    instance. Each IndexableGrain G has a property workflowQueue whose value, [grain-type-name + sequence number],
-    ///    identifies the IndexWorkflowQueueSystemTarget grain that processes index updates on G's behalf.
+    ///    that identifies the <see cref="IndexWorkflowQueueGrainService"/> grain that processes index updates on G's behalf.
     /// </summary>
     public abstract class IndexableGrain<TState, TProperties> : IndexableGrainNonFaultTolerant<IndexableExtendedState<TState>, TProperties>, IIndexableGrainFaultTolerant
         where TProperties : new()
@@ -148,7 +148,7 @@ namespace Orleans.Indexing
         /// <returns>the actual list of work-flow record IDs that were available in this queue</returns>
         private async Task<IEnumerable<Guid>> HandleRemainingWorkflows(Type iGrainType, IIndexWorkflowQueue oldWorkflowQ)
         {
-            // Keeps the reference to the reincarnated work-flow queue, if the original work-flow queue (system target) did not respond.
+            // Keeps the reference to the reincarnated work-flow queue, if the original work-flow queue (GrainService) did not respond.
             IIndexWorkflowQueue reincarnatedOldWorkflowQ = null;
 
             // Keeps the list of work-flow records from the old work-flow queue.

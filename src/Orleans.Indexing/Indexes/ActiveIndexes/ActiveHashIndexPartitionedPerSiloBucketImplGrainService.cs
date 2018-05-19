@@ -15,22 +15,22 @@ namespace Orleans.Indexing
     /// <summary>
     /// A simple implementation of a single-grain in-memory hash-index.
     /// 
-    /// TODO: Generic SystemTargets are not supported yet, and that's why the implementation is non-generic.
+    /// TODO: Generic GrainServices are not supported yet, and that's why the implementation is non-generic.
     /// </summary>
     //Per comments for IActiveHashIndexPartitionedPerSiloBucket, we cannot use generics here.
     //<typeparam name="K">type of hash-index key</typeparam>
     //<typeparam name="V">type of grain that is being indexed</typeparam>
     [StorageProvider(ProviderName = IndexingConstants.MEMORY_STORAGE_PROVIDER_NAME)]
     [Reentrant]
-    internal class ActiveHashIndexPartitionedPerSiloBucketImpl/*<K, V>*/ : SystemTarget, IActiveHashIndexPartitionedPerSiloBucket/*<K, V> where V : IIndexableGrain*/
+    internal class ActiveHashIndexPartitionedPerSiloBucketImplGrainService/*<K, V>*/ : GrainService, IActiveHashIndexPartitionedPerSiloBucket/*<K, V> where V : IIndexableGrain*/
     {
         private HashIndexBucketState<K, V> state;
         private readonly SiloIndexManager siloIndexManager;
         private readonly ILogger logger;
         private readonly string _parentIndexName;
 
-        public ActiveHashIndexPartitionedPerSiloBucketImpl(SiloIndexManager siloIndexManager, string parentIndexName, GrainReference grainReference)
-            : base(grainReference, siloIndexManager.LoggerFactory)
+        public ActiveHashIndexPartitionedPerSiloBucketImplGrainService(SiloIndexManager siloIndexManager, string parentIndexName, GrainReference grainReference)
+            : base(grainReference.GrainIdentity, siloIndexManager.Silo, siloIndexManager.LoggerFactory)
         {
             state = new HashIndexBucketState<K, V>
             {
@@ -41,7 +41,7 @@ namespace Orleans.Indexing
 
             _parentIndexName = parentIndexName;
             this.siloIndexManager = siloIndexManager;
-            this.logger = siloIndexManager.LoggerFactory.CreateLoggerWithFullCategoryName<ActiveHashIndexPartitionedPerSiloBucketImpl>();
+            this.logger = siloIndexManager.LoggerFactory.CreateLoggerWithFullCategoryName<ActiveHashIndexPartitionedPerSiloBucketImplGrainService>();
         }
 
         public async Task<bool> DirectApplyIndexUpdateBatch(Immutable<IDictionary<IIndexableGrain, IList<IMemberUpdate>>> iUpdates, bool isUnique, IndexMetaData idxMetaData, SiloAddress siloAddress = null)
@@ -66,9 +66,7 @@ namespace Orleans.Indexing
         }
 
         public Task<bool> DirectApplyIndexUpdate(IIndexableGrain g, Immutable<IMemberUpdate> iUpdate, bool isUniqueIndex, IndexMetaData idxMetaData, SiloAddress siloAddress)
-        {
-            return DirectApplyIndexUpdate(g, iUpdate.Value, isUniqueIndex, idxMetaData, siloAddress);
-        }
+            => DirectApplyIndexUpdate(g, iUpdate.Value, isUniqueIndex, idxMetaData, siloAddress);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private Task<bool> DirectApplyIndexUpdate(IIndexableGrain g, IMemberUpdate updt, bool isUniqueIndex, IndexMetaData idxMetaData, SiloAddress siloAddress)
@@ -85,7 +83,7 @@ namespace Orleans.Indexing
             if (!(state.IndexStatus == IndexStatus.Available))
             {
                 var e = new Exception(string.Format("Index is not still available."));
-                logger.Error(IndexingErrorCode.IndexingIndexIsNotReadyYet_SystemTargetBucket1, $"ParentIndex {_parentIndexName}: Index is not still available.", e);
+                logger.Error(IndexingErrorCode.IndexingIndexIsNotReadyYet_GrainServiceBucket1, $"ParentIndex {_parentIndexName}: Index is not still available.", e);
                 throw e;
             }
             if (state.IndexMap.TryGetValue(key, out HashIndexSingleBucketEntry<V> entry) && !entry.IsTentative())
@@ -106,7 +104,7 @@ namespace Orleans.Indexing
             if (!(state.IndexStatus == IndexStatus.Available))
             {
                 var e = new Exception(string.Format("Index is not still available."));
-                logger.Error(IndexingErrorCode.IndexingIndexIsNotReadyYet_SystemTargetBucket2, $"ParentIndex {_parentIndexName}: Index is not still available.", e);
+                logger.Error(IndexingErrorCode.IndexingIndexIsNotReadyYet_GrainServiceBucket2, $"ParentIndex {_parentIndexName}: Index is not still available.", e);
                 throw e;
             }
             var entryValues = (state.IndexMap.TryGetValue(key, out HashIndexSingleBucketEntry<V> entry) && !entry.IsTentative()) ? entry.Values : Enumerable.Empty<V>();
@@ -118,7 +116,7 @@ namespace Orleans.Indexing
             if (!(state.IndexStatus == IndexStatus.Available))
             {
                 var e = new Exception(string.Format("Index is not still available."));
-                logger.Error(IndexingErrorCode.IndexingIndexIsNotReadyYet_SystemTargetBucket3, $"ParentIndex {_parentIndexName}: {e.Message}", e);
+                logger.Error(IndexingErrorCode.IndexingIndexIsNotReadyYet_GrainServiceBucket3, $"ParentIndex {_parentIndexName}: {e.Message}", e);
                 throw e;
             }
             if (state.IndexMap.TryGetValue(key, out HashIndexSingleBucketEntry<V> entry) && !entry.IsTentative())
@@ -127,32 +125,25 @@ namespace Orleans.Indexing
                 {
                     return Task.FromResult(entry.Values.GetEnumerator().Current);
                 }
-                else
-                {
-                    var e = new Exception(string.Format("There are {0} values for the unique lookup key \"{1}\" does not exist on index \"{2}->{3}\".", entry.Values.Count(), key, _parentIndexName, IndexUtils.GetIndexNameFromIndexGrain(this)));
-                    logger.Error(IndexingErrorCode.IndexingIndexIsNotReadyYet_SystemTargetBucket4, $"ParentIndex {_parentIndexName}: {e.Message}", e);
-                    throw e;
-                }
-            }
-            else
-            {
-                var e = new Exception(string.Format("The lookup key \"{0}\" does not exist on index \"{1}->{2}\".", key, _parentIndexName, IndexUtils.GetIndexNameFromIndexGrain(this)));
-                logger.Error(IndexingErrorCode.IndexingIndexIsNotReadyYet_SystemTargetBucket5, $"ParentIndex {_parentIndexName}: {e.Message}", e);
+                var e = new Exception(string.Format("There are {0} values for the unique lookup key \"{1}\" does not exist on index \"{2}->{3}\".",
+                                                    entry.Values.Count(), key, _parentIndexName, IndexUtils.GetIndexNameFromIndexGrain(this)));
+                logger.Error(IndexingErrorCode.IndexingIndexIsNotReadyYet_GrainServiceBucket4, $"ParentIndex {_parentIndexName}: {e.Message}", e);
                 throw e;
             }
+            var ex = new Exception(string.Format("The lookup key \"{0}\" does not exist on index \"{1}->{2}\".",
+                                                 key, _parentIndexName, IndexUtils.GetIndexNameFromIndexGrain(this)));
+            logger.Error(IndexingErrorCode.IndexingIndexIsNotReadyYet_GrainServiceBucket5, $"ParentIndex {_parentIndexName}: {ex.Message}", ex);
+            throw ex;
         }
 
         public Task Dispose()
         {
             state.IndexStatus = IndexStatus.Disposed;
             state.IndexMap.Clear();
-            this.siloIndexManager.Silo.UnregisterSystemTarget(this);
-            return Task.CompletedTask;
+            return this.siloIndexManager.Silo.RemoveGrainService(this);
         }
 
         public Task<bool> IsAvailable()
-        {
-            return Task.FromResult(state.IndexStatus == IndexStatus.Available);
-        }
+            => Task.FromResult(state.IndexStatus == IndexStatus.Available);
     }
 }

@@ -29,6 +29,15 @@ namespace Orleans
             where TGrainInterface : ISystemTarget;
 
         /// <summary>
+        /// Removes any cached reference to the specified system target.
+        /// </summary>
+        /// <typeparam name="TGrainInterface">The system target interface.</typeparam>
+        /// <param name="systemTarget">The SystemTarget to remove.</param>
+        /// <returns>A reference to the specified system target.</returns>
+        void UnregisterSystemTarget<TGrainInterface>(ISystemTargetBase systemTarget)
+            where TGrainInterface : ISystemTarget;
+
+        /// <summary>
         /// Casts the provided <paramref name="grain"/> to the specified interface
         /// </summary>
         /// <typeparam name="TGrainInterface">The target grain interface type.</typeparam>

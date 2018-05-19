@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Orleans.ApplicationParts;
 using Orleans.Runtime;
@@ -34,7 +35,7 @@ namespace Orleans.Indexing
         /// interface and adding annotations to properties in TProperties).
         /// </summary>
         /// <returns>An index registry for the silo. </returns>
-        public IndexRegistry GetGrainClassIndexes()
+        public async Task<IndexRegistry> GetGrainClassIndexes()
         {
             Type[] grainTypes = this.indexManager.ApplicationPartManager.ApplicationParts.OfType<AssemblyPart>()
                                     .SelectMany(part => TypeUtils.GetTypes(part.Assembly, TypeUtils.IsConcreteGrainClass, this.logger))
@@ -47,13 +48,13 @@ namespace Orleans.Indexing
                 {
                     throw new InvalidOperationException($"Precondition violated: GetGrainClassIndexes should not encounter a duplicate type ({TypeUtils.GetFullName(grainType)})");
                 }
-                GetIndexesForASingleGrainType(registry, grainType);
+                await GetIndexesForASingleGrainType(registry, grainType);
             }
             return registry;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void GetIndexesForASingleGrainType(IndexRegistry registry, Type grainType)
+        private async Task GetIndexesForASingleGrainType(IndexRegistry registry, Type grainType)
         {
             Type[] interfaces = grainType.GetInterfaces();
             int numInterfaces = interfaces.Length;
@@ -75,7 +76,7 @@ namespace Orleans.Indexing
                         for (int j = 0; j < numInterfaces; ++j)
                         {
                             Type userDefinedIGrain = interfaces[j];
-                            CreateIndexesForASingleInterfaceOfAGrainType(registry, iIndexableGrain, propertiesArg, userDefinedIGrain, grainType);
+                            await CreateIndexesForASingleInterfaceOfAGrainType(registry, iIndexableGrain, propertiesArg, userDefinedIGrain, grainType);
                         }
                     }
                     break;
@@ -84,7 +85,7 @@ namespace Orleans.Indexing
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void CreateIndexesForASingleInterfaceOfAGrainType(IndexRegistry registry, Type iIndexableGrain, Type propertiesArg, Type userDefinedIGrain, Type userDefinedGrainImpl)
+        private async Task CreateIndexesForASingleInterfaceOfAGrainType(IndexRegistry registry, Type iIndexableGrain, Type propertiesArg, Type userDefinedIGrain, Type userDefinedGrainImpl)
         {
             // If the given interface is a user-defined interface extending IIndexableGrain<TProperties>
             if (iIndexableGrain != userDefinedIGrain && iIndexableGrain.IsAssignableFrom(userDefinedIGrain) && !registry.ContainsKey(userDefinedIGrain))
@@ -120,14 +121,14 @@ namespace Orleans.Indexing
                         if (!isEager) hasNonEagerIndex = true;
                         bool isUnique = (bool)isUniqueProperty.GetValue(indexAttr);
                         int maxEntriesPerBucket = (int)maxEntriesPerBucketProperty.GetValue(indexAttr);
-                        indexesOnGrain[indexName] = this.indexManager.IndexFactory.CreateIndex(indexType, indexName, isUnique, isEager, maxEntriesPerBucket, p);
+                        indexesOnGrain[indexName] = await this.indexManager.IndexFactory.CreateIndex(indexType, indexName, isUnique, isEager, maxEntriesPerBucket, p);
                         this.logger.Info($"Index created: Interface = {userDefinedIGrain.Name}, property = {propertiesArg.Name}, index = {indexName}");
                     }
                 }
                 registry[userDefinedIGrain] = indexesOnGrain;
                 if (this.IsInSilo && hasNonEagerIndex)
                 {
-                    IndexFactory.RegisterIndexWorkflowQueues(this.siloIndexManager, userDefinedIGrain, userDefinedGrainImpl);
+                    await IndexFactory.RegisterIndexWorkflowQueues(this.siloIndexManager, userDefinedIGrain, userDefinedGrainImpl);
                 }
             }
         }

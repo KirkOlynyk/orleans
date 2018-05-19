@@ -16,7 +16,7 @@ namespace Orleans.Indexing
     [Reentrant]
     //[StatelessWorker]
     //TODO: because of a bug in OrleansStreams, this grain cannot be StatelessWorker. It should be fixed later. TODO which bug?
-    //TODO: basically, this class does not even need to be a grain, but it's not possible to call a SystemTarget from a non-grain
+    //TODO: basically, this class does not even need to be a grain, but it's not possible to call a GrainService from a non-grain
     public class ActiveHashIndexPartitionedPerSiloImpl<K, V> : Grain, IActiveHashIndexPartitionedPerSilo<K, V> where V : class, IIndexableGrain
     {
         private IndexStatus _status;
@@ -28,8 +28,8 @@ namespace Orleans.Indexing
         private ILogger Logger => __logger ?? (__logger = this.SiloIndexManager.LoggerFactory.CreateLoggerWithFullCategoryName<ActiveHashIndexPartitionedPerSiloImpl<K, V>>());
         private ILogger __logger;
 
-        internal static void InitPerSilo(SiloIndexManager siloIndexManager, string indexName, bool isUnique)
-            => siloIndexManager.Silo.RegisterSystemTarget(new ActiveHashIndexPartitionedPerSiloBucketImpl(siloIndexManager, indexName, GetGrainReference(siloIndexManager, indexName)));
+        internal static Task InitPerSilo(SiloIndexManager siloIndexManager, string indexName, bool isUnique)
+            => siloIndexManager.Silo.AddGrainService(new ActiveHashIndexPartitionedPerSiloBucketImplGrainService(siloIndexManager, indexName, GetGrainReference(siloIndexManager, indexName)));
 
         public override Task OnActivateAsync()
         {
@@ -52,7 +52,7 @@ namespace Orleans.Indexing
             => throw new NotSupportedException();
 
         private static GrainReference GetGrainReference(SiloIndexManager siloIndexManager, string indexName, SiloAddress siloAddress = null)
-            => siloIndexManager.MakeSystemTargetGrainReference(IndexingConstants.HASH_INDEX_PARTITIONED_PER_SILO_BUCKET_SYSTEM_TARGET_TYPE_CODE,
+            => siloIndexManager.MakeGrainServiceGrainReference(IndexingConstants.HASH_INDEX_PARTITIONED_PER_SILO_BUCKET_GRAIN_SERVICE_TYPE_CODE,
                                                                IndexUtils.GetIndexGrainPrimaryKey(typeof(V), indexName), siloAddress ?? siloIndexManager.SiloAddress);
 
         public Task<bool> IsUnique() => Task.FromResult(false);
@@ -74,9 +74,9 @@ namespace Orleans.Indexing
             var indexName = IndexUtils.GetIndexNameFromIndexGrain(this);
             GrainReference makeGrainReference(SiloAddress siloAddress) => GetGrainReference(this.SiloIndexManager, indexName, siloAddress);
 
-            // Get and Dispose() all silos
+            // Get and Dispose() all buckets in silos
             Dictionary<SiloAddress, SiloStatus> hosts = await this.SiloIndexManager.GetSiloHosts(true);
-            await Task.WhenAll(hosts.Keys.Select(sa => this.SiloIndexManager.GetSystemTarget<IActiveHashIndexPartitionedPerSiloBucket>(makeGrainReference(sa)).Dispose()));
+            await Task.WhenAll(hosts.Keys.Select(sa => this.SiloIndexManager.GetGrainService<IActiveHashIndexPartitionedPerSiloBucket>(makeGrainReference(sa)).Dispose()));
         }
 
         public Task<bool> IsAvailable() => Task.FromResult(_status == IndexStatus.Available);
@@ -102,9 +102,9 @@ namespace Orleans.Indexing
             foreach (SiloAddress siloAddress in hosts.Keys)
             {
                 //query each silo
-                queriesToSilos.Add(this.SiloIndexManager.GetSystemTarget<IActiveHashIndexPartitionedPerSiloBucket>(
+                queriesToSilos.Add(this.SiloIndexManager.GetGrainService<IActiveHashIndexPartitionedPerSiloBucket>(
                     GetGrainReference(this.SiloIndexManager, indexName, siloAddress
-                )).Lookup(/*result, */key)); //TODO: because of a bug in OrleansStream, a SystemTarget cannot work with streams. It should be fixed later.
+                )).Lookup(/*result, */key)); //TODO: because of a bug in OrleansStream, a GrainService cannot work with streams. It should be fixed later.
                 ++i;
             }
 

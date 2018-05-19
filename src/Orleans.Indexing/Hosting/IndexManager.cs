@@ -51,11 +51,12 @@ namespace Orleans.Indexing
         /// <summary>
         /// This method is called after runtime services have been initialized; all application parts have been loaded.
         /// </summary>
-        public virtual Task OnStartAsync(CancellationToken ct)
+        public virtual async Task OnStartAsync(CancellationToken ct)
         {
-            return this.IndexRegistry == null
-                ? Task.Run(() => this.IndexRegistry = new ApplicationPartsIndexableGrainLoader(this).GetGrainClassIndexes())
-                : Task.CompletedTask;
+            if (this.IndexRegistry == null)
+            {
+                this.IndexRegistry = await new ApplicationPartsIndexableGrainLoader(this).GetGrainClassIndexes();
+            }
         }
 
         /// <summary>
