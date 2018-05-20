@@ -140,7 +140,10 @@ namespace Orleans.Indexing
         {
             state.IndexStatus = IndexStatus.Disposed;
             state.IndexMap.Clear();
-            return this.siloIndexManager.Silo.RemoveGrainService(this);
+
+            // For now we do not call Dispose(); this will be needed for dynamic addition/removal of indexes.
+            //return this.siloIndexManager.Silo.RemoveGrainService(this);
+            throw new NotImplementedException("GrainService removal is not yet implemented");
         }
 
         public Task<bool> IsAvailable()

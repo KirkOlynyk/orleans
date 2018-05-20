@@ -297,30 +297,6 @@ namespace Orleans
             return (TGrainInterface)reference;
         }
 
-        /// <summary>
-        /// Removes any cached reference to the specified system target.
-        /// </summary>
-        /// <param name="systemTarget">The SystemTarget to remove.</param>
-        /// <returns>A reference to the specified system target.</returns>
-        public void UnregisterSystemTarget<TGrainInterface>(ISystemTargetBase systemTarget) where TGrainInterface: ISystemTarget
-        {
-            Tuple<GrainId, Type> key = Tuple.Create(systemTarget.GrainId, typeof(TGrainInterface));
-
-            Dictionary<SiloAddress, ISystemTarget> cache;
-            lock (this.typedSystemTargetReferenceCache)
-            {
-                if (!this.typedSystemTargetReferenceCache.TryGetValue(key, out cache))
-                {
-                    return;
-                }
-            }
-
-            lock (cache)
-            {
-                cache.Remove(systemTarget.Silo);
-            }
-        }
-
         /// <inheritdoc />
         public TGrainInterface GetGrain<TGrainInterface>(GrainId grainId) where TGrainInterface : IAddressable
         {

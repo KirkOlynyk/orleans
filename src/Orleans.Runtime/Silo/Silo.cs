@@ -576,13 +576,6 @@ namespace Orleans.Runtime
             logger.Info($"Grain Service {service.GetType().FullName} started successfully.");
         }
 
-        private void UnregisterGrainService<TGrainInterface>(TGrainInterface service) where TGrainInterface: IGrainService
-        {
-            var grainService = (GrainService)(IGrainService)service;
-            UnregisterSystemTarget(service);
-            grainServices.Remove(grainService);
-        }
-
         private async Task StopGrainService(IGrainService service)
         {
             var grainService = (GrainService)service;
@@ -598,12 +591,6 @@ namespace Orleans.Runtime
         {
             await RegisterGrainService(service);
             await StartGrainService(service);
-        }
-
-        public async Task RemoveGrainService<TGrainInterface>(TGrainInterface service) where TGrainInterface : IGrainService
-        {
-            UnregisterGrainService(service);
-            await StopGrainService(service);
         }
 
         private void ConfigureThreadPoolAndServicePointSettings()
@@ -831,15 +818,6 @@ namespace Orleans.Runtime
         {
             var providerRuntime = this.Services.GetRequiredService<SiloProviderRuntime>();
             providerRuntime.RegisterSystemTarget(target);
-        }
-
-        private void UnregisterSystemTarget<TGrainInterface>(TGrainInterface target) where TGrainInterface: ISystemTarget
-        {
-            var systemTarget = target as SystemTarget;
-            if (systemTarget == null) throw new ArgumentException($"Parameter must be of type {typeof(SystemTarget)}", nameof(target));
-            var providerRuntime = this.Services.GetRequiredService<SiloProviderRuntime>();
-            providerRuntime.UnregisterSystemTarget(target);
-            this.runtimeClient.InternalGrainFactory.UnregisterSystemTarget<TGrainInterface>(systemTarget);
         }
 
         private ISiloControl GetSiloControlReference(SiloAddress siloAddress)
