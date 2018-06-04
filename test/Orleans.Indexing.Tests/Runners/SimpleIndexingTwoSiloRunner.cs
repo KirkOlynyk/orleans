@@ -5,6 +5,8 @@ using System.Threading;
 
 namespace Orleans.Indexing.Tests
 {
+    using ITC = IndexingTestConstants;
+
     public abstract class SimpleIndexingTwoSiloRunner : IndexingTestRunnerBase
     {
         protected SimpleIndexingTwoSiloRunner(BaseIndexingFixture fixture, ITestOutputHelper output)
@@ -21,25 +23,27 @@ namespace Orleans.Indexing.Tests
             await base.StartAndWaitForSecondSilo();
 
             IPlayer2GrainNonFaultTolerant p1 = base.GetGrain<IPlayer2GrainNonFaultTolerant>(1);
-            await p1.SetLocation("Seattle");
+            await p1.SetLocation(ITC.Seattle);
 
             IPlayer2GrainNonFaultTolerant p2 = base.GetGrain<IPlayer2GrainNonFaultTolerant>(2);
             IPlayer2GrainNonFaultTolerant p3 = base.GetGrain<IPlayer2GrainNonFaultTolerant>(3);
 
-            await p2.SetLocation("Seattle");
-            await p3.SetLocation("San Fransisco");
+            await p2.SetLocation(ITC.Seattle);
+            await p3.SetLocation(ITC.SanFrancisco);
 
-            var locIdx = await base.GetAndWaitForIndex<string, IPlayer2GrainNonFaultTolerant>("__Location");
+            var locIdx = await base.GetAndWaitForIndex<string, IPlayer2GrainNonFaultTolerant>(ITC.LocationIndex);
 
-            Assert.Equal(2, await this.CountPlayersStreamingIn<IPlayer2GrainNonFaultTolerant, Player2PropertiesNonFaultTolerant>("Seattle"));
+            Task<int> getLocationCount(string location) => this.GetLocationCount<IPlayer2GrainNonFaultTolerant, Player2PropertiesNonFaultTolerant>(location);
+
+            Assert.Equal(2, await getLocationCount(ITC.Seattle));
 
             await p2.Deactivate();
             Thread.Sleep(1000);
-            Assert.Equal(1, await this.CountPlayersStreamingIn<IPlayer2GrainNonFaultTolerant, Player2PropertiesNonFaultTolerant>("Seattle"));
+            Assert.Equal(1, await getLocationCount(ITC.Seattle));
 
             p2 = base.GetGrain<IPlayer2GrainNonFaultTolerant>(2);
-            Assert.Equal("Seattle", await p2.GetLocation());
-            Assert.Equal(2, await this.CountPlayersStreamingIn<IPlayer2GrainNonFaultTolerant, Player2PropertiesNonFaultTolerant>("Seattle"));
+            Assert.Equal(ITC.Seattle, await p2.GetLocation());
+            Assert.Equal(2, await getLocationCount(ITC.Seattle));
         }
     }
 }

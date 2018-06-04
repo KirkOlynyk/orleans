@@ -9,27 +9,17 @@ namespace Orleans.Indexing
     /// of constraints such as uniqueness constraint
     /// </summary>
     [Serializable]
-    public class MemberUpdateTentative : IMemberUpdate
+    internal class MemberUpdateTentative : IMemberUpdate
     {
         private IMemberUpdate _update;
-        public MemberUpdateTentative(IMemberUpdate update)
-        {
-            this._update = update;
-        }
-        public object GetBeforeImage()
-        {
-            return this._update.GetBeforeImage();
-        }
 
-        public object GetAfterImage()
-        {
-            return this._update.GetAfterImage();
-        }
+        public MemberUpdateTentative(IMemberUpdate update) => this._update = update;
 
-        public IndexOperationType GetOperationType()
-        {
-            return this._update.GetOperationType();
-        }
+        public object GetBeforeImage() => this._update.GetBeforeImage();
+
+        public object GetAfterImage() => this._update.GetAfterImage();
+
+        public IndexOperationType OperationType => this._update.OperationType;
 
         public override string ToString()
         {

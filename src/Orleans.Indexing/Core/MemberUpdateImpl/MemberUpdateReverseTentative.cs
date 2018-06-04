@@ -8,31 +8,29 @@ namespace Orleans.Indexing
     /// the operation in the actual update
     /// </summary>
     [Serializable]
-    public class MemberUpdateReverseTentative : IMemberUpdate
+    internal class MemberUpdateReverseTentative : IMemberUpdate
     {
         private IMemberUpdate _update;
-        public MemberUpdateReverseTentative(IMemberUpdate update)
-        {
-            this._update = update;
-        }
+
+        public MemberUpdateReverseTentative(IMemberUpdate update) => this._update = update;
+
         public object GetBeforeImage()
-        {
-            return this._update.GetAfterImage();
-        }
+            => this._update.GetAfterImage();
 
         public object GetAfterImage()
-        {
-            return this._update.GetBeforeImage();
-        }
+            => this._update.GetBeforeImage();
 
-        public IndexOperationType GetOperationType()
+        public IndexOperationType OperationType
         {
-            IndexOperationType op = this._update.GetOperationType();
-            switch (op)
+            get
             {
-                case IndexOperationType.Delete: return IndexOperationType.Insert;
-                case IndexOperationType.Insert: return IndexOperationType.Delete;
-                default: return op;
+                IndexOperationType op = this._update.OperationType;
+                switch (op)
+                {
+                    case IndexOperationType.Delete: return IndexOperationType.Insert;
+                    case IndexOperationType.Insert: return IndexOperationType.Delete;
+                    default: return op;
+                }
             }
         }
 
@@ -42,8 +40,7 @@ namespace Orleans.Indexing
         }
 
         /// <summary>
-        /// Reverses a dictionary of updates by converting all
-        /// updates to MemberUpdateReverseTentative
+        /// Reverses a dictionary of updates by converting all updates to MemberUpdateReverseTentative
         /// </summary>
         /// <param name="updates">the dictionary of updates to be reverse</param>
         /// <returns>the reversed dictionary of updates</returns>

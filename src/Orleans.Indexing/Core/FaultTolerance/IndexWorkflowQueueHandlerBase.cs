@@ -100,7 +100,7 @@ namespace Orleans.Indexing
                 foreach (var updates in currentWorkflow.WorkflowRecord.MemberUpdates)
                 {
                     IMemberUpdate updt = updates.Value;
-                    if (updt.GetOperationType() != IndexOperationType.None)
+                    if (updt.OperationType != IndexOperationType.None)
                     {
                         string index = updates.Key;
                         var updatesToIndex = updatesToIndexes[index];
@@ -141,7 +141,7 @@ namespace Orleans.Indexing
                 foreach (var updates in currentWorkflow.WorkflowRecord.MemberUpdates)
                 {
                     IMemberUpdate updt = updates.Value;
-                    if (updt.GetOperationType() != IndexOperationType.None && !result.ContainsKey(g))
+                    if (updt.OperationType != IndexOperationType.None && !result.ContainsKey(g))
                     {
                         result.Add(g, emptyHashset);
                         grains.Add(g);

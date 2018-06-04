@@ -4,6 +4,8 @@ using Xunit.Abstractions;
 
 namespace Orleans.Indexing.Tests
 {
+    using ITC = IndexingTestConstants;
+
     public abstract class LazyIndexingTwoSiloRunner : IndexingTestRunnerBase
     {
         protected LazyIndexingTwoSiloRunner(BaseIndexingFixture fixture, ITestOutputHelper output)
@@ -22,27 +24,29 @@ namespace Orleans.Indexing.Tests
             await base.StartAndWaitForSecondSilo();
 
             IPlayer2GrainNonFaultTolerantLazy p1 = base.GetGrain<IPlayer2GrainNonFaultTolerantLazy>(1);
-            await p1.SetLocation("Seattle");
+            await p1.SetLocation(ITC.Seattle);
 
             IPlayer2GrainNonFaultTolerantLazy p2 = base.GetGrain<IPlayer2GrainNonFaultTolerantLazy>(2);
             IPlayer2GrainNonFaultTolerantLazy p3 = base.GetGrain<IPlayer2GrainNonFaultTolerantLazy>(3);
 
-            await p2.SetLocation("Seattle");
-            await p3.SetLocation("San Fransisco");
+            await p2.SetLocation(ITC.Seattle);
+            await p3.SetLocation(ITC.SanFrancisco);
 
-            var locIdx = await base.GetAndWaitForIndex<string, IPlayer2GrainNonFaultTolerantLazy>("__Location");
+            var locIdx = await base.GetAndWaitForIndex<string, IPlayer2GrainNonFaultTolerantLazy>(ITC.LocationIndex);
 
-            Assert.Equal(2, await this.CountPlayersStreamingIn<IPlayer2GrainNonFaultTolerantLazy, Player2PropertiesNonFaultTolerantLazy>("Seattle", DELAY_UNTIL_INDEXES_ARE_UPDATED_LAZILY));
+            Task<int> getLocationCount(string location) => this.GetLocationCount<IPlayer2GrainNonFaultTolerantLazy, Player2PropertiesNonFaultTolerantLazy>(location, DELAY_UNTIL_INDEXES_ARE_UPDATED_LAZILY);
+
+            Assert.Equal(2, await getLocationCount(ITC.Seattle));
 
             await p2.Deactivate();
             await Task.Delay(DELAY_UNTIL_INDEXES_ARE_UPDATED_LAZILY);
 
-            Assert.Equal(1, await this.CountPlayersStreamingIn<IPlayer2GrainNonFaultTolerantLazy, Player2PropertiesNonFaultTolerantLazy>("Seattle", DELAY_UNTIL_INDEXES_ARE_UPDATED_LAZILY));
+            Assert.Equal(1, await getLocationCount(ITC.Seattle));
 
             p2 = base.GetGrain<IPlayer2GrainNonFaultTolerantLazy>(2);
-            Assert.Equal("Seattle", await p2.GetLocation());
+            Assert.Equal(ITC.Seattle, await p2.GetLocation());
 
-            Assert.Equal(2, await this.CountPlayersStreamingIn<IPlayer2GrainNonFaultTolerantLazy, Player2PropertiesNonFaultTolerantLazy>("Seattle", DELAY_UNTIL_INDEXES_ARE_UPDATED_LAZILY));
+            Assert.Equal(2, await getLocationCount(ITC.Seattle));
         }
     }
 }

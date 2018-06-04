@@ -18,7 +18,7 @@ namespace Orleans.Indexing.Tests
             public void Configure(ISiloHostBuilder hostBuilder)
             {
                 BaseIndexingFixture.Configure(hostBuilder)
-                                   .UseIndexing(indexingOptions => indexingOptions.UseTransactions = false);
+                                   .UseIndexing(indexingOptions => indexingOptions.ConfigureWorkflow());
             }
         }
 
@@ -27,7 +27,7 @@ namespace Orleans.Indexing.Tests
             public void Configure(IConfiguration configuration, IClientBuilder clientBuilder)
             {
                 BaseIndexingFixture.Configure(clientBuilder)
-                                   .UseIndexing(indexingOptions => indexingOptions.UseTransactions = false);
+                                   .UseIndexing(indexingOptions => indexingOptions.ConfigureWorkflow());
             }
         }
     }

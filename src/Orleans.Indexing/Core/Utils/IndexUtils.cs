@@ -18,7 +18,7 @@ namespace Orleans.Indexing
         /// <param name="indexName">the name of the index, which is the identifier of the index</param>
         /// <returns>index grainID</returns>
         public static string GetIndexGrainPrimaryKey(Type grainType, string indexName)
-            => string.Format("{0}-{1}", TypeUtils.GetFullName(grainType), indexName);
+            => string.Format("{0}-{1}", GetFullTypeName(grainType), indexName);
 
         /// <summary>
         /// This method extracts the name of an index grain from its primary key
@@ -66,14 +66,17 @@ namespace Orleans.Indexing
 
         // The ILoggerFactory implementation creates the category without generic type arguments.
         internal static ILogger CreateLoggerWithFullCategoryName<T>(this ILoggerFactory lf) where T: class
-            => lf.CreateLogger(CategoryName(typeof(T)));
+            => lf.CreateLogger(GetFullTypeName(typeof(T), expandArgNames:true));
 
-        internal static string CategoryName(Type type)
+        internal static string GetFullTypeName(Type type, bool expandArgNames = false)
         {
+            var name = type.FullName ?? (type.IsGenericParameter ? type.Name : type.Namespace + "." + type.Name);
+            var assemblyInfoStart = name.IndexOf("[[");
+            if (assemblyInfoStart > 0) name = name.Substring(0, assemblyInfoStart);
             var genericArgs = type.GetGenericArguments();
-            return (genericArgs.Length == 0)
-                ? type.Name
-                : $"{type.Name.Substring(0, type.Name.IndexOf("`"))}<{string.Join(",", genericArgs.Select(CategoryName))}>";
+            return (genericArgs.Length == 0 || !expandArgNames)
+                ? name
+                : $"{name.Substring(0, name.IndexOf("`"))}<{string.Join(",", genericArgs.Select(arg => GetFullTypeName(arg, true)))}>";
         }
     }
 }

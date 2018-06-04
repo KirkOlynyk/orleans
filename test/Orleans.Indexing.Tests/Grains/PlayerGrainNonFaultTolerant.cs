@@ -6,9 +6,9 @@ using Orleans.Providers;
 namespace Orleans.Indexing.Tests
 {
     /// <summary>
-    /// A simple grain that represent a player in a game
+    /// A simple grain that represents a player in a game
     /// </summary>
-    [StorageProvider(ProviderName = "MemoryStore")]
+    [StorageProvider(ProviderName = IndexingConstants.MEMORY_STORAGE_PROVIDER_NAME)]
     public abstract class PlayerGrainNonFaultTolerant<TState, TProps> : IndexableGrainNonFaultTolerant<TState, TProps>, IPlayerGrain where TState : IPlayerState, new() where TProps : new()
     {
         protected ILogger Logger { get; private set; }

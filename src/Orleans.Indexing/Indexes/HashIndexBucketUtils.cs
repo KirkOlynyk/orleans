@@ -39,7 +39,7 @@ namespace Orleans.Indexing
             befEntry = null;
 
             bool isTentativeUpdate = isUniqueIndex && (update is MemberUpdateTentative);
-            IndexOperationType opType = update.GetOperationType();
+            IndexOperationType opType = update.OperationType;
             HashIndexSingleBucketEntry<V> aftEntry;
             if (opType == IndexOperationType.Update)
             {

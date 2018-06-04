@@ -241,9 +241,10 @@ namespace Orleans.Indexing
                     _pendingWriteRequests.Clear();
 
                     //write the state back to the storage
+                    string grainType = "Orleans.Indexing.IndexWorkflowQueue-" + IndexUtils.GetFullTypeName(_iGrainType);
                     await (StorageProvider is IExtendedGrainStorage extendedSP
-                        ? extendedSP.WriteStateWithoutEtagCheckAsync("Orleans.Indexing.IndexWorkflowQueue-" + TypeUtils.GetFullName(_iGrainType), _lazyParent.Value, this.queueState)
-                        : StorageProvider.WriteStateAsync("Orleans.Indexing.IndexWorkflowQueue-" + TypeUtils.GetFullName(_iGrainType), _lazyParent.Value, this.queueState));
+                        ? extendedSP.WriteStateWithoutEtagCheckAsync(grainType, _lazyParent.Value, this.queueState)
+                        : StorageProvider.WriteStateAsync(grainType, _lazyParent.Value, this.queueState));
                 }
             }
         }
@@ -309,7 +310,7 @@ namespace Orleans.Indexing
             => CreateGrainServiceGrainReference(siloIndexManager, grainInterfaceType, queueSeqNum, siloAddress);
 
         public static string CreateIndexWorkflowQueuePrimaryKey(Type grainInterfaceType, int queueSeqNum)
-            => TypeUtils.GetFullName(grainInterfaceType) + "-" + queueSeqNum;
+            => IndexUtils.GetFullTypeName(grainInterfaceType) + "-" + queueSeqNum;
 
         private static GrainReference CreateGrainServiceGrainReference(SiloIndexManager siloIndexManager, Type grainInterfaceType, int queueSeqNum, SiloAddress siloAddress)
             => siloIndexManager.MakeGrainServiceGrainReference(IndexingConstants.INDEX_WORKFLOW_QUEUE_GRAIN_SERVICE_TYPE_CODE,

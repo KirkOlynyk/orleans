@@ -26,6 +26,6 @@
         ///  - None, which implies there was no change
         /// </summary>
         /// <returns>the type of operation in this update</returns>
-        IndexOperationType GetOperationType();
+        IndexOperationType OperationType { get; }
     }
 }

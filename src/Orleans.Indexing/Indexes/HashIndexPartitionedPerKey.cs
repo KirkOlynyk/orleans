@@ -44,7 +44,7 @@ namespace Orleans.Indexing
                 IList<IMemberUpdate> gUpdates = kv.Value;
                 foreach (IMemberUpdate update in gUpdates)
                 {
-                    IndexOperationType opType = update.GetOperationType();
+                    IndexOperationType opType = update.OperationType;
                     if (opType == IndexOperationType.Update)
                     {
                         int befImgHash = update.GetBeforeImage().GetHashCode();
@@ -121,7 +121,7 @@ namespace Orleans.Indexing
         public async Task<bool> DirectApplyIndexUpdate(IIndexableGrain g, Immutable<IMemberUpdate> iUpdate, bool isUniqueIndex, IndexMetaData idxMetaData, SiloAddress siloAddress)
         {
             IMemberUpdate update = iUpdate.Value;
-            IndexOperationType opType = update.GetOperationType();
+            IndexOperationType opType = update.OperationType;
             if (opType == IndexOperationType.Update)
             {
                 int befImgHash = update.GetBeforeImage().GetHashCode();

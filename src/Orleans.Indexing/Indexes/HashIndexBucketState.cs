@@ -56,7 +56,7 @@ namespace Orleans.Indexing
             // still marked as tentative. Otherwise, it means that tentative flag was removed by an earlier attempt and should not be done again.
             // There is no concern about non-unique indexes, because they cannot affect the operations among different grains and therefore
             // cannot fail the operations on other grains.
-            else if (!isUniqueIndex || IsTentative())
+            else if (!isUniqueIndex || IsTentative)
             {
                 ClearTentativeFlag();
                 this.Values.Remove(item);
@@ -78,11 +78,11 @@ namespace Orleans.Indexing
             }
         }
 
-        internal bool IsTentative() => IsTentativeDelete() || IsTentativeInsert();
+        internal bool IsTentative => IsTentativeDelete|| IsTentativeInsert;
 
-        internal bool IsTentativeDelete() => this.TentativeOperationType == TENTATIVE_TYPE_DELETE;
+        internal bool IsTentativeDelete => this.TentativeOperationType == TENTATIVE_TYPE_DELETE;
 
-        internal bool IsTentativeInsert() => this.TentativeOperationType == TENTATIVE_TYPE_INSERT;
+        internal bool IsTentativeInsert => this.TentativeOperationType == TENTATIVE_TYPE_INSERT;
 
         internal void SetTentativeDelete() => this.TentativeOperationType = TENTATIVE_TYPE_DELETE;
 

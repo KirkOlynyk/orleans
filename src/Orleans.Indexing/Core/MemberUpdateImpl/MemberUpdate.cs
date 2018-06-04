@@ -5,15 +5,13 @@ using System.Text;
 namespace Orleans.Indexing
 {
     /// <summary>
-    /// MemberUpdate is a generic implementation of IMemberUpdate
-    /// that relies on a copy of beforeImage and afterImage, without
-    /// keeping any semantic information about the actual change that
-    /// happened.
-    /// This class assumes that befImg and aftImg passed to it won't be
-    /// altered later on, so they are immutable.
+    /// MemberUpdate is a generic implementation of IMemberUpdate that relies on a copy of beforeImage and afterImage, without
+    /// keeping any semantic information about the actual change that happened.
+    /// 
+    /// This class assumes that befImg and aftImg passed to it won't be altered later on, so they are immutable.
     /// </summary>
     [Serializable]
-    public class MemberUpdate : IMemberUpdate
+    internal class MemberUpdate : IMemberUpdate
     {
         private object _befImg;
         private object _aftImg;
@@ -66,10 +64,7 @@ namespace Orleans.Indexing
             return (this._opType == IndexOperationType.Update || this._opType == IndexOperationType.Insert) ? this._aftImg : null;
         }
 
-        public IndexOperationType GetOperationType()
-        {
-            return this._opType;
-        }
+        public IndexOperationType OperationType => this._opType;
 
         public override string ToString()
         {
@@ -78,7 +73,7 @@ namespace Orleans.Indexing
 
         internal static string ToString(IMemberUpdate update)
         {
-            switch (update.GetOperationType())
+            switch (update.OperationType)
             {
                 case IndexOperationType.None: return update.GetType().Name + ": No operation";
                 case IndexOperationType.Insert: return update.GetType().Name + ": Inserted " + update.GetAfterImage();

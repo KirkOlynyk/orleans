@@ -5,6 +5,8 @@ using Xunit.Abstractions;
 
 namespace Orleans.Indexing.Tests
 {
+    using ITC = IndexingTestConstants;
+
     public abstract class FaultTolerantIndexingTwoSiloRunner : IndexingTestRunnerBase
     {
         protected FaultTolerantIndexingTwoSiloRunner(BaseIndexingFixture fixture, ITestOutputHelper output)
@@ -21,27 +23,28 @@ namespace Orleans.Indexing.Tests
         public async Task Test_Indexing_IndexLookup1()
         {
             IPlayer1Grain p1 = base.GetGrain<IPlayer1Grain>(1);
-            await p1.SetLocation("Seattle");
+            await p1.SetLocation(ITC.Seattle);
 
             IPlayer1Grain p2 = base.GetGrain<IPlayer1Grain>(2);
             IPlayer1Grain p3 = base.GetGrain<IPlayer1Grain>(3);
 
-            await p2.SetLocation("Seattle");
-            await p3.SetLocation("San Fransisco");
+            await p2.SetLocation(ITC.Seattle);
+            await p3.SetLocation(ITC.SanFrancisco);
 
-            var locIdx = await base.GetAndWaitForIndex<string, IPlayer1Grain>("__Location");
+            var locIdx = await base.GetAndWaitForIndex<string, IPlayer1Grain>(ITC.LocationIndex);
 
-            Assert.Equal(2, await this.CountPlayersStreamingIn<IPlayer1Grain, Player1Properties>("Seattle", DELAY_UNTIL_INDEXES_ARE_UPDATED_LAZILY));
+            Task<int> getLocationCount(string location) => this.GetLocationCount<IPlayer1Grain, Player1Properties>(location, DELAY_UNTIL_INDEXES_ARE_UPDATED_LAZILY);
+
+            Assert.Equal(2, await getLocationCount(ITC.Seattle));
 
             await p2.Deactivate();
             await Task.Delay(DELAY_UNTIL_INDEXES_ARE_UPDATED_LAZILY);
 
-            Assert.Equal(2, await this.CountPlayersStreamingIn<IPlayer1Grain, Player1Properties>("Seattle", DELAY_UNTIL_INDEXES_ARE_UPDATED_LAZILY));
+            Assert.Equal(2, await getLocationCount(ITC.Seattle));
 
             p2 = base.GetGrain<IPlayer1Grain>(2);
-            Assert.Equal("Seattle", await p2.GetLocation());
-
-            Assert.Equal(2, await this.CountPlayersStreamingIn<IPlayer1Grain, Player1Properties>("Seattle", DELAY_UNTIL_INDEXES_ARE_UPDATED_LAZILY));
+            Assert.Equal(ITC.Seattle, await p2.GetLocation());
+            Assert.Equal(2, await getLocationCount(ITC.Seattle));
         }
 
         /// <summary>
@@ -51,32 +54,34 @@ namespace Orleans.Indexing.Tests
         public async Task Test_Indexing_IndexLookup2()
         {
             IPlayer2Grain p1 = base.GetGrain<IPlayer2Grain>(1);
-            await p1.SetLocation("Tehran");
+            await p1.SetLocation(ITC.Tehran);
 
             IPlayer2Grain p2 = base.GetGrain<IPlayer2Grain>(2);
             IPlayer2Grain p3 = base.GetGrain<IPlayer2Grain>(3);
 
-            await p2.SetLocation("Tehran");
-            await p3.SetLocation("Yazd");
+            await p2.SetLocation(ITC.Tehran);
+            await p3.SetLocation(ITC.Yazd);
 
-            var locIdx = await base.GetAndWaitForIndex<string, IPlayer2Grain>("__Location");
+            var locIdx = await base.GetAndWaitForIndex<string, IPlayer2Grain>(ITC.LocationIndex);
+
+            Task<int> getLocationCount(string location) => this.GetLocationCount<IPlayer2Grain, Player2Properties>(location, DELAY_UNTIL_INDEXES_ARE_UPDATED_LAZILY);
 
             base.Output.WriteLine("Before check 1");
-            Assert.Equal(2, await this.CountPlayersStreamingIn<IPlayer2Grain, Player2Properties>("Tehran", DELAY_UNTIL_INDEXES_ARE_UPDATED_LAZILY));
+            Assert.Equal(2, await getLocationCount(ITC.Tehran));
 
             await p2.Deactivate();
 
             await Task.Delay(DELAY_UNTIL_INDEXES_ARE_UPDATED_LAZILY);
 
             base.Output.WriteLine("Before check 2");
-            Assert.Equal(1, await this.CountPlayersStreamingIn<IPlayer2Grain, Player2Properties>("Tehran", DELAY_UNTIL_INDEXES_ARE_UPDATED_LAZILY));
+            Assert.Equal(1, await getLocationCount(ITC.Tehran));
 
             p2 = base.GetGrain<IPlayer2Grain>(2);
             base.Output.WriteLine("Before check 3");
-            Assert.Equal("Tehran", await p2.GetLocation());
+            Assert.Equal(ITC.Tehran, await p2.GetLocation());
 
             base.Output.WriteLine("Before check 4");
-            Assert.Equal(2, await this.CountPlayersStreamingIn<IPlayer2Grain, Player2Properties>("Tehran", DELAY_UNTIL_INDEXES_ARE_UPDATED_LAZILY));
+            Assert.Equal(2, await getLocationCount(ITC.Tehran));
             base.Output.WriteLine("Done.");
         }
 
@@ -87,27 +92,29 @@ namespace Orleans.Indexing.Tests
         public async Task Test_Indexing_IndexLookup4()
         {
             IPlayer3Grain p1 = base.GetGrain<IPlayer3Grain>(1);
-            await p1.SetLocation("Seattle");
+            await p1.SetLocation(ITC.Seattle);
 
             IPlayer3Grain p2 = base.GetGrain<IPlayer3Grain>(2);
             IPlayer3Grain p3 = base.GetGrain<IPlayer3Grain>(3);
 
-            await p2.SetLocation("Seattle");
-            await p3.SetLocation("San Fransisco");
+            await p2.SetLocation(ITC.Seattle);
+            await p3.SetLocation(ITC.SanFrancisco);
 
-            var locIdx = await base.GetAndWaitForIndex<string, IPlayer3Grain>("__Location");
+            var locIdx = await base.GetAndWaitForIndex<string, IPlayer3Grain>(ITC.LocationIndex);
 
-            Assert.Equal(2, await this.CountPlayersStreamingIn<IPlayer3Grain, Player3Properties>("Seattle", DELAY_UNTIL_INDEXES_ARE_UPDATED_LAZILY));
+            Task<int> getLocationCount(string location) => this.GetLocationCount<IPlayer3Grain, Player3Properties>(location, DELAY_UNTIL_INDEXES_ARE_UPDATED_LAZILY);
+
+            Assert.Equal(2, await getLocationCount(ITC.Seattle));
 
             await p2.Deactivate();
             await Task.Delay(DELAY_UNTIL_INDEXES_ARE_UPDATED_LAZILY);
 
-            Assert.Equal(2, await this.CountPlayersStreamingIn<IPlayer3Grain, Player3Properties>("Seattle", DELAY_UNTIL_INDEXES_ARE_UPDATED_LAZILY));
+            Assert.Equal(2, await getLocationCount(ITC.Seattle));
 
             p2 = base.GetGrain<IPlayer3Grain>(2);
-            Assert.Equal("Seattle", await p2.GetLocation());
+            Assert.Equal(ITC.Seattle, await p2.GetLocation());
 
-            Assert.Equal(2, await this.CountPlayersStreamingIn<IPlayer3Grain, Player3Properties>("Seattle", DELAY_UNTIL_INDEXES_ARE_UPDATED_LAZILY));
+            Assert.Equal(2, await getLocationCount(ITC.Seattle));
         }
 
         /// <summary>
@@ -119,17 +126,17 @@ namespace Orleans.Indexing.Tests
             //await base.StartAndWaitForSecondSilo();
 
             IPlayer3Grain p1 = base.GetGrain<IPlayer3Grain>(1);
-            await p1.SetLocation("Seattle");
+            await p1.SetLocation(ITC.Seattle);
 
             IPlayer3Grain p2 = base.GetGrain<IPlayer3Grain>(2);
             IPlayer3Grain p3 = base.GetGrain<IPlayer3Grain>(3);
             IPlayer3Grain p4 = base.GetGrain<IPlayer3Grain>(4);
             IPlayer3Grain p5 = base.GetGrain<IPlayer3Grain>(5);
 
-            await p2.SetLocation("Seattle");
-            await p3.SetLocation("San Fransisco");
-            await p4.SetLocation("Tehran");
-            await p5.SetLocation("Yazd");
+            await p2.SetLocation(ITC.Seattle);
+            await p3.SetLocation(ITC.SanFrancisco);
+            await p4.SetLocation(ITC.Tehran);
+            await p5.SetLocation(ITC.Yazd);
 
             for(int i = 0; i < 100; ++i)
             {
@@ -137,7 +144,7 @@ namespace Orleans.Indexing.Tests
                 for (int j = 0; j < 10; ++j)
                 {
                     p1 = base.GetGrain<IPlayer3Grain>(j);
-                    tasks.Add(p1.SetLocation("Yazd" + i + "-" + j ));
+                    tasks.Add(p1.SetLocation(ITC.Yazd + i + "-" + j ));
                 }
                 await Task.WhenAll(tasks);
             }

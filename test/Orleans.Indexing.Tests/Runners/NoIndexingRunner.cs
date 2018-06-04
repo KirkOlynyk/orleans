@@ -4,6 +4,8 @@ using Xunit.Abstractions;
 
 namespace Orleans.Indexing.Tests
 {
+    using ITC = IndexingTestConstants;
+
     public abstract class NoIndexingRunner : IndexingTestRunnerBase
     {
         protected NoIndexingRunner(BaseIndexingFixture fixture, ITestOutputHelper output)
@@ -18,13 +20,13 @@ namespace Orleans.Indexing.Tests
             IPlayer1GrainNonFaultTolerant p200 = base.GetGrain<IPlayer1GrainNonFaultTolerant>(200);
             IPlayer1GrainNonFaultTolerant p300 = base.GetGrain<IPlayer1GrainNonFaultTolerant>(300);
 
-            await p100.SetLocation("Tehran");
-            await p200.SetLocation("Tehran");
-            await p300.SetLocation("Yazd");
+            await p100.SetLocation(ITC.Tehran);
+            await p200.SetLocation(ITC.Tehran);
+            await p300.SetLocation(ITC.Yazd);
 
-            Assert.Equal("Tehran", await p100.GetLocation());
-            Assert.Equal("Tehran", await p200.GetLocation());
-            Assert.Equal("Yazd", await p300.GetLocation());
+            Assert.Equal(ITC.Tehran, await p100.GetLocation());
+            Assert.Equal(ITC.Tehran, await p200.GetLocation());
+            Assert.Equal(ITC.Yazd, await p300.GetLocation());
         }
     }
 }

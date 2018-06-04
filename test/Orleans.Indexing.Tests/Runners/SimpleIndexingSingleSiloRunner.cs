@@ -5,6 +5,8 @@ using System.Threading;
 
 namespace Orleans.Indexing.Tests
 {
+    using ITC = IndexingTestConstants;
+
     public abstract class SimpleIndexingSingleSiloRunner : IndexingTestRunnerBase
     {
         protected SimpleIndexingSingleSiloRunner(BaseIndexingFixture fixture, ITestOutputHelper output)
@@ -16,28 +18,39 @@ namespace Orleans.Indexing.Tests
         /// Tests basic functionality of HashIndexSingleBucket
         /// </summary>
         [Fact, TestCategory("BVT"), TestCategory("Indexing")]
+        public async Task Test_Validate_Indexes()
+        {
+            await IndexValidator.Validate(typeof(IPlayer1Grain).Assembly);
+        }
+
+        /// <summary>
+        /// Tests basic functionality of HashIndexSingleBucket
+        /// </summary>
+        [Fact, TestCategory("BVT"), TestCategory("Indexing")]
         public async Task Test_Indexing_IndexLookup1()
         {
             var p1 = base.GetGrain<IPlayer1GrainNonFaultTolerant>(1);
-            await p1.SetLocation("Seattle");
+            await p1.SetLocation(ITC.Seattle);
 
             var p2 = base.GetGrain<IPlayer1GrainNonFaultTolerant>(2);
             var p3 = base.GetGrain<IPlayer1GrainNonFaultTolerant>(3);
 
-            await p2.SetLocation("Seattle");
-            await p3.SetLocation("San Fransisco");
+            await p2.SetLocation(ITC.Seattle);
+            await p3.SetLocation(ITC.SanFrancisco);
 
             var locIdx = await base.GetAndWaitForIndex<string, IPlayer1GrainNonFaultTolerant>("__Location");
 
-            Assert.Equal(2, await this.CountPlayersStreamingIn<IPlayer1GrainNonFaultTolerant, Player1PropertiesNonFaultTolerant>("Seattle"));
+            Task<int> getLocationCount(string location) => this.GetLocationCount<IPlayer1GrainNonFaultTolerant, Player1PropertiesNonFaultTolerant>(location);
+
+            Assert.Equal(2, await getLocationCount(ITC.Seattle));
 
             await p2.Deactivate();
             Thread.Sleep(1000);
-            Assert.Equal(1, await this.CountPlayersStreamingIn<IPlayer1GrainNonFaultTolerant, Player1PropertiesNonFaultTolerant>("Seattle"));
+            Assert.Equal(1, await getLocationCount(ITC.Seattle));
 
             p2 = base.GetGrain<IPlayer1GrainNonFaultTolerant>(2);
-            Assert.Equal("Seattle", await p2.GetLocation());
-            Assert.Equal(2, await this.CountPlayersStreamingIn<IPlayer1GrainNonFaultTolerant, Player1PropertiesNonFaultTolerant>("Seattle"));
+            Assert.Equal(ITC.Seattle, await p2.GetLocation());
+            Assert.Equal(2, await getLocationCount(ITC.Seattle));
         }
 
         /// <summary>
@@ -47,25 +60,27 @@ namespace Orleans.Indexing.Tests
         public async Task Test_Indexing_IndexLookup2()
         {
             IPlayer2GrainNonFaultTolerant p1 = base.GetGrain<IPlayer2GrainNonFaultTolerant>(1);
-            await p1.SetLocation("Tehran");
+            await p1.SetLocation(ITC.Tehran);
 
             IPlayer2GrainNonFaultTolerant p2 = base.GetGrain<IPlayer2GrainNonFaultTolerant>(2);
             IPlayer2GrainNonFaultTolerant p3 = base.GetGrain<IPlayer2GrainNonFaultTolerant>(3);
 
-            await p2.SetLocation("Tehran");
-            await p3.SetLocation("Yazd");
+            await p2.SetLocation(ITC.Tehran);
+            await p3.SetLocation(ITC.Yazd);
 
-            var locIdx = await base.GetAndWaitForIndex<string, IPlayer2GrainNonFaultTolerant>("__Location");
+            var locIdx = await base.GetAndWaitForIndex<string, IPlayer2GrainNonFaultTolerant>(ITC.LocationIndex);
 
-            Assert.Equal(2, await this.CountPlayersStreamingIn<IPlayer2GrainNonFaultTolerant, Player2PropertiesNonFaultTolerant>("Tehran"));
+            Task<int> getLocationCount(string location) => this.GetLocationCount<IPlayer2GrainNonFaultTolerant, Player2PropertiesNonFaultTolerant>(location);
+
+            Assert.Equal(2, await getLocationCount(ITC.Tehran));
 
             await p2.Deactivate();
             Thread.Sleep(1000);
-            Assert.Equal(1, await this.CountPlayersStreamingIn<IPlayer2GrainNonFaultTolerant, Player2PropertiesNonFaultTolerant>("Tehran"));
+            Assert.Equal(1, await getLocationCount(ITC.Tehran));
 
             p2 = base.GetGrain<IPlayer2GrainNonFaultTolerant>(2);
-            Assert.Equal("Tehran", await p2.GetLocation());
-            Assert.Equal(2, await this.CountPlayersStreamingIn<IPlayer2GrainNonFaultTolerant, Player2PropertiesNonFaultTolerant>("Tehran"));
+            Assert.Equal(ITC.Tehran, await p2.GetLocation());
+            Assert.Equal(2, await getLocationCount(ITC.Tehran));
         }
 
         /// <summary>
@@ -75,25 +90,59 @@ namespace Orleans.Indexing.Tests
         public async Task Test_Indexing_IndexLookup4()
         {
             IPlayer3GrainNonFaultTolerant p1 = base.GetGrain<IPlayer3GrainNonFaultTolerant>(1);
-            await p1.SetLocation("Seattle");
+            await p1.SetLocation(ITC.Seattle);
 
             IPlayer3GrainNonFaultTolerant p2 = base.GetGrain<IPlayer3GrainNonFaultTolerant>(2);
             IPlayer3GrainNonFaultTolerant p3 = base.GetGrain<IPlayer3GrainNonFaultTolerant>(3);
 
-            await p2.SetLocation("Seattle");
-            await p3.SetLocation("San Fransisco");
+            await p2.SetLocation(ITC.Seattle);
+            await p3.SetLocation(ITC.SanFrancisco);
 
-            var locIdx = await base.GetAndWaitForIndex<string, IPlayer3GrainNonFaultTolerant>("__Location");
+            var locIdx = await base.GetAndWaitForIndex<string, IPlayer3GrainNonFaultTolerant>(ITC.LocationIndex);
 
-            Assert.Equal(2, await this.CountPlayersStreamingIn<IPlayer3GrainNonFaultTolerant, Player3PropertiesNonFaultTolerant>("Seattle"));
+            Task<int> getLocationCount(string location) => this.GetLocationCount<IPlayer3GrainNonFaultTolerant, Player3PropertiesNonFaultTolerant>(location);
+
+            Assert.Equal(2, await getLocationCount(ITC.Seattle));
 
             await p2.Deactivate();
             Thread.Sleep(1000);
-            Assert.Equal(1, await this.CountPlayersStreamingIn<IPlayer3GrainNonFaultTolerant, Player3PropertiesNonFaultTolerant>("Seattle"));
+            Assert.Equal(1, await getLocationCount(ITC.Seattle));
 
             p2 = base.GetGrain<IPlayer3GrainNonFaultTolerant>(2);
-            Assert.Equal("Seattle", await p2.GetLocation());
-            Assert.Equal(2, await this.CountPlayersStreamingIn<IPlayer3GrainNonFaultTolerant, Player3PropertiesNonFaultTolerant>("Seattle"));
+            Assert.Equal(ITC.Seattle, await p2.GetLocation());
+            Assert.Equal(2, await getLocationCount(ITC.Seattle));
+        }
+
+        [Fact, TestCategory("BVT"), TestCategory("Indexing")]
+        public async Task Test_Indexing_IndexDelete_Player4_UQ_NFT()
+        {
+            var p1 = base.GetGrain<IPlayer4GrainNonFaultTolerant>(1);
+            await p1.SetLocation(ITC.Seattle);
+
+            var p2 = base.GetGrain<IPlayer4GrainNonFaultTolerant>(2);
+            await p2.SetLocation(ITC.Redmond);
+
+            var p3 = base.GetGrain<IPlayer4GrainNonFaultTolerant>(3);
+            await p3.SetLocation(ITC.SanFrancisco);
+
+            var locIdx = await base.GetAndWaitForIndex<string, IPlayer4GrainNonFaultTolerant>(ITC.LocationIndex);
+
+            Task<int> getLocationCount(string location) => this.GetLocationCount<IPlayer4GrainNonFaultTolerant, Player4PropertiesNonFaultTolerant>(location);
+
+            Assert.Equal(1, await getLocationCount(ITC.Seattle));
+            Assert.Equal(1, await getLocationCount(ITC.Redmond));
+
+            await p2.Deactivate();
+            Thread.Sleep(1000);
+
+            Assert.Equal(1, await getLocationCount(ITC.Seattle));
+            Assert.Equal(0, await getLocationCount(ITC.Redmond));
+
+            p2 = base.GetGrain<IPlayer4GrainNonFaultTolerant>(2);
+            Assert.Equal(ITC.Redmond, await p2.GetLocation());
+
+            Assert.Equal(1, await getLocationCount(ITC.Seattle));
+            Assert.Equal(1, await getLocationCount(ITC.Redmond));
         }
     }
 }

@@ -51,14 +51,12 @@ namespace Orleans.Indexing
             if (base.State.ActiveWorkflowsSet == null || base.State.ActiveWorkflowsSet.Count() == 0)
             {
                 this.WorkflowQueues = null;
+                return base.OnActivateAsync();
             }
-            else
-            {
-                // If there are some remaining active work-flows they should be handled first
-                PruneWorkflowQueuesForMissingTypes();
-                return HandleRemainingWorkflows().ContinueWith(t => Task.WhenAll(PruneActiveWorkflowsSetFromAlreadyHandledWorkflows(t.Result), base.OnActivateAsync()));
-            }
-            return base.OnActivateAsync();
+
+            // If there are some remaining active work-flows they should be handled first
+            PruneWorkflowQueuesForMissingTypes();
+            return HandleRemainingWorkflows().ContinueWith(t => Task.WhenAll(PruneActiveWorkflowsSetFromAlreadyHandledWorkflows(t.Result), base.OnActivateAsync()));
         }
 
         /// <summary>

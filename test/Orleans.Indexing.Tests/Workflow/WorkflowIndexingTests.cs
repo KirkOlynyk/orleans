@@ -62,4 +62,10 @@ namespace Orleans.Indexing.Tests
     {
         public NoIndexingTestsWf(WorkflowIndexingFixture fixture, ITestOutputHelper output) : base(fixture, output) { }
     }
+
+    [TestCategory("BVT"), TestCategory("Indexing")]
+    public class MultipleUniqueAndNonUniqueTestsWf : MultipleUniqueAndNonUniqueRunner, IClassFixture<WorkflowIndexingFixture>
+    {
+        public MultipleUniqueAndNonUniqueTestsWf(WorkflowIndexingFixture fixture, ITestOutputHelper output) : base(fixture, output) { }
+    }
 }
