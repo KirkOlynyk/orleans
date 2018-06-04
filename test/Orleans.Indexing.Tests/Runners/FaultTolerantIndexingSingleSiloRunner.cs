@@ -4,6 +4,8 @@ using Xunit.Abstractions;
 
 namespace Orleans.Indexing.Tests
 {
+    using ITC = IndexingTestConstants;
+
     public abstract class FaultTolerantIndexingSingleSiloRunner : IndexingTestRunnerBase
     {
         protected FaultTolerantIndexingSingleSiloRunner(BaseIndexingFixture fixture, ITestOutputHelper output)
@@ -22,31 +24,33 @@ namespace Orleans.Indexing.Tests
             await base.StartAndWaitForSecondSilo();
 
             IPlayer2Grain p1 = base.GetGrain<IPlayer2Grain>(1);
-            await p1.SetLocation("Seattle");
+            await p1.SetLocation(ITC.Seattle);
 
             IPlayer2Grain p2 = base.GetGrain<IPlayer2Grain>(2);
             IPlayer2Grain p3 = base.GetGrain<IPlayer2Grain>(3);
 
-            await p2.SetLocation("Seattle");
-            await p3.SetLocation("San Fransisco");
+            await p2.SetLocation(ITC.Seattle);
+            await p3.SetLocation(ITC.SanFrancisco);
 
-            var locIdx = await base.GetAndWaitForIndex<string, IPlayer2Grain>("__Location");
+            var locIdx = await base.GetAndWaitForIndex<string, IPlayer2Grain>(ITC.LocationIndex);
+
+            Task<int> getLocationCount(string location) => this.GetLocationCount<IPlayer2Grain, Player2Properties>(location, DELAY_UNTIL_INDEXES_ARE_UPDATED_LAZILY);
 
             base.Output.WriteLine("Before check 1");
-            Assert.Equal(2, await this.CountPlayersStreamingIn<IPlayer2Grain, Player2Properties>("Seattle", DELAY_UNTIL_INDEXES_ARE_UPDATED_LAZILY));
+            Assert.Equal(2, await getLocationCount(ITC.Seattle));
 
             await p2.Deactivate();
             await Task.Delay(DELAY_UNTIL_INDEXES_ARE_UPDATED_LAZILY);
 
             base.Output.WriteLine("Before check 2");
-            Assert.Equal(1, await this.CountPlayersStreamingIn<IPlayer2Grain, Player2Properties>("Seattle", DELAY_UNTIL_INDEXES_ARE_UPDATED_LAZILY));
+            Assert.Equal(1, await getLocationCount(ITC.Seattle));
 
             p2 = base.GetGrain<IPlayer2Grain>(2);
             base.Output.WriteLine("Before check 3");
-            Assert.Equal("Seattle", await p2.GetLocation());
+            Assert.Equal(ITC.Seattle, await p2.GetLocation());
 
             base.Output.WriteLine("Before check 4");
-            Assert.Equal(2, await this.CountPlayersStreamingIn<IPlayer2Grain, Player2Properties>("Seattle", DELAY_UNTIL_INDEXES_ARE_UPDATED_LAZILY));
+            Assert.Equal(2, await getLocationCount(ITC.Seattle));
             base.Output.WriteLine("Done.");
         }
     }

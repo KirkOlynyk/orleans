@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Orleans.Indexing
 {
-    class IndexRegistry
+    internal class IndexRegistry
     {
         private IDictionary<Type, NamedIndexMap> IndexRegistriesByGrainType { get; set; } = new Dictionary<Type, NamedIndexMap>();
 

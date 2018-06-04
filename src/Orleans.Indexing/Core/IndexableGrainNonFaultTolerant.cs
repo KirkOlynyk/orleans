@@ -11,23 +11,22 @@ using Microsoft.Extensions.Logging;
 namespace Orleans.Indexing
 {
     /// <summary>
-    /// IndexableGrainNonFaultTolerant class is the super-class of all grains that
-    /// need to have indexing capability but without fault-tolerance requirements.
+    /// IndexableGrainNonFaultTolerant class is the super-class of all grains that need to have indexing capability but without fault-tolerance requirements.
     /// 
     /// To make a grain indexable, two steps should be taken:
     ///     1- the grain class should extend IndexableGrainNonFaultTolerant
-    ///     2- the grain class is responsible for calling UpdateIndexes
-    ///        whenever one or more indexes need to be updated
+    ///     2- the grain class is responsible for calling UpdateIndexes whenever one or more indexes need to be updated
     /// </summary>
     public abstract class IndexableGrainNonFaultTolerant<TState, TProperties> : Grain<TState>, IIndexableGrain<TProperties> where TProperties : new() where TState : new()
     {
         /// <summary>
         /// Whether an update should apply exclusively to unique or non-unique indexes.
         /// </summary>
-        protected enum UpdateIndexType
+        [Flags] protected enum UpdateIndexType
         {
-            Unique,
-            NonUnique
+            None = 0,
+            Unique = 1,
+            NonUnique = 2
         }
 
         /// <summary>
@@ -197,7 +196,11 @@ namespace Orleans.Indexing
             {
                 IList<Type> iGrainTypes = GetIIndexableGrainTypes();
                 var thisGrain = this.AsReference<IIndexableGrain>(this.SiloIndexManager);
-                bool isThereAtMostOneUniqueIndex = numberOfUniqueIndexesUpdated <= 1;
+
+                // HashIndexBucketState will not actually perform an index removal (Delete) if the index is not marked tentative.
+                // Therefore we must do a two-step approach here; mark a tentative Delete, then do the non-tentative Delete.
+                bool updateEagerUniqueIndexesTentatively = numberOfUniqueIndexesUpdated > 1
+                    || updates.Values.Any(upd => upd.OperationType == IndexOperationType.Delete);
 
                 // Apply any unique index updates eagerly.
                 if (numberOfUniqueIndexesUpdated > 0)
@@ -206,13 +209,13 @@ namespace Orleans.Indexing
                     {
                         // If there is more than one unique index to update, then updates to the unique indexes should be tentative
                         // so they are not visible to readers before making sure that all uniqueness constraints are satisfied.
-                        await ApplyIndexUpdatesEagerly(iGrainTypes, thisGrain, updates, UpdateIndexType.Unique, updateIndexesTentatively:!isThereAtMostOneUniqueIndex);
+                        await ApplyIndexUpdatesEagerly(iGrainTypes, thisGrain, updates, UpdateIndexType.Unique, updateEagerUniqueIndexesTentatively);
                     }
                     catch (UniquenessConstraintViolatedException ex)
                     {
                         // If any uniqueness constraint is violated and we have more than one unique index defined, then all tentative
                         // updates must be undone, then the exception is thrown back to the user code.
-                        if (!isThereAtMostOneUniqueIndex)
+                        if (updateEagerUniqueIndexesTentatively)
                         {
                             await UndoTentativeChangesToUniqueIndexesEagerly(iGrainTypes, thisGrain, updates);
                         }
@@ -222,28 +225,20 @@ namespace Orleans.Indexing
 
                 if (updateIndexesEagerly)
                 {
-                    // Case 1: if only unique indexes were updated, then their update is already processed before and
-                    // the only thing remaining is to save the grain state if requested
-                    if (onlyUniqueIndexesWereUpdated && writeStateIfConstraintsAreNotViolated)
-                    {
-                        await WriteBaseStateAsync();
-                    }
+                    var updateIndexTypes = UpdateIndexType.None;
+                    if (updateEagerUniqueIndexesTentatively) updateIndexTypes |= UpdateIndexType.Unique;
+                    if (!onlyUniqueIndexesWereUpdated) updateIndexTypes |= UpdateIndexType.NonUnique;
 
-                    // Case 2: if there were some non-unique indexes updates and writing the state back to the storage
-                    // is requested, then we do these two tasks concurrently
-                    else if (writeStateIfConstraintsAreNotViolated)
+                    if (updateIndexTypes != UpdateIndexType.None || writeStateIfConstraintsAreNotViolated)
                     {
-                        await Task.WhenAll(
-                            WriteBaseStateAsync(),
-                            onlyUniqueIndexesWereUpdated ? Task.CompletedTask : ApplyIndexUpdatesEagerly(iGrainTypes, thisGrain, updates, UpdateIndexType.NonUnique)
-                        );
-                    }
+                        var tasks = new List<Task>();
 
-                    // Case 3: if there were some non-unique indexes updates, but writing the state back to the storage
-                    // is not requested, then the only thing left is updating the remaining non-unique indexes
-                    else if (!onlyUniqueIndexesWereUpdated)
-                    {
-                        await ApplyIndexUpdatesEagerly(iGrainTypes, thisGrain, updates, UpdateIndexType.NonUnique);
+                        if (updateIndexTypes != UpdateIndexType.None)
+                            tasks.Add(ApplyIndexUpdatesEagerly(iGrainTypes, thisGrain, updates, updateIndexTypes, updateIndexesTentatively: false));
+                        if (writeStateIfConstraintsAreNotViolated)
+                            tasks.Add(WriteBaseStateAsync());
+
+                        await (Task.WhenAll(tasks));
                     }
                 }
                 else // !updateIndexesEagerly
@@ -318,19 +313,17 @@ namespace Orleans.Indexing
         /// <param name="iGrainTypes">the list of grain interface types implemented by this grain</param>
         /// <param name="updatedGrain">the grain reference for the current updated grain</param>
         /// <param name="updates">the dictionary of updates for each index</param>
-        /// <param name="updateIndexType">indicates whether only unique or only non-unique indexes should be updated</param>
-        /// <param name="updateIndexesTentatively">a flag to determine whether
-        /// updates to indexes should be tentatively done. That is, the update
-        /// won't be visible to readers, but prevents writers from overwriting
-        /// them an violating constraints</param>
+        /// <param name="updateIndexTypes">indicates whether unique and/or non-unique indexes should be updated</param>
+        /// <param name="updateIndexesTentatively">indicates whether updates to indexes should be tentatively done. That is, the update
+        ///     won't be visible to readers, but prevents writers from overwriting them an violating constraints</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected async Task ApplyIndexUpdatesEagerly(IList<Type> iGrainTypes,
                                                     IIndexableGrain updatedGrain,
                                                     IDictionary<string, IMemberUpdate> updates,
-                                                    UpdateIndexType updateIndexType,
+                                                    UpdateIndexType updateIndexTypes,
                                                     bool updateIndexesTentatively = false)
         {
-            Task applyUpdate(Type iGrainType) => ApplyIndexUpdatesEagerly(iGrainType, updatedGrain, updates, updateIndexType, updateIndexesTentatively);
+            Task applyUpdate(Type iGrainType) => ApplyIndexUpdatesEagerly(iGrainType, updatedGrain, updates, updateIndexTypes, updateIndexesTentatively);
             await (iGrainTypes.Count() == 1
                 ? applyUpdate(iGrainTypes[0])
                 : Task.WhenAll(iGrainTypes.Select(iGrainType => applyUpdate(iGrainType))));
@@ -342,35 +335,30 @@ namespace Orleans.Indexing
         /// <param name="iGrainType">a single grain interface type implemented by this grain</param>
         /// <param name="updatedGrain">the grain reference for the current updated grain</param>
         /// <param name="updates">the dictionary of updates for each index</param>
-        /// <param name="updateIndexType">indicates whether only unique or only non-unique indexes should be updated</param>
-        /// <param name="updateIndexesTentatively">a flag to determine whether updates to indexes should be tentatively done. That is, the update
-        ///             won't be visible to readers, but prevents writers from overwriting them an violating constraints</param>
+        /// <param name="updateIndexTypes">indicates whether unique and/or non-unique indexes should be updated</param>
+        /// <param name="updateIndexesTentatively">indicates whether updates to indexes should be tentatively done. That is, the update
+        ///     won't be visible to readers, but prevents writers from overwriting them an violating constraints</param>
         /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private Task ApplyIndexUpdatesEagerly(Type iGrainType,
                                               IIndexableGrain updatedGrain,
                                               IDictionary<string, IMemberUpdate> updates,
-                                              UpdateIndexType updateIndexType,
+                                              UpdateIndexType updateIndexTypes,
                                               bool updateIndexesTentatively)
         {
-            var wantOnlyUniqueIndex = updateIndexType == UpdateIndexType.Unique;
             IList<Task<bool>> updateIndexTasks = new List<Task<bool>>();
-            foreach (KeyValuePair<string, IMemberUpdate> updt in updates.Where(updt => updt.Value.GetOperationType() != IndexOperationType.None))
+            foreach (KeyValuePair<string, IMemberUpdate> updt in updates.Where(updt => updt.Value.OperationType != IndexOperationType.None))
             {
                 var idxInfo = this._grainIndexes[updt.Key];
-                var isUniqueIndex = idxInfo.MetaData.IsUniqueIndex;
 
-                // The actual update happens if either the corresponding index is not a unique index
-                // and the caller asks for only updating non-unique indexes, or the corresponding
-                // index is a unique index and the caller asks for only updating unique indexes.
-                if (wantOnlyUniqueIndex == isUniqueIndex)
+                if (updateIndexTypes.HasFlag(idxInfo.MetaData.IsUniqueIndex ? UpdateIndexType.Unique : UpdateIndexType.NonUnique))
                 {
                     // If the caller asks for the update to be tentative, then it will be wrapped inside a MemberUpdateTentative
                     IMemberUpdate updateToIndex = updateIndexesTentatively ? new MemberUpdateTentative(updt.Value) : updt.Value;
 
                     // The update task is added to the list of update tasks
                     updateIndexTasks.Add(idxInfo.IndexInterface.ApplyIndexUpdate(this.SiloIndexManager,
-                                            updatedGrain, updateToIndex.AsImmutable(), isUniqueIndex, idxInfo.MetaData, BaseSiloAddress));
+                                         updatedGrain, updateToIndex.AsImmutable(), idxInfo.MetaData, BaseSiloAddress));
                 }
             }
 
@@ -403,9 +391,10 @@ namespace Orleans.Indexing
                     var idxInfo = kvp.Value;
                     if (!onlyUpdateActiveIndexes || !(idxInfo.IndexInterface is ITotalIndex))
                     {
+                        // TODO isnull in MemberUpdate to avoid the int vs. null issue
                         IMemberUpdate mu = isOnActivate ? idxInfo.UpdateGenerator.CreateMemberUpdate(befImgs[kvp.Key])
                                                         : idxInfo.UpdateGenerator.CreateMemberUpdate(indexableProperties, befImgs[kvp.Key]);
-                        if (mu.GetOperationType() != IndexOperationType.None)
+                        if (mu.OperationType != IndexOperationType.None)
                         {
                             updates.Add(kvp.Key, mu);
                             var indexMetaData = kvp.Value.MetaData;
@@ -499,7 +488,7 @@ namespace Orleans.Indexing
             foreach (KeyValuePair<string, IMemberUpdate> updt in updates)
             {
                 var indexID = updt.Key;
-                var opType = updt.Value.GetOperationType();
+                var opType = updt.Value.OperationType;
                 if (opType == IndexOperationType.Update || opType == IndexOperationType.Insert)
                 {
                     befImgs[indexID] = _grainIndexes[indexID].UpdateGenerator.ExtractIndexImage(this.Properties);

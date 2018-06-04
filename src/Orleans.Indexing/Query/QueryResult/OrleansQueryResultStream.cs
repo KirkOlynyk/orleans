@@ -15,7 +15,7 @@ namespace Orleans.Indexing
     [Serializable]
     public class OrleansQueryResultStream<TIGrain> : IOrleansQueryResultStream<TIGrain> where TIGrain : IIndexableGrain
     {
-        // Currently, the whole result is stored here, but it is just a simple implementation. This implementation should
+        // TODO: Currently, the whole result is stored here, but it is just a simple implementation. This implementation should
         // be replaced with a more sophisticated approach to asynchronously read the results on demand
 
         protected IAsyncStream<TIGrain> _stream;

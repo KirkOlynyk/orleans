@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Orleans.Indexing
 {
-    public class IndexInfo
+    internal class IndexInfo
     {
         /// <summary>
         /// The index object (that implements IndexInterface)

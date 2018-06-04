@@ -58,8 +58,14 @@ namespace Orleans.Indexing
             //  2. The activation of an initialized object could create a conflict in the Active Index.
             //     E.g., there's an active player PA with email foo and a non-active persistent player PP with email foo.
             //  3. An attempt to activate PP will cause a violation of the Active Index on email.
-            // This implies we should disallow such indexes.
-            this.IsUnique = false;
+            // In other words, having a Total unique index prevents the possibility of such a conflict; having an Active unique index does not,
+            // because one could activate a Grain, set its email to something already there and persist it (and then deactivate it and activate
+            // a new one, etc.). The only use case would be “only one such value can be active at a time”, but this would lead to more issues
+            // than gain. This implies we should disallow such indexes, which happens during assembly load in ValidateSingleIndex.
+            if (this.IsUnique)
+            {
+                throw new InvalidOperationException("Active indexes cannot be defined as unique; this should have been caught in ValidateSingleIndex.");
+            }
             this.MaxEntriesPerBucket = maxEntriesPerBucket;
         }
     }

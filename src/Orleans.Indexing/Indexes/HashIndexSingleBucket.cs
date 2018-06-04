@@ -176,7 +176,7 @@ namespace Orleans.Indexing
                 this.Logger.Error(IndexingErrorCode.IndexingIndexIsNotReadyYet_GrainBucket1, "Index is not still available.", e);
                 throw e;
             }
-            if (this.State.IndexMap.TryGetValue(key, out HashIndexSingleBucketEntry<V> entry) && !entry.IsTentative())
+            if (this.State.IndexMap.TryGetValue(key, out HashIndexSingleBucketEntry<V> entry) && !entry.IsTentative)
             {
                 await result.OnNextBatchAsync(entry.Values);
                 await result.OnCompletedAsync();
@@ -199,7 +199,7 @@ namespace Orleans.Indexing
                 this.Logger.Error(IndexingErrorCode.IndexingIndexIsNotReadyYet_GrainBucket2, e.Message, e);
                 throw e;
             }
-            if (this.State.IndexMap.TryGetValue(key, out HashIndexSingleBucketEntry<V> entry) && !entry.IsTentative())
+            if (this.State.IndexMap.TryGetValue(key, out HashIndexSingleBucketEntry<V> entry) && !entry.IsTentative)
             {
                 if (entry.Values.Count() == 1)
                 {
@@ -246,7 +246,7 @@ namespace Orleans.Indexing
                 this.Logger.Error(IndexingErrorCode.IndexingIndexIsNotReadyYet_GrainBucket5, "Index is not still available.", e);
                 throw e;
             }
-            if (this.State.IndexMap.TryGetValue(key, out HashIndexSingleBucketEntry<V> entry) && !entry.IsTentative())
+            if (this.State.IndexMap.TryGetValue(key, out HashIndexSingleBucketEntry<V> entry) && !entry.IsTentative)
             {
                 return new OrleansQueryResult<V>(entry.Values);
             }

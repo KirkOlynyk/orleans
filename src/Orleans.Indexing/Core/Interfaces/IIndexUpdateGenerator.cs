@@ -29,7 +29,7 @@
         IMemberUpdate CreateMemberUpdate(object afterImage);
     }
 
-    public abstract class IIndexUpdateGenerator<K, TProperties> : IIndexUpdateGenerator
+    internal abstract class IIndexUpdateGenerator<K, TProperties> : IIndexUpdateGenerator
     {
         object IIndexUpdateGenerator.ExtractIndexImage(object indexedGrainProperties)
             => ExtractIndexImage((TProperties)indexedGrainProperties);

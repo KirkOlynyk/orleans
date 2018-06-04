@@ -32,7 +32,7 @@ namespace Orleans.Indexing
         /// </summary>
         internal static Task<bool> ApplyIndexUpdate(this IIndexInterface index, SiloIndexManager siloIndexManager,
                                                     IIndexableGrain updatedGrain, Immutable<IMemberUpdate> update,
-                                                    bool isUniqueIndex, IndexMetaData idxMetaData, SiloAddress siloAddress = null)
+                                                    IndexMetaData idxMetaData, SiloAddress siloAddress = null)
         {
             if (index is IActiveHashIndexPartitionedPerSilo)
             {
@@ -41,9 +41,9 @@ namespace Orleans.Indexing
                                                                   IndexUtils.GetIndexNameFromIndexGrain((IAddressable)index), index.GetType().GetGenericArguments()[1],
                                                                   siloAddress
                 ));
-                return bucketInCurrentSilo.DirectApplyIndexUpdate(updatedGrain, update, isUniqueIndex, idxMetaData/*, siloAddress*/);
+                return bucketInCurrentSilo.DirectApplyIndexUpdate(updatedGrain, update, idxMetaData.IsUniqueIndex, idxMetaData/*, siloAddress*/);
             }
-            return index.DirectApplyIndexUpdate(updatedGrain, update, isUniqueIndex, idxMetaData, siloAddress);
+            return index.DirectApplyIndexUpdate(updatedGrain, update, idxMetaData.IsUniqueIndex, idxMetaData, siloAddress);
         }
 
 

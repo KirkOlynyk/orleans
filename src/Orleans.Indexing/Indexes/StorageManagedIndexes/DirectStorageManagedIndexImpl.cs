@@ -95,7 +95,7 @@ namespace Orleans.Indexing
                 if (implementation == null || (grainImplClass = implementation.GrainClass) == null ||
                         !this.SiloIndexManager.CachedTypeResolver.TryResolveType(grainImplClass, out Type implType))
                 {
-                    throw new IndexException("The grain implementation class " + implementation.GrainClass + " for grain interface " + TypeUtils.GetFullName(typeof(V)) + " was not resolved.");
+                    throw new IndexException("The grain implementation class " + implementation.GrainClass + " for grain interface " + IndexUtils.GetFullTypeName(typeof(V)) + " was not resolved.");
                 }
                 _grainStorage = implType.GetGrainStorage(this.SiloIndexManager.ServiceProvider);
             }
