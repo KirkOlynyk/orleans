@@ -9,9 +9,14 @@ namespace Orleans.Indexing
     [Serializable]
     internal class IndexUpdateGenerator : IIndexUpdateGenerator
     {
-        PropertyInfo _prop;
+        PropertyInfo prop;
+        object nullValue;
+
         public IndexUpdateGenerator(PropertyInfo prop)
-            => this._prop = prop;
+        {
+            this.prop = prop;
+            this.nullValue = IndexUtils.GetNullValue(prop);
+        }
 
         public IMemberUpdate CreateMemberUpdate(object gProps, object befImg)
         {
@@ -23,6 +28,11 @@ namespace Orleans.Indexing
             => new MemberUpdate(null, aftImg);
 
         public object ExtractIndexImage(object gProps)
-            => this._prop.GetValue(gProps);
+        {
+            var currentValue = this.prop.GetValue(gProps);
+            return currentValue == null || this.nullValue == null
+                ? currentValue
+                : (currentValue.Equals(this.nullValue) ? null : currentValue);
+        }
     }
 }

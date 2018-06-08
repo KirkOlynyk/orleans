@@ -20,5 +20,7 @@ namespace Orleans.Indexing.Tests
         public const string UniqueStringIndex = "__UniqueString";
         public const string NonUniqueIntIndex = "__NonUniqueInt";
         public const string NonUniqueStringIndex = "__NonUniqueString";
+
+        public const int DelayUntilIndexesAreUpdatedLazily = 1000; // One-second delay for writes to the in-memory indexes should be enough
     }
 }

@@ -59,6 +59,9 @@ namespace Orleans.Indexing
         private ILogger Logger => __logger ?? (__logger = this.SiloIndexManager.LoggerFactory.CreateLoggerWithFullCategoryName<IndexableGrainNonFaultTolerant<TState, TProperties>>());
         private ILogger __logger;
 
+        // Track whether we have loaded our state from persistent storage
+        private bool initialStateRead;
+
         private TProperties DefaultCreatePropertiesFromState()
         {
             if (typeof(TProperties).IsAssignableFrom(typeof(TState)))
@@ -391,7 +394,6 @@ namespace Orleans.Indexing
                     var idxInfo = kvp.Value;
                     if (!onlyUpdateActiveIndexes || !(idxInfo.IndexInterface is ITotalIndex))
                     {
-                        // TODO isnull in MemberUpdate to avoid the int vs. null issue
                         IMemberUpdate mu = isOnActivate ? idxInfo.UpdateGenerator.CreateMemberUpdate(befImgs[kvp.Key])
                                                         : idxInfo.UpdateGenerator.CreateMemberUpdate(indexableProperties, befImgs[kvp.Key]);
                         if (mu.OperationType != IndexOperationType.None)
@@ -399,24 +401,25 @@ namespace Orleans.Indexing
                             updates.Add(kvp.Key, mu);
                             var indexMetaData = kvp.Value.MetaData;
 
-                            // This flag must be the same for all indexes defined on a grain.
                             if (!kvpFirstIndex.HasValue)
                             {
                                 kvpFirstIndex = kvp;
                             }
-#if false // TODO: inconsistent eagerness
                             else if (kvpFirstIndex.Value.Value.MetaData.IsEager != indexMetaData.IsEager)
                             {
                                 throw new InvalidOperationException($"Inconsistent index eagerness specification on grain implementation {this.GetType().FullName} properties {typeof(TProperties).FullName}." +
                                                                     $" Index {kvpFirstIndex.Value.Key} specified {kvpFirstIndex.Value.Value.MetaData.IsEager} while" +
                                                                     $" index {kvp.Key} specified {kvp.Value.MetaData.IsEager}. This misconfiguration should have been detected on silo startup.");
                             }
-#endif
 
-                            // Update "unique index"-related output flags and counters
-                            bool isUniqueIndex = indexMetaData.IsUniqueIndex;
-                            onlyUniqueIndexesWereUpdated = onlyUniqueIndexesWereUpdated && isUniqueIndex;
-                            if (isUniqueIndex) ++numberOfUniqueIndexesUpdated;
+                            if (indexMetaData.IsUniqueIndex)
+                            {
+                                ++numberOfUniqueIndexesUpdated;
+                            }
+                            else
+                            {
+                                onlyUniqueIndexesWereUpdated = false;
+                            }
                         }
                     }
                 }
@@ -466,6 +469,7 @@ namespace Orleans.Indexing
         {
             IDictionary<string, object> oldBefImgs = this._beforeImages.Value;
             IDictionary<string, object> newBefImgs = new Dictionary<string, object>();
+
             foreach (var idxOp in this._grainIndexes)
             {
                 var indexID = idxOp.Key;
@@ -511,9 +515,31 @@ namespace Orleans.Indexing
             await UpdateIndexes(this.Properties, isOnActivate: false, onlyUpdateActiveIndexes: false, writeStateIfConstraintsAreNotViolated: true);
         }
 
+        protected async override Task ReadStateAsync()
+        {
+            if (this.initialStateRead)
+            {
+                await base.ReadStateAsync();
+                return;
+            }
+
+            var initialState = base.State;
+            await base.ReadStateAsync();
+            this.initialStateRead = true;
+            if ((object)initialState == (object)base.State)
+            {
+                // No persisted state was read, so populate any non-nullables with their [nullvalue]s
+                SetStateToNullValues();
+            }
+        }
+
+        protected virtual void SetStateToNullValues()
+        {
+            IndexUtils.SetNullValues(base.State);
+        }
+
         /// <summary>
-        /// Writes the state of the grain back to the storage
-        /// without updating the indexes
+        /// Writes the state of the grain back to the storage without updating the indexes (which is done separately)
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected Task WriteBaseStateAsync()
