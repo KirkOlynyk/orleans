@@ -1,5 +1,7 @@
 using System;
+using System.Globalization;
 using System.Linq;
+using System.Reflection;
 using Microsoft.Extensions.Logging;
 using Orleans.Runtime;
 
@@ -77,6 +79,44 @@ namespace Orleans.Indexing
             return (genericArgs.Length == 0 || !expandArgNames)
                 ? name
                 : $"{name.Substring(0, name.IndexOf("`"))}<{string.Join(",", genericArgs.Select(arg => GetFullTypeName(arg, true)))}>";
+        }
+
+        internal static bool IsNullable(this Type type)
+        {
+            return !type.IsValueType || Nullable.GetUnderlyingType(type) != null;
+        }
+
+        internal static void SetNullValues<TObjectProperties>(TObjectProperties state)
+        {
+            foreach (PropertyInfo propInfo in typeof(TObjectProperties).GetProperties())
+            {
+                var nullValue = GetNullValue(propInfo);
+                if (nullValue != null)
+                {
+                    // TODO don't allow two of these with different values; check in loader; also check conversion there, and UniqueIndex must have a NullValue, and nullable types cannot
+                    propInfo.SetValue(state, nullValue);
+                }
+            }
+        }
+
+        internal static object GetNullValue(PropertyInfo propInfo)
+        {
+            if (propInfo.PropertyType.IsNullable())
+            {
+                return null;
+            }
+            var indexAttrs = propInfo.GetCustomAttributes<IndexAttribute>(inherit: false);
+            var indexAttr = indexAttrs.FirstOrDefault(attr => !string.IsNullOrEmpty(attr.NullValue));
+            return indexAttr == null || string.IsNullOrEmpty(indexAttr.NullValue)
+                ? null
+                : indexAttr.NullValue.ConvertTo(propInfo.PropertyType);
+        }
+
+        private static object ConvertTo(this string value, Type propertyType)
+        {
+            return propertyType == typeof(DateTime)
+                ? DateTime.ParseExact(value, "o", CultureInfo.InvariantCulture)
+                : Convert.ChangeType(value, propertyType, CultureInfo.InvariantCulture);
         }
     }
 }

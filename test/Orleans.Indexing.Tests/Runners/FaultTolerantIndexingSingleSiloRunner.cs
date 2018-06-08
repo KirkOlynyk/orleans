@@ -13,8 +13,6 @@ namespace Orleans.Indexing.Tests
         {
         }
 
-        private const int DELAY_UNTIL_INDEXES_ARE_UPDATED_LAZILY = 1000; //one second delay for writes to the in-memory indexes should be enough
-
         /// <summary>
         /// Tests basic functionality of ActiveHashIndexPartitionedPerSiloImpl with 2 Silos
         /// </summary>
@@ -34,13 +32,13 @@ namespace Orleans.Indexing.Tests
 
             var locIdx = await base.GetAndWaitForIndex<string, IPlayer2Grain>(ITC.LocationIndex);
 
-            Task<int> getLocationCount(string location) => this.GetLocationCount<IPlayer2Grain, Player2Properties>(location, DELAY_UNTIL_INDEXES_ARE_UPDATED_LAZILY);
+            Task<int> getLocationCount(string location) => this.GetLocationCount<IPlayer2Grain, Player2Properties>(location, ITC.DelayUntilIndexesAreUpdatedLazily);
 
             base.Output.WriteLine("Before check 1");
             Assert.Equal(2, await getLocationCount(ITC.Seattle));
 
             await p2.Deactivate();
-            await Task.Delay(DELAY_UNTIL_INDEXES_ARE_UPDATED_LAZILY);
+            await Task.Delay(ITC.DelayUntilIndexesAreUpdatedLazily);
 
             base.Output.WriteLine("Before check 2");
             Assert.Equal(1, await getLocationCount(ITC.Seattle));

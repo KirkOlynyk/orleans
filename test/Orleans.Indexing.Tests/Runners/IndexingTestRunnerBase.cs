@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using System.Threading;
 using Orleans.Runtime;
 using System.Linq;
+using System;
 
 namespace Orleans.Indexing.Tests
 {
@@ -32,8 +33,14 @@ namespace Orleans.Indexing.Tests
             this.IndexFactory = this.ClusterClient.ServiceProvider.GetRequiredService<IIndexFactory>();
         }
 
-        protected T GetGrain<T>(long primaryKey) where T : IGrainWithIntegerKey
-            => this.GrainFactory.GetGrain<T>(primaryKey);
+        protected TInterface GetGrain<TInterface>(long primaryKey) where TInterface : IGrainWithIntegerKey
+            => this.GrainFactory.GetGrain<TInterface>(primaryKey);
+
+        protected TInterface GetGrain<TInterface, TImplClass>(long primaryKey) where TInterface : IGrainWithIntegerKey
+            => this.GetGrain<TInterface>(primaryKey, typeof(TImplClass));
+
+        protected TInterface GetGrain<TInterface>(long primaryKey, Type grainImplType) where TInterface : IGrainWithIntegerKey
+            => this.GrainFactory.GetGrain<TInterface>(primaryKey, grainImplType.FullName.Replace("+", "."));
 
         protected IIndexInterface<TKey, TValue> GetIndex<TKey, TValue>(string indexName) where TValue : IIndexableGrain
             => this.IndexFactory.GetIndex<TKey, TValue>(indexName);
@@ -55,15 +62,17 @@ namespace Orleans.Indexing.Tests
             return indexes;
         }
 
-        public async Task<T> CreateGrain<T>(int uInt, string uString, int nuInt, string nuString) where T : IGrainWithIntegerKey, ITestIndexGrain
+        public async Task<TInterface> CreateGrain<TInterface, TImplClass>(int uInt, string uString, int nuInt, string nuString) where TInterface : IGrainWithIntegerKey, ITestIndexGrain
         {
-            var p1 = this.GetGrain<T>(uInt + 4200000000000);
+            var p1 = this.GetGrain<TInterface>(GrainPkFromUniqueInt(uInt), typeof(TImplClass));
             await p1.SetUniqueInt(uInt);
             await p1.SetUniqueString(uString);
             await p1.SetNonUniqueInt(nuInt);
-            await p1.SetUniqueString(nuString);
+            await p1.SetNonUniqueString(nuString);
             return p1;
         }
+
+        public static long GrainPkFromUniqueInt(int uInt) => uInt + 4200000000000;
 
         protected Task StartAndWaitForSecondSilo()
         {

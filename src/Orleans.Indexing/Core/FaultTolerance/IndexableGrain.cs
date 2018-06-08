@@ -323,6 +323,11 @@ namespace Orleans.Indexing
             }
             return __hasAnyTotalIndex.Value;
         }
+
+        protected override void SetStateToNullValues()
+        {
+            IndexUtils.SetNullValues(base.State.UserState);
+        }
     }
 
     /// <summary>

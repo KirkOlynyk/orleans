@@ -19,6 +19,10 @@ namespace Orleans.Indexing
         public bool IsEager { get; set; }
         public int MaxEntriesPerBucket { get; set; }
 
+        // For non-nullable types this is the value to represent 'null' (unset), so new grains don't try to write
+        // the default value (0); this causes a uniqueness violation for Unique indexes.
+        public string NullValue { get; set; }
+
         /// <summary>
         /// The default constructor for Index.
         /// </summary>

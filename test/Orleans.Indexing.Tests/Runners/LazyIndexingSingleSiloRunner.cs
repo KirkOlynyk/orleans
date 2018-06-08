@@ -13,8 +13,6 @@ namespace Orleans.Indexing.Tests
         {
         }
 
-        private const int DELAY_UNTIL_INDEXES_ARE_UPDATED_LAZILY = 1000; //one second delay for writes to the in-memory indexes should be enough
-
         /// <summary>
         /// Tests basic functionality of HashIndexSingleBucker
         /// </summary>
@@ -32,12 +30,12 @@ namespace Orleans.Indexing.Tests
 
             var locIdx = await base.GetAndWaitForIndex<string, IPlayer1GrainNonFaultTolerantLazy>(ITC.LocationIndex);
 
-            Task<int> getLocationCount(string location) => this.GetLocationCount<IPlayer1GrainNonFaultTolerantLazy, Player1PropertiesNonFaultTolerantLazy>(location, DELAY_UNTIL_INDEXES_ARE_UPDATED_LAZILY);
+            Task<int> getLocationCount(string location) => this.GetLocationCount<IPlayer1GrainNonFaultTolerantLazy, Player1PropertiesNonFaultTolerantLazy>(location, ITC.DelayUntilIndexesAreUpdatedLazily);
 
             Assert.Equal(2, await getLocationCount(ITC.Seattle));
 
             await p2.Deactivate();
-            await Task.Delay(DELAY_UNTIL_INDEXES_ARE_UPDATED_LAZILY);
+            await Task.Delay(ITC.DelayUntilIndexesAreUpdatedLazily);
             Assert.Equal(1, await getLocationCount(ITC.Seattle));
 
             p2 = base.GetGrain<IPlayer1GrainNonFaultTolerantLazy>(2);
@@ -62,12 +60,12 @@ namespace Orleans.Indexing.Tests
 
             var locIdx = await base.GetAndWaitForIndex<string, IPlayer2GrainNonFaultTolerantLazy>(ITC.LocationIndex);
 
-            Task<int> getLocationCount(string location) => this.GetLocationCount<IPlayer2GrainNonFaultTolerantLazy, Player2PropertiesNonFaultTolerantLazy>(location, DELAY_UNTIL_INDEXES_ARE_UPDATED_LAZILY);
+            Task<int> getLocationCount(string location) => this.GetLocationCount<IPlayer2GrainNonFaultTolerantLazy, Player2PropertiesNonFaultTolerantLazy>(location, ITC.DelayUntilIndexesAreUpdatedLazily);
 
             Assert.Equal(2, await getLocationCount(ITC.Tehran));
 
             await p2.Deactivate();
-            await Task.Delay(DELAY_UNTIL_INDEXES_ARE_UPDATED_LAZILY);
+            await Task.Delay(ITC.DelayUntilIndexesAreUpdatedLazily);
             Assert.Equal(1, await getLocationCount(ITC.Tehran));
 
             p2 = base.GetGrain<IPlayer2GrainNonFaultTolerantLazy>(2);
@@ -92,12 +90,12 @@ namespace Orleans.Indexing.Tests
 
             var locIdx = await base.GetAndWaitForIndex<string, IPlayer3GrainNonFaultTolerantLazy>(ITC.LocationIndex);
 
-            Task<int> getLocationCount(string location) => this.GetLocationCount<IPlayer3GrainNonFaultTolerantLazy, Player3PropertiesNonFaultTolerantLazy>(location, DELAY_UNTIL_INDEXES_ARE_UPDATED_LAZILY);
+            Task<int> getLocationCount(string location) => this.GetLocationCount<IPlayer3GrainNonFaultTolerantLazy, Player3PropertiesNonFaultTolerantLazy>(location, ITC.DelayUntilIndexesAreUpdatedLazily);
 
             Assert.Equal(2, await getLocationCount(ITC.Seattle));
 
             await p2.Deactivate();
-            await Task.Delay(DELAY_UNTIL_INDEXES_ARE_UPDATED_LAZILY);
+            await Task.Delay(ITC.DelayUntilIndexesAreUpdatedLazily);
 
             Assert.Equal(1, await getLocationCount(ITC.Seattle));
 

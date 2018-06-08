@@ -10,7 +10,7 @@ namespace Orleans.Indexing.Tests
     {
         public static async Task<int> CountItemsStreamingIn<TIGrain, TIProperties, TQueryProp>(this IndexingTestRunnerBase runner,
                                                                 Func<IndexingTestRunnerBase, TQueryProp, Tuple<IOrleansQueryable<TIGrain, TIProperties>, Func<TIGrain, Task<TQueryProp>>>> queryTupleFunc,
-                                                                TQueryProp queryValue, int delayInMilliseconds = 0)
+                                                                string propertyName, TQueryProp queryValue, int delayInMilliseconds = 0)
             where TIGrain : IIndexableGrain
         {
             if (delayInMilliseconds > 0)
@@ -27,7 +27,7 @@ namespace Orleans.Indexing.Tests
             var _ = queryItems.ObserveResults(new QueryResultStreamObserver<TIGrain>(async entry =>
             {
                 counter++;
-                runner.Output.WriteLine("guid = {0}, location = {1}, primary key = {2}", entry, await queryPropAsync(entry), entry.GetPrimaryKeyLong());
+                runner.Output.WriteLine($"grain id = {entry}, {propertyName} = {await queryPropAsync(entry)}, primary key = {entry.GetPrimaryKeyLong()}");
             }, () =>
             {
                 taskCompletionSource.SetResult(counter);
@@ -53,7 +53,7 @@ namespace Orleans.Indexing.Tests
 
         internal static Task<int> GetLocationCount<TIGrain, TIProperties>(this IndexingTestRunnerBase runner, string location, int delayInMilliseconds = 0)
             where TIGrain : IPlayerGrain, IIndexableGrain where TIProperties : IPlayerProperties
-            => runner.CountItemsStreamingIn((r, v) => r.QueryByLocation<TIGrain, TIProperties>(v), location, delayInMilliseconds);
+            => runner.CountItemsStreamingIn((r, v) => r.QueryByLocation<TIGrain, TIProperties>(v), nameof(IPlayerProperties.Location), location, delayInMilliseconds);
 
         #endregion PlayerGrain
 
@@ -89,19 +89,19 @@ namespace Orleans.Indexing.Tests
 
         internal static Task<int> GetUniqueIntCount<TIGrain, TIProperties>(this IndexingTestRunnerBase runner, int uniqueValue, int delayInMilliseconds = 0)
             where TIGrain : ITestIndexGrain, IIndexableGrain where TIProperties : ITestIndexProperties
-            => runner.CountItemsStreamingIn((r, v) => r.QueryByUniqueInt<TIGrain, TIProperties>(v), uniqueValue, delayInMilliseconds);
+            => runner.CountItemsStreamingIn((r, v) => r.QueryByUniqueInt<TIGrain, TIProperties>(v), nameof(ITestIndexProperties.UniqueInt), uniqueValue, delayInMilliseconds);
 
         internal static Task<int> GetUniqueStringCount<TIGrain, TIProperties>(this IndexingTestRunnerBase runner, string uniqueValue, int delayInMilliseconds = 0)
             where TIGrain : ITestIndexGrain, IIndexableGrain where TIProperties : ITestIndexProperties
-            => runner.CountItemsStreamingIn((r, v) => r.QueryByUniqueString<TIGrain, TIProperties>(v), uniqueValue, delayInMilliseconds);
+            => runner.CountItemsStreamingIn((r, v) => r.QueryByUniqueString<TIGrain, TIProperties>(v), nameof(ITestIndexProperties.UniqueString), uniqueValue, delayInMilliseconds);
 
         internal static Task<int> GetNonUniqueIntCount<TIGrain, TIProperties>(this IndexingTestRunnerBase runner, int nonUniqueValue, int delayInMilliseconds = 0)
             where TIGrain : ITestIndexGrain, IIndexableGrain where TIProperties : ITestIndexProperties
-            => runner.CountItemsStreamingIn((r, v) => r.QueryByNonUniqueInt<TIGrain, TIProperties>(v), nonUniqueValue, delayInMilliseconds);
+            => runner.CountItemsStreamingIn((r, v) => r.QueryByNonUniqueInt<TIGrain, TIProperties>(v), nameof(ITestIndexProperties.NonUniqueInt), nonUniqueValue, delayInMilliseconds);
 
         internal static Task<int> GetNonUniqueStringCount<TIGrain, TIProperties>(this IndexingTestRunnerBase runner, string nonUniqueValue, int delayInMilliseconds = 0)
             where TIGrain : ITestIndexGrain, IIndexableGrain where TIProperties : ITestIndexProperties
-            => runner.CountItemsStreamingIn((r, v) => r.QueryByNonUniqueString<TIGrain, TIProperties>(v), nonUniqueValue, delayInMilliseconds);
+            => runner.CountItemsStreamingIn((r, v) => r.QueryByNonUniqueString<TIGrain, TIProperties>(v), nameof(ITestIndexProperties.NonUniqueString), nonUniqueValue, delayInMilliseconds);
 
         #endregion TestIndexGrain
     }
