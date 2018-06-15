@@ -39,6 +39,13 @@ namespace Orleans.Indexing.Tests
             return observedCount;
         }
 
+        internal static async Task Deactivate(this ITestIndexGrain grain, int delayMs = 0)
+        {
+            // Task.Delay cannot be in the ITestIndexGrain implementation class because Deactivate() is codegen'd to a different thread.
+            await grain.Deactivate();
+            await (delayMs > 0 ? Task.Delay(delayMs) : Task.CompletedTask);
+        }
+
         #region PlayerGrain
 
         private static IOrleansQueryable<TIGrain, TIProperties> QueryActivePlayerGrains<TIGrain, TIProperties>(IndexingTestRunnerBase runner)

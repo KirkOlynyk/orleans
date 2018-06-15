@@ -19,6 +19,6 @@ namespace Orleans.Indexing.Tests
         Task<string> GetNonUniqueString();
         Task SetNonUniqueString(string value);
 
-        Task Deactivate(int delayMs = 0);
+        Task Deactivate();
     }
 }

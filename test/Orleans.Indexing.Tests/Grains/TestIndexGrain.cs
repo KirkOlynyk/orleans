@@ -33,7 +33,11 @@ namespace Orleans.Indexing.Tests
         public Task SetNonUniqueString(string value) => testBase.SetProperty(v => this.State.NonUniqueString = v, value, retry:testBase.IsNonUniqueStringIndexed);
         public Task SetNonUniqueStringWithoutWrite(string value) => testBase.SetPropertyWithoutWrite(v => this.State.NonUniqueString = v, value);
 
-        public Task Deactivate(int delayMs = 0) => testBase.Deactivate(() => base.DeactivateOnIdle(), delayMs);
+        public Task Deactivate()
+        {
+            base.DeactivateOnIdle();
+            return Task.CompletedTask;
+        }
 
         public TestIndexGrain()
         {

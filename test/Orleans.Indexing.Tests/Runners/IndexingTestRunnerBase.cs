@@ -62,9 +62,9 @@ namespace Orleans.Indexing.Tests
             return indexes;
         }
 
-        public async Task<TInterface> CreateGrain<TInterface, TImplClass>(int uInt, string uString, int nuInt, string nuString) where TInterface : IGrainWithIntegerKey, ITestIndexGrain
+        public async Task<TInterface> CreateGrain<TInterface>(int uInt, string uString, int nuInt, string nuString) where TInterface : IGrainWithIntegerKey, ITestIndexGrain
         {
-            var p1 = this.GetGrain<TInterface>(GrainPkFromUniqueInt(uInt), typeof(TImplClass));
+            var p1 = this.GetGrain<TInterface>(GrainPkFromUniqueInt(uInt));
             await p1.SetUniqueInt(uInt);
             await p1.SetUniqueString(uString);
             await p1.SetNonUniqueInt(nuInt);
