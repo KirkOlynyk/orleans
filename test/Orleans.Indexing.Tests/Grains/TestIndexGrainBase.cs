@@ -63,11 +63,5 @@ namespace Orleans.Indexing.Tests
             setter(value);
             return Task.CompletedTask;
         }
-
-        internal Task Deactivate(Action deactivateAction, int delayMs = 0)
-        {
-            deactivateAction();
-            return delayMs > 0 ? Task.Delay(delayMs) : Task.CompletedTask;
-        }
     }
 }
