@@ -38,7 +38,7 @@ namespace Orleans.Indexing
         public async Task<IndexRegistry> GetGrainClassIndexes()
         {
             Type[] grainTypes = this.indexManager.ApplicationPartManager.ApplicationParts.OfType<AssemblyPart>()
-                                    .SelectMany(part => TypeUtils.GetTypes(part.Assembly, TypeUtils.IsConcreteGrainClass, this.logger))
+                                    .SelectMany(part => part.Assembly.GetConcreteGrainClasses(this.logger))
                                     .ToArray();
             return await GetIndexRegistry(this, grainTypes);
         }

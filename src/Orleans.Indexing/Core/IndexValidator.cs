@@ -15,7 +15,7 @@ namespace Orleans.Indexing
 
         public static async Task Validate(Assembly assembly)
         {
-            await Validate(TypeUtils.GetTypes(assembly, TypeUtils.IsConcreteGrainClass, logger: null).ToArray());
+            await Validate(assembly.GetConcreteGrainClasses(logger: null).ToArray());
         }
     }
 }
