@@ -242,9 +242,19 @@ namespace Orleans.Indexing
 
                     //write the state back to the storage
                     string grainType = "Orleans.Indexing.IndexWorkflowQueue-" + IndexUtils.GetFullTypeName(_iGrainType);
-                    await (StorageProvider is IExtendedGrainStorage extendedSP
-                        ? extendedSP.WriteStateWithoutEtagCheckAsync(grainType, _lazyParent.Value, this.queueState)
-                        : StorageProvider.WriteStateAsync(grainType, _lazyParent.Value, this.queueState));
+                    var saveETag = this.queueState.ETag;
+                    try
+                    {
+                        this.queueState.ETag = StorageProviderUtils.ANY_ETAG;
+                        await StorageProvider.WriteStateAsync(grainType, _lazyParent.Value, this.queueState);
+                    }
+                    finally
+                    {
+                        if (this.queueState.ETag == StorageProviderUtils.ANY_ETAG)
+                        {
+                            this.queueState.ETag = saveETag;
+                        }
+                    }
                 }
             }
         }
