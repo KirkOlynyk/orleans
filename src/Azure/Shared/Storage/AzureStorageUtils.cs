@@ -12,7 +12,7 @@ using Orleans.Storage;
 using LogLevel = Microsoft.Extensions.Logging.LogLevel;
 
 //
-// Number of #ifs can be reduced (or removed), once we separate test projects by feature/area, otherwise we are ending up with ambigous types and build errors.
+// Number of #ifs can be reduced (or removed), once we separate test projects by feature/area, otherwise we are ending up with ambiguous types and build errors.
 //
 
 #if ORLEANS_CLUSTERING
