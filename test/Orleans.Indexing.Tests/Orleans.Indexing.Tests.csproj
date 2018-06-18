@@ -20,8 +20,8 @@
     <ProjectReference Include="..\..\src\Orleans.Runtime\Orleans.Runtime.csproj" />
     <ProjectReference Include="..\..\src\Orleans.TestingHost\Orleans.TestingHost.csproj" />
     <ProjectReference Include="..\Tester\Tester.csproj" />
-    <ProjectReference Include="..\TestExtensions\TestExtensions.csproj" />
-    <ProjectReference Include="..\TestGrainInterfaces\TestGrainInterfaces.csproj" />
-    <ProjectReference Include="..\TestGrains\TestGrains.csproj" />
+    <ProjectReference Include="..\TestInfrastructure\TestExtensions\TestExtensions.csproj" />
+    <ProjectReference Include="..\Grains\TestGrainInterfaces\TestGrainInterfaces.csproj" />
+    <ProjectReference Include="..\Grains\TestGrains\TestGrains.csproj" />
   </ItemGroup>
 </Project>
