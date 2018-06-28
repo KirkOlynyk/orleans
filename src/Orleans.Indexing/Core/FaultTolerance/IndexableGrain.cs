@@ -107,7 +107,7 @@ namespace Orleans.Indexing
                     {
                         // There is no constraint violation and the workflow ID can be a part of the list of active workflows.
                         // Here, we add the work-flow to the list of committed/in-flight work-flows
-                        AddWorkdlowIdToActiveWorkflows(workflowId);
+                        AddWorkflowIdToActiveWorkflows(workflowId);
                         await WriteBaseStateAsync();
                     }
 
@@ -240,9 +240,13 @@ namespace Orleans.Indexing
         public override Task<Immutable<HashSet<Guid>>> GetActiveWorkflowIdsList()
         {
             var workflows = base.State.ActiveWorkflowsSet;
-            return (workflows == null)
-                ? Task.FromResult(new HashSet<Guid>().AsImmutable())
-                : Task.FromResult(workflows.AsImmutable());
+
+            // Immutable does not prevent items from being added to the hashset; there was a race condition where
+            // IndexableGrain.ApplyIndexUpdates adds to the list after IndexWorkflowQueueHandlerBase.HandleWorkflowsUntilPunctuation
+            // obtains grainsToActiveWorkflows and thus IndexWorkflowQueueHandlerBase.RemoveFromActiveWorkflowsInGrainsTasks
+            // removes the added workflowId, which means that workflowId is not processed. Therefore deep-copy workflows.
+            var result = (workflows == null) ? new HashSet<Guid>() : new HashSet<Guid>(workflows);
+            return Task.FromResult(result.AsImmutable());
         }
 
         public override Task RemoveFromActiveWorkflowIds(HashSet<Guid> removedWorkflowId)
@@ -262,7 +266,7 @@ namespace Orleans.Indexing
         /// for this fault-tolerant indexable grain
         /// </summary>
         /// <param name="workflowId">the workflow ID to be added</param>
-        private void AddWorkdlowIdToActiveWorkflows(Guid workflowId)
+        private void AddWorkflowIdToActiveWorkflows(Guid workflowId)
         {
             if (base.State.ActiveWorkflowsSet == null)
             {
