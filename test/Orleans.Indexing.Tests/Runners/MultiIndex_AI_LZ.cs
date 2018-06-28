@@ -220,37 +220,37 @@ namespace Orleans.Indexing.Tests
         [Fact, TestCategory("BVT"), TestCategory("Indexing")]
         public async Task Test_FT_Grain_UIUSNINS_AI_LZ_PK()
         {
-            await base.TestIndexesWithOneDeactivation<IFT_Grain_UIUSNINS_AI_LZ_PK, FT_Props_UIUSNINS_AI_LZ_PK>();
+            await base.TestIndexesWithDeactivations<IFT_Grain_UIUSNINS_AI_LZ_PK, FT_Props_UIUSNINS_AI_LZ_PK>();
         }
 
         [Fact, TestCategory("BVT"), TestCategory("Indexing")]
         public async Task Test_NFT_Grain_UIUSNINS_AI_LZ_PK()
         {
-            await base.TestIndexesWithOneDeactivation<INFT_Grain_UIUSNINS_AI_LZ_PK, NFT_Props_UIUSNINS_AI_LZ_PK>();
+            await base.TestIndexesWithDeactivations<INFT_Grain_UIUSNINS_AI_LZ_PK, NFT_Props_UIUSNINS_AI_LZ_PK>();
         }
 
         [Fact, TestCategory("BVT"), TestCategory("Indexing")]
         public async Task Test_FT_Grain_UIUSNINS_AI_LZ_PS()
         {
-            await base.TestIndexesWithOneDeactivation<IFT_Grain_UIUSNINS_AI_LZ_PS, FT_Props_UIUSNINS_AI_LZ_PS>();
+            await base.TestIndexesWithDeactivations<IFT_Grain_UIUSNINS_AI_LZ_PS, FT_Props_UIUSNINS_AI_LZ_PS>();
         }
 
         [Fact, TestCategory("BVT"), TestCategory("Indexing")]
         public async Task Test_NFT_Grain_UIUSNINS_AI_LZ_PS()
         {
-            await base.TestIndexesWithOneDeactivation<INFT_Grain_UIUSNINS_AI_LZ_PS, NFT_Props_UIUSNINS_AI_LZ_PS>();
+            await base.TestIndexesWithDeactivations<INFT_Grain_UIUSNINS_AI_LZ_PS, NFT_Props_UIUSNINS_AI_LZ_PS>();
         }
 
         [Fact, TestCategory("BVT"), TestCategory("Indexing")]
         public async Task Test_FT_Grain_UIUSNINS_AI_LZ_SB()
         {
-            await base.TestIndexesWithOneDeactivation<IFT_Grain_UIUSNINS_AI_LZ_SB, FT_Props_UIUSNINS_AI_LZ_SB>();
+            await base.TestIndexesWithDeactivations<IFT_Grain_UIUSNINS_AI_LZ_SB, FT_Props_UIUSNINS_AI_LZ_SB>();
         }
 
         [Fact, TestCategory("BVT"), TestCategory("Indexing")]
         public async Task Test_NFT_Grain_UIUSNINS_AI_LZ_SB()
         {
-            await base.TestIndexesWithOneDeactivation<INFT_Grain_UIUSNINS_AI_LZ_SB, NFT_Props_UIUSNINS_AI_LZ_SB>();
+            await base.TestIndexesWithDeactivations<INFT_Grain_UIUSNINS_AI_LZ_SB, NFT_Props_UIUSNINS_AI_LZ_SB>();
         }
     }
 }

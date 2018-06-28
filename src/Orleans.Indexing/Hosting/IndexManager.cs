@@ -59,6 +59,8 @@ namespace Orleans.Indexing
             }
         }
 
+        public IndexingOptions IndexingOptions => this.ServiceProvider.GetOptionsByName<IndexingOptions>(IndexingConstants.INDEXING_OPTIONS_NAME);
+
         /// <summary>
         /// This method is called at the begining of the process of uninitializing runtime services.
         /// </summary>

@@ -18,7 +18,7 @@ namespace Orleans.Indexing.Tests
             public void Configure(ISiloHostBuilder hostBuilder)
             {
                 BaseIndexingFixture.Configure(hostBuilder)
-                                   .UseIndexing(indexingOptions => indexingOptions.ConfigureWorkflow());
+                                   .UseIndexing(indexingOptions => ConfigureBasicOptions(indexingOptions));
             }
         }
 
@@ -27,8 +27,15 @@ namespace Orleans.Indexing.Tests
             public void Configure(IConfiguration configuration, IClientBuilder clientBuilder)
             {
                 BaseIndexingFixture.Configure(clientBuilder)
-                                   .UseIndexing(indexingOptions => indexingOptions.ConfigureWorkflow());
+                                   .UseIndexing(indexingOptions => ConfigureBasicOptions(indexingOptions));
             }
+        }
+
+        private static IndexingOptions ConfigureBasicOptions(IndexingOptions indexingOptions)
+        {
+            indexingOptions.MaxHashBuckets = 42;
+            indexingOptions.ConfigureWorkflow();
+            return indexingOptions; // allow chaining
         }
     }
 }
