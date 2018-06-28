@@ -2,9 +2,9 @@
 //  Prefix is:
 //      I - for interface
 //      FT or NFT - Fault Tolerant or Non FT for class impl
+//      IFT or INFT - Fault Tolerant or Non FT for class interface
 //  UI, US, NI, NS  - property abbrev
 //  AI, TI - active or total
-//  UQ, NU - Unique, NonUnique
 //  EG, LZ - eager or lazy
 //  PK, PS, SB - partition per key/silo or single bucket
 //

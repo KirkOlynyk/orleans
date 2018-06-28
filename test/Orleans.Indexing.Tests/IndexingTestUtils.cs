@@ -2,7 +2,6 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace Orleans.Indexing.Tests
 {
@@ -48,67 +47,67 @@ namespace Orleans.Indexing.Tests
 
         #region PlayerGrain
 
-        private static IOrleansQueryable<TIGrain, TIProperties> QueryActivePlayerGrains<TIGrain, TIProperties>(IndexingTestRunnerBase runner)
-            where TIGrain : IPlayerGrain, IIndexableGrain where TIProperties : IPlayerProperties
-            => runner.IndexFactory.GetActiveGrains<TIGrain, TIProperties>();
+        private static IOrleansQueryable<TIGrain, TProperties> QueryActivePlayerGrains<TIGrain, TProperties>(IndexingTestRunnerBase runner)
+            where TIGrain : IPlayerGrain, IIndexableGrain where TProperties : IPlayerProperties
+            => runner.IndexFactory.GetActiveGrains<TIGrain, TProperties>();
 
-        internal static Tuple<IOrleansQueryable<TIGrain, TIProperties>, Func<TIGrain, Task<string>>> QueryByLocation<TIGrain, TIProperties>(this IndexingTestRunnerBase runner, string queryValue)
-            where TIGrain : IPlayerGrain, IIndexableGrain where TIProperties : IPlayerProperties
-            => Tuple.Create<IOrleansQueryable<TIGrain, TIProperties>, Func<TIGrain, Task<string>>>(
-                            from item in QueryActivePlayerGrains<TIGrain, TIProperties>(runner) where item.Location == queryValue select item,
+        internal static Tuple<IOrleansQueryable<TIGrain, TProperties>, Func<TIGrain, Task<string>>> QueryByLocation<TIGrain, TProperties>(this IndexingTestRunnerBase runner, string queryValue)
+            where TIGrain : IPlayerGrain, IIndexableGrain where TProperties : IPlayerProperties
+            => Tuple.Create<IOrleansQueryable<TIGrain, TProperties>, Func<TIGrain, Task<string>>>(
+                            from item in QueryActivePlayerGrains<TIGrain, TProperties>(runner) where item.Location == queryValue select item,
                             entry => entry.GetLocation());
 
-        internal static Task<int> GetLocationCount<TIGrain, TIProperties>(this IndexingTestRunnerBase runner, string location, int delayInMilliseconds = 0)
-            where TIGrain : IPlayerGrain, IIndexableGrain where TIProperties : IPlayerProperties
-            => runner.CountItemsStreamingIn((r, v) => r.QueryByLocation<TIGrain, TIProperties>(v), nameof(IPlayerProperties.Location), location, delayInMilliseconds);
+        internal static Task<int> GetLocationCount<TIGrain, TProperties>(this IndexingTestRunnerBase runner, string location, int delayInMilliseconds = 0)
+            where TIGrain : IPlayerGrain, IIndexableGrain where TProperties : IPlayerProperties
+            => runner.CountItemsStreamingIn((r, v) => r.QueryByLocation<TIGrain, TProperties>(v), nameof(IPlayerProperties.Location), location, delayInMilliseconds);
 
         #endregion PlayerGrain
 
         #region TestIndexGrain
 
-        private static IOrleansQueryable<TIGrain, TIProperties> QueryActiveTestIndexGrains<TIGrain, TIProperties>(IndexingTestRunnerBase runner)
-            where TIGrain : ITestIndexGrain, IIndexableGrain where TIProperties : ITestIndexProperties
-            => runner.IndexFactory.GetActiveGrains<TIGrain, TIProperties>();
+        private static IOrleansQueryable<TIGrain, TProperties> QueryActiveTestIndexGrains<TIGrain, TProperties>(IndexingTestRunnerBase runner)
+            where TIGrain : ITestIndexGrain, IIndexableGrain where TProperties : ITestIndexProperties
+            => runner.IndexFactory.GetActiveGrains<TIGrain, TProperties>();
 
-        internal static Tuple<IOrleansQueryable<TIGrain, TIProperties>, Func<TIGrain, Task<int>>> QueryByUniqueInt<TIGrain, TIProperties>(this IndexingTestRunnerBase runner, int queryValue)
-            where TIGrain : ITestIndexGrain, IIndexableGrain where TIProperties : ITestIndexProperties
-            => Tuple.Create<IOrleansQueryable<TIGrain, TIProperties>, Func<TIGrain, Task<int>>>(
-                            from item in QueryActiveTestIndexGrains<TIGrain, TIProperties>(runner) where item.UniqueInt == queryValue select item,
+        internal static Tuple<IOrleansQueryable<TIGrain, TProperties>, Func<TIGrain, Task<int>>> QueryByUniqueInt<TIGrain, TProperties>(this IndexingTestRunnerBase runner, int queryValue)
+            where TIGrain : ITestIndexGrain, IIndexableGrain where TProperties : ITestIndexProperties
+            => Tuple.Create<IOrleansQueryable<TIGrain, TProperties>, Func<TIGrain, Task<int>>>(
+                            from item in QueryActiveTestIndexGrains<TIGrain, TProperties>(runner) where item.UniqueInt == queryValue select item,
                             entry => entry.GetUniqueInt());
 
-        internal static Tuple<IOrleansQueryable<TIGrain, TIProperties>, Func<TIGrain, Task<string>>> QueryByUniqueString<TIGrain, TIProperties>(this IndexingTestRunnerBase runner, string queryValue)
-            where TIGrain : ITestIndexGrain, IIndexableGrain where TIProperties : ITestIndexProperties
-            => Tuple.Create<IOrleansQueryable<TIGrain, TIProperties>, Func<TIGrain, Task<string>>>(
-                            from item in QueryActiveTestIndexGrains<TIGrain, TIProperties>(runner) where item.UniqueString == queryValue select item,
+        internal static Tuple<IOrleansQueryable<TIGrain, TProperties>, Func<TIGrain, Task<string>>> QueryByUniqueString<TIGrain, TProperties>(this IndexingTestRunnerBase runner, string queryValue)
+            where TIGrain : ITestIndexGrain, IIndexableGrain where TProperties : ITestIndexProperties
+            => Tuple.Create<IOrleansQueryable<TIGrain, TProperties>, Func<TIGrain, Task<string>>>(
+                            from item in QueryActiveTestIndexGrains<TIGrain, TProperties>(runner) where item.UniqueString == queryValue select item,
                             entry => entry.GetUniqueString());
 
-        internal static Tuple<IOrleansQueryable<TIGrain, TIProperties>, Func<TIGrain, Task<int>>> QueryByNonUniqueInt<TIGrain, TIProperties>(this IndexingTestRunnerBase runner, int queryValue)
-            where TIGrain : ITestIndexGrain, IIndexableGrain where TIProperties : ITestIndexProperties
-            => Tuple.Create<IOrleansQueryable<TIGrain, TIProperties>, Func<TIGrain, Task<int>>>(
-                            from item in QueryActiveTestIndexGrains<TIGrain, TIProperties>(runner) where item.NonUniqueInt == queryValue select item,
+        internal static Tuple<IOrleansQueryable<TIGrain, TProperties>, Func<TIGrain, Task<int>>> QueryByNonUniqueInt<TIGrain, TProperties>(this IndexingTestRunnerBase runner, int queryValue)
+            where TIGrain : ITestIndexGrain, IIndexableGrain where TProperties : ITestIndexProperties
+            => Tuple.Create<IOrleansQueryable<TIGrain, TProperties>, Func<TIGrain, Task<int>>>(
+                            from item in QueryActiveTestIndexGrains<TIGrain, TProperties>(runner) where item.NonUniqueInt == queryValue select item,
                             entry => entry.GetNonUniqueInt());
 
-        internal static Tuple<IOrleansQueryable<TIGrain, TIProperties>, Func<TIGrain, Task<string>>> QueryByNonUniqueString<TIGrain, TIProperties>(this IndexingTestRunnerBase runner, string queryValue)
-            where TIGrain : ITestIndexGrain, IIndexableGrain where TIProperties : ITestIndexProperties
-            => Tuple.Create<IOrleansQueryable<TIGrain, TIProperties>, Func<TIGrain, Task<string>>>(
-                            from item in QueryActiveTestIndexGrains<TIGrain, TIProperties>(runner) where item.NonUniqueString == queryValue select item,
+        internal static Tuple<IOrleansQueryable<TIGrain, TProperties>, Func<TIGrain, Task<string>>> QueryByNonUniqueString<TIGrain, TProperties>(this IndexingTestRunnerBase runner, string queryValue)
+            where TIGrain : ITestIndexGrain, IIndexableGrain where TProperties : ITestIndexProperties
+            => Tuple.Create<IOrleansQueryable<TIGrain, TProperties>, Func<TIGrain, Task<string>>>(
+                            from item in QueryActiveTestIndexGrains<TIGrain, TProperties>(runner) where item.NonUniqueString == queryValue select item,
                             entry => entry.GetNonUniqueString());
 
-        internal static Task<int> GetUniqueIntCount<TIGrain, TIProperties>(this IndexingTestRunnerBase runner, int uniqueValue, int delayInMilliseconds = 0)
-            where TIGrain : ITestIndexGrain, IIndexableGrain where TIProperties : ITestIndexProperties
-            => runner.CountItemsStreamingIn((r, v) => r.QueryByUniqueInt<TIGrain, TIProperties>(v), nameof(ITestIndexProperties.UniqueInt), uniqueValue, delayInMilliseconds);
+        internal static Task<int> GetUniqueIntCount<TIGrain, TProperties>(this IndexingTestRunnerBase runner, int uniqueValue, int delayInMilliseconds = 0)
+            where TIGrain : ITestIndexGrain, IIndexableGrain where TProperties : ITestIndexProperties
+            => runner.CountItemsStreamingIn((r, v) => r.QueryByUniqueInt<TIGrain, TProperties>(v), nameof(ITestIndexProperties.UniqueInt), uniqueValue, delayInMilliseconds);
 
-        internal static Task<int> GetUniqueStringCount<TIGrain, TIProperties>(this IndexingTestRunnerBase runner, string uniqueValue, int delayInMilliseconds = 0)
-            where TIGrain : ITestIndexGrain, IIndexableGrain where TIProperties : ITestIndexProperties
-            => runner.CountItemsStreamingIn((r, v) => r.QueryByUniqueString<TIGrain, TIProperties>(v), nameof(ITestIndexProperties.UniqueString), uniqueValue, delayInMilliseconds);
+        internal static Task<int> GetUniqueStringCount<TIGrain, TProperties>(this IndexingTestRunnerBase runner, string uniqueValue, int delayInMilliseconds = 0)
+            where TIGrain : ITestIndexGrain, IIndexableGrain where TProperties : ITestIndexProperties
+            => runner.CountItemsStreamingIn((r, v) => r.QueryByUniqueString<TIGrain, TProperties>(v), nameof(ITestIndexProperties.UniqueString), uniqueValue, delayInMilliseconds);
 
-        internal static Task<int> GetNonUniqueIntCount<TIGrain, TIProperties>(this IndexingTestRunnerBase runner, int nonUniqueValue, int delayInMilliseconds = 0)
-            where TIGrain : ITestIndexGrain, IIndexableGrain where TIProperties : ITestIndexProperties
-            => runner.CountItemsStreamingIn((r, v) => r.QueryByNonUniqueInt<TIGrain, TIProperties>(v), nameof(ITestIndexProperties.NonUniqueInt), nonUniqueValue, delayInMilliseconds);
+        internal static Task<int> GetNonUniqueIntCount<TIGrain, TProperties>(this IndexingTestRunnerBase runner, int nonUniqueValue, int delayInMilliseconds = 0)
+            where TIGrain : ITestIndexGrain, IIndexableGrain where TProperties : ITestIndexProperties
+            => runner.CountItemsStreamingIn((r, v) => r.QueryByNonUniqueInt<TIGrain, TProperties>(v), nameof(ITestIndexProperties.NonUniqueInt), nonUniqueValue, delayInMilliseconds);
 
-        internal static Task<int> GetNonUniqueStringCount<TIGrain, TIProperties>(this IndexingTestRunnerBase runner, string nonUniqueValue, int delayInMilliseconds = 0)
-            where TIGrain : ITestIndexGrain, IIndexableGrain where TIProperties : ITestIndexProperties
-            => runner.CountItemsStreamingIn((r, v) => r.QueryByNonUniqueString<TIGrain, TIProperties>(v), nameof(ITestIndexProperties.NonUniqueString), nonUniqueValue, delayInMilliseconds);
+        internal static Task<int> GetNonUniqueStringCount<TIGrain, TProperties>(this IndexingTestRunnerBase runner, string nonUniqueValue, int delayInMilliseconds = 0)
+            where TIGrain : ITestIndexGrain, IIndexableGrain where TProperties : ITestIndexProperties
+            => runner.CountItemsStreamingIn((r, v) => r.QueryByNonUniqueString<TIGrain, TProperties>(v), nameof(ITestIndexProperties.NonUniqueString), nonUniqueValue, delayInMilliseconds);
 
         #endregion TestIndexGrain
     }

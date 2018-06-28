@@ -168,12 +168,12 @@ namespace Orleans.Indexing
         {
             if (Interlocked.Exchange(ref _isHandlerWorkerIdle, 0) == 1)
             {
-                IndexWorkflowRecordNode punctuatedHead = AddPuctuationAt(BATCH_SIZE);
+                IndexWorkflowRecordNode punctuatedHead = AddPunctuationAt(BATCH_SIZE);
                 Handler.HandleWorkflowsUntilPunctuation(punctuatedHead.AsImmutable()).Ignore();
             }
         }
 
-        private IndexWorkflowRecordNode AddPuctuationAt(int batchSize)
+        private IndexWorkflowRecordNode AddPunctuationAt(int batchSize)
         {
             if (_workflowRecordsTail == null) throw new WorkflowIndexException("Adding a punctuation to an empty work-flow queue is not possible.");
 
@@ -203,7 +203,7 @@ namespace Orleans.Indexing
                 workflowRecords.Add(from.WorkflowRecord);
             }
 
-            IndexWorkflowRecordNode tmp = from.Next;
+            IndexWorkflowRecordNode tmp = from?.Next;
             while (tmp != null && !tmp.IsPunctuation())
             {
                 workflowRecords.Add(tmp.WorkflowRecord);
@@ -283,7 +283,7 @@ namespace Orleans.Indexing
             else
             {
                 _isHandlerWorkerIdle = 0;
-                return Task.FromResult(AddPuctuationAt(BATCH_SIZE).AsImmutable());
+                return Task.FromResult(AddPunctuationAt(BATCH_SIZE).AsImmutable());
             }
         }
 

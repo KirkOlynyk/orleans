@@ -64,8 +64,26 @@ namespace Orleans.Indexing.Tests
     }
 
     [TestCategory("BVT"), TestCategory("Indexing")]
-    public class MultipleUniqueAndNonUniqueTestsWf : MultipleUniqueAndNonUniqueRunner, IClassFixture<WorkflowIndexingFixture>
+    public class MultiIndex_AI_EG_Wf : MultiIndex_AI_EG, IClassFixture<WorkflowIndexingFixture>
     {
-        public MultipleUniqueAndNonUniqueTestsWf(WorkflowIndexingFixture fixture, ITestOutputHelper output) : base(fixture, output) { }
+        public MultiIndex_AI_EG_Wf(WorkflowIndexingFixture fixture, ITestOutputHelper output) : base(fixture, output) { }
+    }
+
+    [TestCategory("BVT"), TestCategory("Indexing")]
+    public class MultiIndex_AI_LZ_Wf : MultiIndex_AI_LZ, IClassFixture<WorkflowIndexingFixture>
+    {
+        public MultiIndex_AI_LZ_Wf(WorkflowIndexingFixture fixture, ITestOutputHelper output) : base(fixture, output) { }
+    }
+
+    [TestCategory("BVT"), TestCategory("Indexing")]
+    public class MultiIndex_TI_EG_Wf : MultiIndex_TI_EG, IClassFixture<WorkflowIndexingFixture>
+    {
+        public MultiIndex_TI_EG_Wf(WorkflowIndexingFixture fixture, ITestOutputHelper output) : base(fixture, output) { }
+    }
+
+    [TestCategory("BVT"), TestCategory("Indexing")]
+    public class MultiIndex_TI_LZ_Wf : MultiIndex_TI_LZ, IClassFixture<WorkflowIndexingFixture>
+    {
+        public MultiIndex_TI_LZ_Wf(WorkflowIndexingFixture fixture, ITestOutputHelper output) : base(fixture, output) { }
     }
 }

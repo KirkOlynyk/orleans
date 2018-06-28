@@ -175,12 +175,63 @@ namespace Orleans.Indexing
             if (grainIndexesAreEager.HasValue && grainIndexesAreEager.Value != isEager)
             {
                 throw new InvalidOperationException($"Some indexes on {IndexUtils.GetFullTypeName(userDefinedGrainImpl)} grain implementation class are defined as eager while others are lazy." +
-                                                    $" The index of type { IndexUtils.GetFullTypeName(indexType) } is defined to be updated {(isEager ? "eagerly" : "lazily")} on property { propInfo.Name}" +
+                                                    $" The index of type {IndexUtils.GetFullTypeName(indexType)} is defined to be updated {(isEager ? "eagerly" : "lazily")} on property { propInfo.Name}" +
                                                     $" of property class {IndexUtils.GetFullTypeName(propertiesArgType)} on {IndexUtils.GetFullTypeName(userDefinedIGrain)} grain interface," +
                                                     $" while previous indexs have been configured to be updated {(isEager ? "lazily" : "eagerly")}." +
                                                     $" You must fix this by configuring all indexes to be updated lazily or eagerly." +
                                                     $" Note: If you have at least one Total Index among your indexes, this must be lazy, and thus all other indexes must be lazy also.");
             }
+            if (!VerifyNullValue(propInfo, isUnique, out string convertErrMsg))
+            {
+                throw new InvalidOperationException($"The index of type {IndexUtils.GetFullTypeName(indexType)} on {IndexUtils.GetFullTypeName(userDefinedGrainImpl)} grain implementation class" +
+                                                    $" failed verification. " + convertErrMsg);
+            }
+        }
+
+        internal static bool VerifyNullValue(PropertyInfo propInfo, bool isUnique, out string errorMessage)
+        {
+            errorMessage = string.Empty;
+            var indexAttrs = propInfo.GetCustomAttributes<IndexAttribute>(inherit: false).Where(attr => !string.IsNullOrEmpty(attr.NullValue)).ToArray();
+
+            if (propInfo.PropertyType.IsNullable())
+            {
+                if (indexAttrs.Length > 0)
+                {
+                    errorMessage = $"Cannot specify a NullValue attribute for nullable property {propInfo.Name}";
+                    return false;
+                }
+                return true;
+            }
+
+            if (isUnique && indexAttrs.Length == 0)
+            {
+                errorMessage = $"Must specify a NullValue attribute for non-nullable property {propInfo.Name} that participates in a unique index";
+                return false;
+            }
+
+            string firstValue = null;
+            foreach (var attr in indexAttrs)
+            {
+                if (firstValue == null)
+                {
+                    firstValue = attr.NullValue;
+                }
+                else if (firstValue != attr.NullValue)
+                {
+                    errorMessage = $"Inconsistent NullValues attribute for property {propInfo.Name}: {firstValue} and {attr.NullValue}";
+                    return false;
+                }
+
+                try
+                {
+                    attr.NullValue.ConvertTo(propInfo.PropertyType);
+                } catch (Exception ex)
+                {
+                    errorMessage = $"Error parsing NullValue attribute for property {propInfo.Name}: {attr.NullValue}; {ex.Message}";
+                    return false;
+                }
+            }
+            return true;
         }
 
         public static bool IsSubclassOfRawGenericType(Type genericType, Type typeToCheck)

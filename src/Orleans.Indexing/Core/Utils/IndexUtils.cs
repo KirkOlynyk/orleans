@@ -93,7 +93,6 @@ namespace Orleans.Indexing
                 var nullValue = GetNullValue(propInfo);
                 if (nullValue != null)
                 {
-                    // TODO don't allow two of these with different values; check in loader; also check conversion there, and UniqueIndex must have a NullValue, and nullable types cannot
                     propInfo.SetValue(state, nullValue);
                 }
             }
@@ -112,7 +111,7 @@ namespace Orleans.Indexing
                 : indexAttr.NullValue.ConvertTo(propInfo.PropertyType);
         }
 
-        private static object ConvertTo(this string value, Type propertyType)
+        internal static object ConvertTo(this string value, Type propertyType)
         {
             return propertyType == typeof(DateTime)
                 ? DateTime.ParseExact(value, "o", CultureInfo.InvariantCulture)
