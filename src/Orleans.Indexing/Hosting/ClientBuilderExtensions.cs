@@ -29,7 +29,7 @@ namespace Orleans.Indexing
         /// </summary>
         private static IServiceCollection UseIndexing(this IServiceCollection services, Action<OptionsBuilder<IndexingOptions>> configureAction = null)
         {
-            configureAction?.Invoke(services.AddOptions<IndexingOptions>());
+            configureAction?.Invoke(services.AddOptions<IndexingOptions>(IndexingConstants.INDEXING_OPTIONS_NAME));
             services.AddSingleton<IndexFactory>()
                     .AddFromExisting<IIndexFactory, IndexFactory>();
             services.AddSingleton<IndexManager>()

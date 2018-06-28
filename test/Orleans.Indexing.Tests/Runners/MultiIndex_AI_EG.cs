@@ -127,19 +127,19 @@ namespace Orleans.Indexing.Tests
         [Fact, TestCategory("BVT"), TestCategory("Indexing")]
         public async Task Test_NFT_Grain_UIUSNINS_AI_EG_PK()
         {
-            await base.TestIndexesWithOneDeactivation<INFT_Grain_UIUSNINS_AI_EG_PK, NFT_Props_UIUSNINS_AI_EG_PK>();
+            await base.TestIndexesWithDeactivations<INFT_Grain_UIUSNINS_AI_EG_PK, NFT_Props_UIUSNINS_AI_EG_PK>();
         }
 
         [Fact, TestCategory("BVT"), TestCategory("Indexing")]
         public async Task Test_NFT_Grain_UIUSNINS_AI_EG_PS()
         {
-            await base.TestIndexesWithOneDeactivation<INFT_Grain_UIUSNINS_AI_EG_PS, NFT_Props_UIUSNINS_AI_EG_PS>();
+            await base.TestIndexesWithDeactivations<INFT_Grain_UIUSNINS_AI_EG_PS, NFT_Props_UIUSNINS_AI_EG_PS>();
         }
 
         [Fact, TestCategory("BVT"), TestCategory("Indexing")]
         public async Task Test_NFT_Grain_UIUSNINS_AI_EG_SB()
         {
-            await base.TestIndexesWithOneDeactivation<INFT_Grain_UIUSNINS_AI_EG_SB, NFT_Props_UIUSNINS_AI_EG_SB>();
+            await base.TestIndexesWithDeactivations<INFT_Grain_UIUSNINS_AI_EG_SB, NFT_Props_UIUSNINS_AI_EG_SB>();
         }
     }
 }

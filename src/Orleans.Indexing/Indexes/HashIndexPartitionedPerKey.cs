@@ -22,6 +22,7 @@ namespace Orleans.Indexing
 
         private readonly IndexManager indexManager;
         private readonly ILogger logger;
+        private int maxHashBuckets;
 
         public HashIndexPartitionedPerKey(IServiceProvider serviceProvider, string indexName, bool isUniqueIndex)
         {
@@ -29,6 +30,7 @@ namespace Orleans.Indexing
             //_isUnique = isUniqueIndex;
             this.indexManager = IndexManager.GetIndexManager(serviceProvider);
             this.logger = this.indexManager.LoggerFactory.CreateLoggerWithFullCategoryName<HashIndexPartitionedPerKey<K, V, BucketT>>();
+            this.maxHashBuckets = this.indexManager.IndexingOptions.MaxHashBuckets;
         }
 
         public async Task<bool> DirectApplyIndexUpdateBatch(Immutable<IDictionary<IIndexableGrain, IList<IMemberUpdate>>> iUpdates, bool isUnique, IndexMetaData idxMetaData, SiloAddress siloAddress = null)
@@ -47,8 +49,8 @@ namespace Orleans.Indexing
                     IndexOperationType opType = update.OperationType;
                     if (opType == IndexOperationType.Update)
                     {
-                        int befImgHash = update.GetBeforeImage().GetHashCode();
-                        int aftImgHash = update.GetAfterImage().GetHashCode();
+                        int befImgHash = GetBucketIndexFromHashCode(update.GetBeforeImage());
+                        int aftImgHash = GetBucketIndexFromHashCode(update.GetAfterImage());
 
                         if (befImgHash == aftImgHash)
                         {
@@ -62,12 +64,12 @@ namespace Orleans.Indexing
                     }
                     else if (opType == IndexOperationType.Insert)
                     {
-                        int aftImgHash = update.GetAfterImage().GetHashCode();
+                        int aftImgHash = GetBucketIndexFromHashCode(update.GetAfterImage());
                         AddUpdateToBucket(bucketUpdates, g, aftImgHash, update);
                     }
                     else if (opType == IndexOperationType.Delete)
                     {
-                        int befImgHash = update.GetBeforeImage().GetHashCode();
+                        int befImgHash = GetBucketIndexFromHashCode(update.GetBeforeImage());
                         AddUpdateToBucket(bucketUpdates, g, befImgHash, update);
                     }
                 }
@@ -124,8 +126,8 @@ namespace Orleans.Indexing
             IndexOperationType opType = update.OperationType;
             if (opType == IndexOperationType.Update)
             {
-                int befImgHash = update.GetBeforeImage().GetHashCode();
-                int aftImgHash = update.GetAfterImage().GetHashCode();
+                int befImgHash = GetBucketIndexFromHashCode(update.GetBeforeImage());
+                int aftImgHash = GetBucketIndexFromHashCode(update.GetAfterImage());
                 BucketT befImgBucket = GetGrain(IndexUtils.GetIndexGrainPrimaryKey(typeof(V), this._indexName) + "_" + befImgHash);
                 if (befImgHash == aftImgHash)
                 {
@@ -140,13 +142,13 @@ namespace Orleans.Indexing
             }
             else if (opType == IndexOperationType.Insert)
             {
-                int aftImgHash = update.GetAfterImage().GetHashCode();
+                int aftImgHash = GetBucketIndexFromHashCode(update.GetAfterImage());
                 BucketT aftImgBucket = GetGrain(IndexUtils.GetIndexGrainPrimaryKey(typeof(V), this._indexName) + "_" + aftImgHash);
                 return await aftImgBucket.DirectApplyIndexUpdate(g, iUpdate, isUniqueIndex, idxMetaData);
             }
             else if (opType == IndexOperationType.Delete)
             {
-                int befImgHash = update.GetBeforeImage().GetHashCode();
+                int befImgHash = GetBucketIndexFromHashCode(update.GetBeforeImage());
                 BucketT befImgBucket = GetGrain(IndexUtils.GetIndexGrainPrimaryKey(typeof(V), this._indexName) + "_" + befImgHash);
                 return await befImgBucket.DirectApplyIndexUpdate(g, iUpdate, isUniqueIndex, idxMetaData);
             }
@@ -157,7 +159,7 @@ namespace Orleans.Indexing
         {
             logger.Trace($"Streamed index lookup called for key = {key}");
 
-            BucketT targetBucket = GetGrain(IndexUtils.GetIndexGrainPrimaryKey(typeof(V), this._indexName) + "_" + key.GetHashCode());
+            BucketT targetBucket = GetGrain(IndexUtils.GetIndexGrainPrimaryKey(typeof(V), this._indexName) + "_" + GetBucketIndexFromHashCode(key));
             return targetBucket.Lookup(result, key);
         }
 
@@ -180,13 +182,16 @@ namespace Orleans.Indexing
 
         public Task<bool> IsAvailable() => Task.FromResult(true);
 
+        private int GetBucketIndexFromHashCode<T>(T img) 
+            => this.maxHashBuckets > 0 ? img.GetHashCode() % this.maxHashBuckets : img.GetHashCode();
+
         Task IIndexInterface.Lookup(IOrleansQueryResultStream<IIndexableGrain> result, object key) => Lookup(result.Cast<V>(), (K)key);
 
         public Task<IOrleansQueryResult<V>> Lookup(K key)
         {
             logger.Trace($"Eager index lookup called for key = {key}");
 
-            BucketT targetBucket = GetGrain(IndexUtils.GetIndexGrainPrimaryKey(typeof(V), this._indexName) + "_" + key.GetHashCode());
+            BucketT targetBucket = GetGrain(IndexUtils.GetIndexGrainPrimaryKey(typeof(V), this._indexName) + "_" + GetBucketIndexFromHashCode(key));
             return targetBucket.Lookup(key);
         }
 

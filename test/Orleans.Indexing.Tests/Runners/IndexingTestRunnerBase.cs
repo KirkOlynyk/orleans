@@ -57,9 +57,17 @@ namespace Orleans.Indexing.Tests
         protected async Task<IIndexInterface<TKey, TValue>[]> GetAndWaitForIndexes<TKey, TValue>(params string[] indexNames) where TValue : IIndexableGrain
         {
             var indexes = indexNames.Select(name => this.IndexFactory.GetIndex<TKey, TValue>(name)).ToArray();
+
+            const int MaxRetries = 100;
+            int retries = 0;
             foreach (var index in indexes)
             {
-                if (!await index.IsAvailable()) await Task.Delay(50);
+                while (!await index.IsAvailable())
+                {
+                    ++retries;
+                    Assert.True(retries < MaxRetries, "Maximum number of GetAndWaitForIndexes retries was exceeded");
+                    await Task.Delay(50);
+                }
             }
             return indexes;
         }
@@ -74,7 +82,7 @@ namespace Orleans.Indexing.Tests
             return p1;
         }
 
-        protected async Task TestIndexesWithOneDeactivation<TIGrain, TProperties>()
+        protected async Task TestIndexesWithDeactivations<TIGrain, TProperties>()
             where TIGrain : ITestIndexGrain, IIndexableGrain where TProperties : ITestIndexProperties
         {
             using (var tw = new TestConsoleOutputWriter(this.Output, "start test"))
@@ -83,6 +91,8 @@ namespace Orleans.Indexing.Tests
                     => this.CreateGrain<TIGrain>(uInt, uString, nuInt, nuString);
                 var p1 = await makeGrain(1, "one", 1000, "1k");
                 var p11 = await makeGrain(11, "eleven", 1000, "1k");
+                var p111 = await makeGrain(111, "oneeleven", 1000, "1k");
+                var p1111 = await makeGrain(1111, "eleveneleven", 1000, "1k");
                 var p2 = await makeGrain(2, "two", 2000, "2k");
                 var p3 = await makeGrain(3, "three", 3000, "3k");
 
@@ -91,8 +101,8 @@ namespace Orleans.Indexing.Tests
                 bool isNuIntTotalIndex = typeof(ITotalIndex).IsAssignableFrom(nuIntIndex.GetType());
                 var stringIndexes = await this.GetAndWaitForIndexes<string, TIGrain>(ITC.UniqueStringIndex, ITC.NonUniqueStringIndex);
 
-                await Task.Delay(ITC.DelayUntilIndexesAreUpdatedLazily);
-
+                Assert.Equal(1, await this.GetUniqueStringCount<TIGrain, TProperties>("one"));
+                Assert.Equal(1, await this.GetUniqueStringCount<TIGrain, TProperties>("eleven"));
                 Assert.Equal(1, await this.GetUniqueIntCount<TIGrain, TProperties>(2));
                 Assert.Equal(1, await this.GetUniqueIntCount<TIGrain, TProperties>(3));
                 Assert.Equal(1, await this.GetUniqueStringCount<TIGrain, TProperties>("two"));
@@ -111,20 +121,28 @@ namespace Orleans.Indexing.Tests
                 }
 
                 Console.WriteLine("*** First Verify ***");
-                await verifyCount(1, 1, 2);
+                await verifyCount(1, 1, 4);
 
-                Console.WriteLine("*** Deactivate ***");
-                await p11.Deactivate(ITC.DelayUntilIndexesAreUpdatedLazily);
-                var numGone = isNuIntTotalIndex ? 0 : 1;
+                Console.WriteLine("*** First Deactivate ***");
+                await p11.Deactivate();
+                await Task.Delay(ITC.DelayUntilIndexesAreUpdatedLazily);
 
                 Console.WriteLine("*** Second Verify ***");
-                await verifyCount(1, 1 - numGone, 2 - numGone);
+                await verifyCount(1, isNuIntTotalIndex ? 1 : 0, isNuIntTotalIndex ? 4 : 3);
+
+                Console.WriteLine("*** Second and Third Deactivate ***");
+                await p111.Deactivate();
+                await p1111.Deactivate();
+                await Task.Delay(ITC.DelayUntilIndexesAreUpdatedLazily);
+
+                Console.WriteLine("*** Third Verify ***");
+                await verifyCount(1, isNuIntTotalIndex ? 1 : 0, isNuIntTotalIndex ? 4 : 1);
 
                 Console.WriteLine("*** GetGrain ***");
                 p11 = this.GetGrain<TIGrain>(p11.GetPrimaryKeyLong());
                 Assert.Equal(1000, await p11.GetNonUniqueInt());
-                Console.WriteLine("*** Third Verify ***");
-                await verifyCount(1, 1, 2);
+                Console.WriteLine("*** Fourth Verify ***");
+                await verifyCount(1, 1, isNuIntTotalIndex ? 4 : 2);
             }
         }
 

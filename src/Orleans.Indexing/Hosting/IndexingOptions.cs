@@ -6,7 +6,10 @@ namespace Orleans.Indexing
     {
         public IndexingOptions()
         {
+            this.MaxHashBuckets = -1;
         }
+
+        public int MaxHashBuckets { get; set; }
 
         public void ConfigureWorkflow()
         {
