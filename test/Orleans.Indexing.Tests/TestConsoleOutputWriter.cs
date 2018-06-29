@@ -8,7 +8,7 @@ namespace Orleans.Indexing.Tests
     /// <summary>
     /// Workaround for Console.Write(Line) in Xunit tests
     /// </summary>
-    // Requires app.config with the following entry:
+    // Requires app.config with the following entry for passing tests to output the strings (failing tests will always do so):
     //   <configuration>
     //     <appSettings>
     //       <add key = "xunit.diagnosticMessages" value="true"/>

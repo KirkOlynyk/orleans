@@ -134,9 +134,11 @@ namespace Orleans.Indexing
             var result = new Dictionary<IIndexableGrain, HashSet<Guid>>();
             var grains = new List<IIndexableGrain>();
             var activeWorkflowsSetsTasks = new List<Task<Immutable<HashSet<Guid>>>>();
+            var workflowIds = new HashSet<Guid>();
 
             while (!currentWorkflow.IsPunctuation())
             {
+                workflowIds.Add(currentWorkflow.WorkflowRecord.WorkflowId);
                 IIndexableGrain g = currentWorkflow.WorkflowRecord.Grain;
                 foreach (var updates in currentWorkflow.WorkflowRecord.MemberUpdates)
                 {
@@ -156,7 +158,8 @@ namespace Orleans.Indexing
                 Immutable<HashSet<Guid>>[] activeWorkflowsSets = await Task.WhenAll(activeWorkflowsSetsTasks);
                 for (int i = 0; i < activeWorkflowsSets.Length; ++i)
                 {
-                    result[grains[i]] = activeWorkflowsSets[i].Value;
+                    // Do not include workflowIds that are not in our work queue.
+                    result[grains[i]] = new HashSet<Guid>(activeWorkflowsSets[i].Value.Intersect(workflowIds));
                 }
             }
 
