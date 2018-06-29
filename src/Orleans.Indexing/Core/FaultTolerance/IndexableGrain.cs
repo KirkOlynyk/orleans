@@ -239,19 +239,19 @@ namespace Orleans.Indexing
 
         public override Task<Immutable<HashSet<Guid>>> GetActiveWorkflowIdsList()
         {
-            var workflows = base.State.ActiveWorkflowsSet;
+            var workflowIds = base.State.ActiveWorkflowsSet;
 
             // Immutable does not prevent items from being added to the hashset; there was a race condition where
             // IndexableGrain.ApplyIndexUpdates adds to the list after IndexWorkflowQueueHandlerBase.HandleWorkflowsUntilPunctuation
             // obtains grainsToActiveWorkflows and thus IndexWorkflowQueueHandlerBase.RemoveFromActiveWorkflowsInGrainsTasks
             // removes the added workflowId, which means that workflowId is not processed. Therefore deep-copy workflows.
-            var result = (workflows == null) ? new HashSet<Guid>() : new HashSet<Guid>(workflows);
+            var result = (workflowIds == null) ? new HashSet<Guid>() : new HashSet<Guid>(workflowIds);
             return Task.FromResult(result.AsImmutable());
         }
 
-        public override Task RemoveFromActiveWorkflowIds(HashSet<Guid> removedWorkflowId)
+        public override Task RemoveFromActiveWorkflowIds(HashSet<Guid> removedWorkflowIds)
         {
-            if (base.State.ActiveWorkflowsSet != null && base.State.ActiveWorkflowsSet.RemoveWhere(g => removedWorkflowId.Contains(g)) > 0)
+            if (base.State.ActiveWorkflowsSet != null && base.State.ActiveWorkflowsSet.RemoveWhere(g => removedWorkflowIds.Contains(g)) > 0)
             {
                 // TODO: decide whether we need to actually write the state back to the storage or we can leave it for the next WriteStateAsync
                 // on the grain itself.
