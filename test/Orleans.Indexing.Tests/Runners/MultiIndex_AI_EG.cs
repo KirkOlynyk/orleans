@@ -141,5 +141,15 @@ namespace Orleans.Indexing.Tests
         {
             await base.TestIndexesWithDeactivations<INFT_Grain_UIUSNINS_AI_EG_SB, NFT_Props_UIUSNINS_AI_EG_SB>();
         }
+
+        internal static Func<IndexingTestRunnerBase, int, Task>[] GetAllTestTasks()
+        {
+            return new Func<IndexingTestRunnerBase, int, Task>[]
+            {
+                (baseRunner, intAdjust) => baseRunner.TestIndexesWithDeactivations<INFT_Grain_UIUSNINS_AI_EG_PK, NFT_Props_UIUSNINS_AI_EG_PK>(intAdjust),
+                (baseRunner, intAdjust) => baseRunner.TestIndexesWithDeactivations<INFT_Grain_UIUSNINS_AI_EG_PS, NFT_Props_UIUSNINS_AI_EG_PS>(intAdjust),
+                (baseRunner, intAdjust) => baseRunner.TestIndexesWithDeactivations<INFT_Grain_UIUSNINS_AI_EG_SB, NFT_Props_UIUSNINS_AI_EG_SB>(intAdjust)
+            };
+        }
     }
 }
