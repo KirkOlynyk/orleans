@@ -16,5 +16,12 @@ namespace Orleans.Indexing.Tests
         }
 
         // None; Total Index cannot be Eager.
+
+        internal static Func<IndexingTestRunnerBase, int, Task>[] GetAllTestTasks()
+        {
+            return new Func<IndexingTestRunnerBase, int, Task>[]
+            {
+            };
+        }
     }
 }

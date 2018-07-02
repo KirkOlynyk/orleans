@@ -86,4 +86,10 @@ namespace Orleans.Indexing.Tests
     {
         public MultiIndex_TI_LZ_Wf(WorkflowIndexingFixture fixture, ITestOutputHelper output) : base(fixture, output) { }
     }
+
+    [TestCategory("BVT"), TestCategory("Indexing")]
+    public class MultiIndex_All_Wf : MultiIndex_All, IClassFixture<WorkflowIndexingFixture>
+    {
+        public MultiIndex_All_Wf(WorkflowIndexingFixture fixture, ITestOutputHelper output) : base(fixture, output) { }
+    }
 }

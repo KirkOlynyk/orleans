@@ -82,42 +82,62 @@ namespace Orleans.Indexing.Tests
             return p1;
         }
 
-        protected async Task TestIndexesWithDeactivations<TIGrain, TProperties>()
+        internal async Task TestIndexesWithDeactivations<TIGrain, TProperties>(int intAdjust = 0)
             where TIGrain : ITestIndexGrain, IIndexableGrain where TProperties : ITestIndexProperties
         {
-            using (var tw = new TestConsoleOutputWriter(this.Output, "start test"))
+            using (var tw = new TestConsoleOutputWriter(this.Output, $"start test: TIGrain = {nameof(TIGrain)}, TProperties = {nameof(TProperties)}"))
             {
+                // Use intAdjust to test that different values for the same grain type are handled correctly; see MultiIndex_All.
+                var adj1 = intAdjust + 1;
+                var adj11 = intAdjust + 11;
+                var adj111 = intAdjust + 111;
+                var adj1111 = intAdjust + 1111;
+                var adj2 = intAdjust + 2;
+                var adj3 = intAdjust + 3;
+                var adj1000 = intAdjust + 1000;
+                var adj2000 = intAdjust + 2000;
+                var adj3000 = intAdjust + 3000;
+                var adjOne = "one" + intAdjust;
+                var adjEleven = "eleven" + intAdjust;
+                var adjOneEleven = "oneeleven" + intAdjust;
+                var adjElevenEleven = "eleveneleven" + intAdjust;
+                var adjTwo = "two" + intAdjust;
+                var adjThree = "three" + intAdjust;
+                var adj1k = "1k" + intAdjust;
+                var adj2k = "2k" + intAdjust;
+                var adj3k = "3k" + intAdjust;
+
                 Task<TIGrain> makeGrain(int uInt, string uString, int nuInt, string nuString)
                     => this.CreateGrain<TIGrain>(uInt, uString, nuInt, nuString);
-                var p1 = await makeGrain(1, "one", 1000, "1k");
-                var p11 = await makeGrain(11, "eleven", 1000, "1k");
-                var p111 = await makeGrain(111, "oneeleven", 1000, "1k");
-                var p1111 = await makeGrain(1111, "eleveneleven", 1000, "1k");
-                var p2 = await makeGrain(2, "two", 2000, "2k");
-                var p3 = await makeGrain(3, "three", 3000, "3k");
+                var p1 = await makeGrain(adj1, adjOne, adj1000, adj1k);
+                var p11 = await makeGrain(adj11, adjEleven, adj1000, adj1k);
+                var p111 = await makeGrain(adj111, adjOneEleven, adj1000, adj1k);
+                var p1111 = await makeGrain(adj1111, adjElevenEleven, adj1000, adj1k);
+                var p2 = await makeGrain(adj2, adjTwo, adj2000, adj2k);
+                var p3 = await makeGrain(adj3, adjThree, adj3000, adj3k);
 
                 var intIndexes = await this.GetAndWaitForIndexes<int, TIGrain>(ITC.UniqueIntIndex, ITC.NonUniqueIntIndex);
                 var nuIntIndex = intIndexes[1];
                 bool isNuIntTotalIndex = typeof(ITotalIndex).IsAssignableFrom(nuIntIndex.GetType());
                 var stringIndexes = await this.GetAndWaitForIndexes<string, TIGrain>(ITC.UniqueStringIndex, ITC.NonUniqueStringIndex);
 
-                Assert.Equal(1, await this.GetUniqueStringCount<TIGrain, TProperties>("one"));
-                Assert.Equal(1, await this.GetUniqueStringCount<TIGrain, TProperties>("eleven"));
-                Assert.Equal(1, await this.GetUniqueIntCount<TIGrain, TProperties>(2));
-                Assert.Equal(1, await this.GetUniqueIntCount<TIGrain, TProperties>(3));
-                Assert.Equal(1, await this.GetUniqueStringCount<TIGrain, TProperties>("two"));
-                Assert.Equal(1, await this.GetUniqueStringCount<TIGrain, TProperties>("three"));
-                Assert.Equal(1, await this.GetNonUniqueIntCount<TIGrain, TProperties>(2000));
-                Assert.Equal(1, await this.GetNonUniqueIntCount<TIGrain, TProperties>(3000));
-                Assert.Equal(1, await this.GetNonUniqueStringCount<TIGrain, TProperties>("2k"));
-                Assert.Equal(1, await this.GetNonUniqueStringCount<TIGrain, TProperties>("3k"));
+                Assert.Equal(1, await this.GetUniqueStringCount<TIGrain, TProperties>(adjOne));
+                Assert.Equal(1, await this.GetUniqueStringCount<TIGrain, TProperties>(adjEleven));
+                Assert.Equal(1, await this.GetUniqueIntCount<TIGrain, TProperties>(adj2));
+                Assert.Equal(1, await this.GetUniqueIntCount<TIGrain, TProperties>(adj3));
+                Assert.Equal(1, await this.GetUniqueStringCount<TIGrain, TProperties>(adjTwo));
+                Assert.Equal(1, await this.GetUniqueStringCount<TIGrain, TProperties>(adjThree));
+                Assert.Equal(1, await this.GetNonUniqueIntCount<TIGrain, TProperties>(adj2000));
+                Assert.Equal(1, await this.GetNonUniqueIntCount<TIGrain, TProperties>(adj3000));
+                Assert.Equal(1, await this.GetNonUniqueStringCount<TIGrain, TProperties>(adj2k));
+                Assert.Equal(1, await this.GetNonUniqueStringCount<TIGrain, TProperties>(adj3k));
 
                 async Task verifyCount(int expected1, int expected11, int expected1000)
                 {
-                    Assert.Equal(expected1, await this.GetUniqueIntCount<TIGrain, TProperties>(1));
-                    Assert.Equal(expected11, await this.GetUniqueIntCount<TIGrain, TProperties>(11));
-                    Assert.Equal(expected1000, await this.GetNonUniqueIntCount<TIGrain, TProperties>(1000));
-                    Assert.Equal(expected1000, await this.GetNonUniqueStringCount<TIGrain, TProperties>("1k"));
+                    Assert.Equal(expected1, await this.GetUniqueIntCount<TIGrain, TProperties>(adj1));
+                    Assert.Equal(expected11, await this.GetUniqueIntCount<TIGrain, TProperties>(adj11));
+                    Assert.Equal(expected1000, await this.GetNonUniqueIntCount<TIGrain, TProperties>(adj1000));
+                    Assert.Equal(expected1000, await this.GetNonUniqueStringCount<TIGrain, TProperties>(adj1k));
                 }
 
                 Console.WriteLine("*** First Verify ***");
@@ -140,7 +160,7 @@ namespace Orleans.Indexing.Tests
 
                 Console.WriteLine("*** GetGrain ***");
                 p11 = this.GetGrain<TIGrain>(p11.GetPrimaryKeyLong());
-                Assert.Equal(1000, await p11.GetNonUniqueInt());
+                Assert.Equal(adj1000, await p11.GetNonUniqueInt());
                 Console.WriteLine("*** Fourth Verify ***");
                 await verifyCount(1, 1, isNuIntTotalIndex ? 4 : 2);
             }
