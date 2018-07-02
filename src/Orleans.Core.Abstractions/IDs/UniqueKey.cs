@@ -54,11 +54,6 @@ namespace Orleans.Runtime
             get { return IdCategory == Category.SystemTarget || IdCategory == Category.KeyExtSystemTarget; }
         }
 
-        public bool IsSystemGrainKey
-        {
-            get { return IdCategory == Category.SystemGrain; }
-        }
-
         public bool HasKeyExt
         {
             get {

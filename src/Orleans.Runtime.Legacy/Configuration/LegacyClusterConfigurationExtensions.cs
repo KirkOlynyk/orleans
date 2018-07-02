@@ -116,8 +116,10 @@ namespace Orleans.Hosting
 
             services.TryAddFromExisting<IMessagingConfiguration, GlobalConfiguration>();
 
-            services.AddOptions<SiloStatisticsOptions>()
-                .Configure<NodeConfiguration>((options, nodeConfig) => LegacyConfigurationExtensions.CopyStatisticsOptions(nodeConfig, options))
+            services.AddOptions<StatisticsOptions>()
+                .Configure<NodeConfiguration>((options, nodeConfig) => LegacyConfigurationExtensions.CopyStatisticsOptions(nodeConfig, options));
+
+            services.AddOptions<DeploymentLoadPublisherOptions>()
                 .Configure<GlobalConfiguration>((options, config) =>
                 {
                     options.DeploymentLoadPublisherRefreshTime = config.DeploymentLoadPublisherRefreshTime;
@@ -199,7 +201,6 @@ namespace Orleans.Hosting
                     options.EnableWorkerThreadInjection = nodeConfig.EnableWorkerThreadInjection;
                     LimitValue itemLimit = nodeConfig.LimitManager.GetLimit(LimitNames.LIMIT_MAX_PENDING_ITEMS);
                     options.MaxPendingWorkItemsSoftLimit = itemLimit.SoftLimitThreshold;
-                    options.MaxPendingWorkItemsHardLimit = itemLimit.HardLimitThreshold;
                 });
 
             services.AddOptions<GrainCollectionOptions>().Configure<GlobalConfiguration>((options, config) =>

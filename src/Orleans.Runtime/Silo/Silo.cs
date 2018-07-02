@@ -128,9 +128,6 @@ namespace Orleans.Runtime
 
             var startTime = DateTime.UtcNow;
 
-            IOptions<SiloStatisticsOptions> statisticsOptions = services.GetRequiredService<IOptions<SiloStatisticsOptions>>();
-            StatisticsCollector.Initialize(statisticsOptions.Value.CollectionLevel);
-
             IOptions<ClusterMembershipOptions> clusterMembershipOptions = services.GetRequiredService<IOptions<ClusterMembershipOptions>>();
             initTimeout = clusterMembershipOptions.Value.MaxJoinAttemptTime;
             if (Debugger.IsAttached)
@@ -320,13 +317,6 @@ namespace Orleans.Runtime
                 RegisterSystemTarget((SystemTarget)multiClusterOracle);
             }
             
-            var transactionAgent = this.Services.GetRequiredService<ITransactionAgent>() as SystemTarget;
-            if (transactionAgent != null)
-            {
-                logger.Debug("Creating {0} System Target", "TransactionAgent");
-                RegisterSystemTarget(transactionAgent);
-            }
-
             logger.Debug("Finished creating System Targets for this silo.");
         }
 
@@ -420,9 +410,6 @@ namespace Orleans.Runtime
 
             StartTaskWithPerfAnalysis("Start local grain directory", LocalGrainDirectory.Start,stopWatch);
 
-            // Set up an execution context for this thread so that the target creation steps can use asynch values.
-            RuntimeContext.InitializeMainThread();
-
             StartTaskWithPerfAnalysis("Init implicit stream subscribe table", InitImplicitStreamSubscribeTable, stopWatch);
             void InitImplicitStreamSubscribeTable()
             {             
@@ -449,15 +436,6 @@ namespace Orleans.Runtime
         private async Task OnRuntimeGrainServicesStart(CancellationToken ct)
         {
             var stopWatch = Stopwatch.StartNew();
-
-            await StartAsyncTaskWithPerfAnalysis("Init transaction agent", InitTransactionAgent, stopWatch);
-            async Task InitTransactionAgent()
-            {
-                ITransactionAgent transactionAgent = this.Services.GetRequiredService<ITransactionAgent>();
-                ISchedulingContext transactionAgentContext = (transactionAgent as SystemTarget)?.SchedulingContext;
-                await scheduler.QueueTask(transactionAgent.Start, transactionAgentContext)
-                    .WithTimeout(initTimeout, $"Starting TransactionAgent failed due to timeout {initTimeout}");
-            }
 
             // Load and init grain services before silo becomes active.
             await StartAsyncTaskWithPerfAnalysis("Init grain services",
@@ -499,7 +477,7 @@ namespace Orleans.Runtime
 
             try
             {
-                SiloStatisticsOptions statisticsOptions = Services.GetRequiredService<IOptions<SiloStatisticsOptions>>().Value;
+                StatisticsOptions statisticsOptions = Services.GetRequiredService<IOptions<StatisticsOptions>>().Value;
                 StartTaskWithPerfAnalysis("Start silo statistics", () => this.siloStatistics.Start(statisticsOptions), stopWatch);
                 logger.Debug("Silo statistics manager started successfully.");
 

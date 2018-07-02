@@ -248,11 +248,11 @@ namespace Orleans.Runtime
                 case UniqueKey.Category.GeoClient:
                     fullString = $"*gcl/{Key.KeyExt}/{idString}";
                     break;
-                case UniqueKey.Category.SystemGrain:
-                    fullString = $"*sgn/{Key.PrimaryKeyToGuid()}/{idString}";
-                    break;
                 case UniqueKey.Category.SystemTarget:
                     fullString = $"*stg/{Key.N1}/{idString}";
+                    break;
+                case UniqueKey.Category.SystemGrain:
+                    fullString = $"*sgn/{Key.PrimaryKeyToGuid()}/{idString}";
                     break;
                 default:
                     fullString = "???/" + idString;

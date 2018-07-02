@@ -199,10 +199,11 @@ namespace Orleans.Runtime
             State = ActivationState.Create;
             PlacedUsing = placedUsing;
             RegistrationStrategy = registrationStrategy;
-            if (!Grain.IsSystemTarget && !Constants.IsSystemGrain(Grain))
+            if (!Grain.IsSystemTarget)
             {
                 this.collector = collector;
             }
+
             CollectionAgeLimit = ageLimit;
 
             GrainReference = GrainReference.FromGrainId(addr.Grain, runtimeClient.GrainReferenceRuntime, genericArguments, Grain.IsSystemTarget ? addr.Silo : null);
@@ -264,8 +265,6 @@ namespace Orleans.Runtime
         }
 
         #endregion
-
-        public HashSet<ActivationId> RunningRequestsSenders { get; } = new HashSet<ActivationId>();
 
         public ISchedulingContext SchedulingContext { get; }
 
@@ -477,13 +476,6 @@ namespace Orleans.Runtime
             // Note: This method is always called while holding lock on this activation, so no need for additional locks here
 
             numRunning++;
-            if (message.Direction != Message.Directions.OneWay 
-                && message.SendingActivation != null
-                && !message.SendingGrain?.IsClient == true)
-            {
-                RunningRequestsSenders.Add(message.SendingActivation);
-            }
-
             if (Running != null) return;
 
             // This logic only works for non-reentrant activations
@@ -496,7 +488,6 @@ namespace Orleans.Runtime
         {
             // Note: This method is always called while holding lock on this activation, so no need for additional locks here
             numRunning--;
-            RunningRequestsSenders.Remove(message.SendingActivation);
             if (numRunning == 0)
             {
                 becameIdle = DateTime.UtcNow;

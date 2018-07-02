@@ -1,7 +1,5 @@
 ﻿
-using System;
 using System.Collections.Generic;
-using System.Linq;
 using Orleans.Runtime;
 
 namespace Orleans.Transactions
@@ -64,19 +62,5 @@ namespace Orleans.Transactions
         {
             return (Dictionary<string, object>)RequestContext.Get(Orleans_TransactionContext_Key);
         }
-
-        public static string ToShortString(this ITransactionalResource resource)
-        {
-            // Meant to help humans when debugging or reading traces
-            return resource.GetHashCode().ToString("x4").Substring(0,4);
-        }
-
-        public static string ToShortString(this ITransactionParticipant participant)
-        {
-            // Meant to help humans when debugging or reading traces
-            return participant.GetHashCode().ToString("x4").Substring(0, 4);
-        }
-
     }
-
 }
