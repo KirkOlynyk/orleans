@@ -169,14 +169,10 @@ namespace Orleans.Runtime
             return grainIdInternCache.FindOrCreate(key, k => new GrainId(k));
         }
 
-        #region IEquatable<GrainId> Members
-
         public bool Equals(GrainId other)
         {
             return other != null && Key.Equals(other.Key);
         }
-
-        #endregion
 
         public override bool Equals(UniqueIdentifier obj)
         {
@@ -248,11 +244,11 @@ namespace Orleans.Runtime
                 case UniqueKey.Category.GeoClient:
                     fullString = $"*gcl/{Key.KeyExt}/{idString}";
                     break;
-                case UniqueKey.Category.SystemGrain:
-                    fullString = $"*sgn/{Key.PrimaryKeyToGuid()}/{idString}";
-                    break;
                 case UniqueKey.Category.SystemTarget:
                     fullString = $"*stg/{Key.N1}/{idString}";
+                    break;
+                case UniqueKey.Category.SystemGrain:
+                    fullString = $"*sgn/{Key.PrimaryKeyToGuid()}/{idString}";
                     break;
                 default:
                     fullString = "???/" + idString;

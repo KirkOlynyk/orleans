@@ -16,6 +16,7 @@ namespace Orleans.Runtime.Messaging
         private readonly ILogger log;
         private Action<Message> rerouteHandler;
         internal Func<Message, bool> ShouldDrop;
+        private IHostedClient hostedClient;
 
         // ReSharper disable NotAccessedField.Local
         private IntValueStatistic sendQueueLengthCounter;
@@ -32,12 +33,16 @@ namespace Orleans.Runtime.Messaging
         private readonly Action<Message>[] localMessageHandlers;
 
         internal bool IsBlockingApplicationMessages { get; private set; }
-        
-        public bool IsProxying { get { return Gateway != null; } }
+
+        public void SetHostedClient(IHostedClient client) => this.hostedClient = client;
+
+        public bool IsProxying => this.Gateway != null || this.hostedClient?.ClientId != null;
 
         public bool TryDeliverToProxy(Message msg)
         {
-            return msg.TargetGrain.IsClient && Gateway != null && Gateway.TryDeliverToProxy(msg);
+            if (!msg.TargetGrain.IsClient) return false;
+            if (this.Gateway != null && this.Gateway.TryDeliverToProxy(msg)) return true;
+            return this.hostedClient?.TryDispatchToClient(msg) ?? false;
         }
         
         // This is determined by the IMA but needed by the OMS, and so is kept here in the message center itself.
@@ -52,7 +57,8 @@ namespace Orleans.Runtime.Messaging
             MessageFactory messageFactory,
             Factory<MessageCenter, Gateway> gatewayFactory,
             ExecutorService executorService,
-            ILoggerFactory loggerFactory)
+            ILoggerFactory loggerFactory,
+            IOptions<StatisticsOptions> statisticsOptions)
         {
             this.loggerFactory = loggerFactory;
             this.log = loggerFactory.CreateLogger<MessageCenter>();
@@ -60,7 +66,7 @@ namespace Orleans.Runtime.Messaging
             this.messageFactory = messageFactory;
             this.executorService = executorService;
             this.MyAddress = siloDetails.SiloAddress;
-            this.Initialize(endpointOptions, messagingOptions, networkingOptions);
+            this.Initialize(endpointOptions, messagingOptions, networkingOptions, statisticsOptions);
             if (siloDetails.GatewayAddress != null)
             {
                 Gateway = gatewayFactory(this);
@@ -69,16 +75,25 @@ namespace Orleans.Runtime.Messaging
             localMessageHandlers = new Action<Message>[Enum.GetValues(typeof(Message.Categories)).Length];
         }
 
-        private void Initialize(IOptions<EndpointOptions> endpointOptions, IOptions<SiloMessagingOptions> messagingOptions, IOptions<NetworkingOptions> networkingOptions)
+        private void Initialize(IOptions<EndpointOptions> endpointOptions,
+            IOptions<SiloMessagingOptions> messagingOptions,
+            IOptions<NetworkingOptions> networkingOptions,
+            IOptions<StatisticsOptions> statisticsOptions)
         {
-            if(log.IsEnabled(LogLevel.Trace)) log.Trace("Starting initialization.");
+            if (log.IsEnabled(LogLevel.Trace)) log.Trace("Starting initialization.");
 
             SocketManager = new SocketManager(networkingOptions, this.loggerFactory);
             var listeningEndpoint = endpointOptions.Value.GetListeningSiloEndpoint();
-            ima = new IncomingMessageAcceptor(this, listeningEndpoint, SocketDirection.SiloToSilo, this.messageFactory, this.serializationManager, this.executorService, this.loggerFactory);
-            InboundQueue = new InboundMessageQueue(this.loggerFactory);
+            ima = new IncomingMessageAcceptor(this,
+                listeningEndpoint,
+                SocketDirection.SiloToSilo,
+                this.messageFactory,
+                this.serializationManager,
+                this.executorService,
+                this.loggerFactory);
+            InboundQueue = new InboundMessageQueue(this.loggerFactory, statisticsOptions);
             OutboundQueue = new OutboundMessageQueue(this, messagingOptions, this.serializationManager, this.executorService, this.loggerFactory);
-            
+
             sendQueueLengthCounter = IntValueStatistic.FindOrCreate(StatisticNames.MESSAGE_CENTER_SEND_QUEUE_LENGTH, () => SendQueueLength);
             receiveQueueLengthCounter = IntValueStatistic.FindOrCreate(StatisticNames.MESSAGE_CENTER_RECEIVE_QUEUE_LENGTH, () => ReceiveQueueLength);
 

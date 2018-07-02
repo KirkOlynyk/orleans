@@ -55,8 +55,6 @@ namespace Orleans.Runtime.MembershipService
             timerLogger = this.loggerFactory.CreateLogger<GrainTimer>();
         }
 
-        #region ISiloStatusOracle Members
-
         public async Task Start()
         {
             try
@@ -249,7 +247,7 @@ namespace Orleans.Runtime.MembershipService
             try
             {
                 DisposeTimers();
-                if (this.membershipTableProvider is GrainBasedMembershipTable)
+                if (this.membershipTableProvider is SystemTargetBasedMembershipTable)
                 {
                     // do not execute KillMyself if using MembershipTableGrain, since it will fail, as we've already stopped app scheduler turns.
                     return;
@@ -318,10 +316,6 @@ namespace Orleans.Runtime.MembershipService
             return membershipOracleData.UnSubscribeFromSiloStatusEvents(observer);
         }
 
-        #endregion
-
-
-        #region IMembershipService Members
 
         // Treat this gossip msg as a trigger to read the table (and just ignore the input parameters).
         // This simplified a lot of the races when we get gossip info which is outdated with the table truth.
@@ -349,10 +343,6 @@ namespace Orleans.Runtime.MembershipService
             // do not do anything here -- simply returning back will indirectly notify the prober that this silo is alive
             return Task.CompletedTask;
         }
-
-        #endregion
-
-        #region Table update/insert processing
 
         private Task<bool> MembershipExecuteWithRetries(
             Func<int, Task<bool>> taskFunction, 
@@ -530,8 +520,6 @@ namespace Orleans.Runtime.MembershipService
             }
         }
 
-        #endregion
-
         private async Task ProcessTableUpdate(MembershipTableData table, string caller, bool logAtInfoLevel = false)
         {
             if (logAtInfoLevel) logger.Info(ErrorCode.MembershipReadAll_1, "-ReadAll (called from {0}) Membership table {1}", caller, table.ToString());
@@ -648,7 +636,7 @@ namespace Orleans.Runtime.MembershipService
                 else if (siloAddress.Generation > MyAddress.Generation)
                 {
                     // I am the older clone - Newer version of me should survive - I need to kill myself
-                    var msg = string.Format("Detected newer version of myself - I am the older clone so will commit suicide -- Current Me={0} Newer Me={1}, Current entry= {2}",
+                    var msg = string.Format("Detected newer version of myself - I am the older clone so I will stop -- Current Me={0} Newer Me={1}, Current entry= {2}",
                         MyAddress.ToLongString(), siloAddress.ToLongString(), entry.ToFullString());
                     logger.Warn(ErrorCode.MembershipDetectedNewer, msg);
                     await KillMyself();
@@ -679,7 +667,7 @@ namespace Orleans.Runtime.MembershipService
 
         private void KillMyselfLocally(string reason)
         {
-            var msg = "I have been told I am dead, so this silo will commit suicide! " + reason;
+            var msg = "I have been told I am dead, so this silo will stop! " + reason;
             logger.Error(ErrorCode.MembershipKillMyselfLocally, msg);
             bool alreadyStopping = CurrentStatus.IsTerminating();
 
@@ -916,7 +904,7 @@ namespace Orleans.Runtime.MembershipService
             MessagingStatisticsGroup.OnPingReplyMissed(silo);
             if (!probedSilos.ContainsKey(silo))
             {
-                // need this check to avoid races with changed membership (I was watching him, but then read the table, learned he is already dead and thus no longer wtaching him); 
+                // need this check to avoid races with changed membership (I was watching him, but then read the table, learned he is already dead and thus no longer watching him);
                 // otherwise, we might here insert a new entry to the 'probedSilos' dictionary
                 logger.Info(ErrorCode.MembershipPingedSiloNotInWatchList, "-Does not have {0} in the list of probes, ignoring", silo.ToLongString());
                 return;
@@ -978,7 +966,11 @@ namespace Orleans.Runtime.MembershipService
             var tuple = table.Get(silo);
             var entry = tuple.Item1;
             string eTag = tuple.Item2;
-            if (logger.IsEnabled(LogLevel.Debug)) logger.Debug("-TryToSuspectOrKill {0}: The current status of {0} in the table is {1}, its entry is {2}", entry.SiloAddress.ToLongString(), entry.Status, entry.ToFullString());
+            if (logger.IsEnabled(LogLevel.Debug)) logger.Debug("-TryToSuspectOrKill {siloAddress}: The current status of {siloAddress} in the table is {status}, its entry is {entry}",
+                entry.SiloAddress.ToLongString(), // First
+                entry.SiloAddress.ToLongString(), // Second
+                entry.Status, 
+                entry.ToFullString());
             // check if the table already knows that this silo is dead
             if (entry.Status == SiloStatus.Dead)
             {
@@ -1003,7 +995,7 @@ namespace Orleans.Runtime.MembershipService
                 var str = String.Format("-Silo {0} is suspected by {1} which is more or equal than {2}, but is not marked as dead. This is a bug!!!",
                     entry.SiloAddress.ToLongString(), freshVotes.Count.ToString(), this.clusterMembershipOptions.NumVotesForDeathDeclaration.ToString());
                 logger.Error(ErrorCode.Runtime_Error_100053, str);
-                KillMyselfLocally("Found a bug 1! Will commit suicide.");
+                KillMyselfLocally("Found a bug! Will stop.");
                 return false;
             }
 
@@ -1137,8 +1129,6 @@ namespace Orleans.Runtime.MembershipService
             }
         }
 
-        #region Implementation of IHealthCheckParticipant
-
         public bool CheckHealth(DateTime lastCheckTime)
         {
             bool ok = (timerGetTableUpdates != null) && timerGetTableUpdates.CheckTimerFreeze(lastCheckTime);
@@ -1146,8 +1136,6 @@ namespace Orleans.Runtime.MembershipService
             ok &= (timerIAmAliveUpdateInTable != null) && timerIAmAliveUpdateInTable.CheckTimerFreeze(lastCheckTime);
             return ok;
         }
-
-        #endregion
 
         private IMembershipService GetOracleReference(SiloAddress silo)
         {

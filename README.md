@@ -23,10 +23,12 @@ There are several packages, one for each different project type (interfaces, gra
 
 In the grain interfaces project:
 ```
+PM> Install-Package Microsoft.Orleans.Core.Abstractions
 PM> Install-Package Microsoft.Orleans.OrleansCodeGenerator.Build
 ```
 In the grain implementations project:
 ```
+PM> Install-Package Microsoft.Orleans.Core.Abstractions
 PM> Install-Package Microsoft.Orleans.OrleansCodeGenerator.Build
 ```
 In the server (silo) project:
@@ -45,6 +47,31 @@ The stable production-quality release is located [here](https://github.com/dotne
 The latest clean development branch build from CI is located: [here](https://ci.dot.net/job/dotnet_orleans/job/master/job/netfx-bvt/lastStableBuild/artifact/)
 
 Nightly builds are published to https://dotnet.myget.org/gallery/orleans-ci . These builds pass all functional tests, but are not thoroughly tested as the stable builds or pre-release builds we push to NuGet.org
+
+To use nightly builds in your project, add the MyGet feed using either of the following methods:
+
+1. Changing the .csproj file to include this section:
+
+```xml
+    <RestoreSources>
+      $(RestoreSources);
+      https://dotnet.myget.org/F/orleans-ci/api/v3/index.json;
+    </RestoreSources>
+```
+or
+
+2. Creating a `NuGet.config` file in the solution directory with the following contents:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+ <packageSources>
+    <clear />
+    <add key="orleans-ci" value="https://dotnet.myget.org/F/orleans-ci/api/v3/index.json" />
+    <add key="nuget" value="https://api.nuget.org/v3/index.json" />
+ </packageSources>
+</configuration>
+```
 
 ### Building from source
 

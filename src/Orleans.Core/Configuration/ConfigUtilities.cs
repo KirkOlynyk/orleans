@@ -349,6 +349,7 @@ namespace Orleans.Runtime.Configuration
             if (string.IsNullOrEmpty(addrOrHost))
             {
                 nodeIps = NetworkInterface.GetAllNetworkInterfaces()
+                            .Where(iface => iface.OperationalStatus == OperationalStatus.Up)
                             .SelectMany(iface => iface.GetIPProperties().UnicastAddresses)
                             .Select(addr => addr.Address)
                             .Where(addr => addr.AddressFamily == family && !IPAddress.IsLoopback(addr))
@@ -471,9 +472,7 @@ namespace Orleans.Runtime.Configuration
             sb.Append("     PerfCounterWriteInterval: ").Append(config.StatisticsPerfCountersWriteInterval).AppendLine();
             sb.Append("     LogWriteInterval: ").Append(config.StatisticsLogWriteInterval).AppendLine();
             sb.Append("     StatisticsCollectionLevel: ").Append(config.StatisticsCollectionLevel).AppendLine();
-#if TRACK_DETAILED_STATS
-            sb.Append("     TRACK_DETAILED_STATS: true").AppendLine();
-#endif
+
             return sb.ToString();
         }
 

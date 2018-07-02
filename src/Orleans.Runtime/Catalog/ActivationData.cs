@@ -199,10 +199,11 @@ namespace Orleans.Runtime
             State = ActivationState.Create;
             PlacedUsing = placedUsing;
             RegistrationStrategy = registrationStrategy;
-            if (!Grain.IsSystemTarget && !Constants.IsSystemGrain(Grain))
+            if (!Grain.IsSystemTarget)
             {
                 this.collector = collector;
             }
+
             CollectionAgeLimit = ageLimit;
 
             GrainReference = GrainReference.FromGrainId(addr.Grain, runtimeClient.GrainReferenceRuntime, genericArguments, Grain.IsSystemTarget ? addr.Silo : null);
@@ -214,8 +215,6 @@ namespace Orleans.Runtime
         public IGrainIdentity GrainIdentity => this.Identity;
 
         public IServiceProvider ActivationServices => this.serviceScope.ServiceProvider;
-
-        #region Method invocation
 
         private ExtensionInvoker extensionInvoker;
         public IGrainMethodInvoker GetInvoker(GrainTypeManager typeManager, int interfaceId, string genericGrainType = null)
@@ -240,7 +239,8 @@ namespace Orleans.Runtime
 
         internal bool TryAddExtension(IGrainExtensionMethodInvoker invoker, IGrainExtension extension)
         {
-            if(extensionInvoker == null)
+            this.lastInvoker = null;
+            if (extensionInvoker == null)
                 extensionInvoker = new ExtensionInvoker();
 
             return extensionInvoker.TryAddExtension(invoker, extension);
@@ -248,6 +248,7 @@ namespace Orleans.Runtime
 
         internal void RemoveExtension(IGrainExtension extension)
         {
+            this.lastInvoker = null;
             if (extensionInvoker != null)
             {
                 if (extensionInvoker.Remove(extension))
@@ -262,10 +263,6 @@ namespace Orleans.Runtime
             result = null;
             return extensionInvoker != null && extensionInvoker.TryGetExtensionHandler(extensionType, out result);
         }
-
-        #endregion
-
-        public HashSet<ActivationId> RunningRequestsSenders { get; } = new HashSet<ActivationId>();
 
         public ISchedulingContext SchedulingContext { get; }
 
@@ -340,7 +337,6 @@ namespace Orleans.Runtime
             await streamDirectory.Cleanup(true, false);
         }
 
-        #region IActivationData
         GrainReference IActivationData.GrainReference
         {
             get { return GrainReference; }
@@ -373,10 +369,6 @@ namespace Orleans.Runtime
         {
             AddTimer(timer);
         }
-
-        #endregion
-
-        #region Catalog
 
         internal readonly GrainReference GrainReference;
 
@@ -448,10 +440,6 @@ namespace Orleans.Runtime
             CollectionTicket = ticket;
         }
 
-        #endregion
-
-        #region Dispatcher
-
         public PlacementStrategy PlacedUsing { get; private set; }
 
         public IMultiClusterRegistrationStrategy RegistrationStrategy { get; private set; }
@@ -477,13 +465,6 @@ namespace Orleans.Runtime
             // Note: This method is always called while holding lock on this activation, so no need for additional locks here
 
             numRunning++;
-            if (message.Direction != Message.Directions.OneWay 
-                && message.SendingActivation != null
-                && !message.SendingGrain?.IsClient == true)
-            {
-                RunningRequestsSenders.Add(message.SendingActivation);
-            }
-
             if (Running != null) return;
 
             // This logic only works for non-reentrant activations
@@ -496,7 +477,6 @@ namespace Orleans.Runtime
         {
             // Note: This method is always called while holding lock on this activation, so no need for additional locks here
             numRunning--;
-            RunningRequestsSenders.Remove(message.SendingActivation);
             if (numRunning == 0)
             {
                 becameIdle = DateTime.UtcNow;
@@ -682,10 +662,6 @@ namespace Orleans.Runtime
             }
         }
 
-        #endregion
-        
-        #region Activation collection
-
         public bool IsInactive
         {
             get
@@ -777,9 +753,6 @@ namespace Orleans.Runtime
             }
         }
 
-        #endregion
-
-        #region In-grain Timers
         internal void AddTimer(IGrainTimer timer)
         {
             lock(this)
@@ -832,9 +805,6 @@ namespace Orleans.Runtime
                 return Task.WhenAll(tasks);
             }
         }
-        #endregion
-
-        #region Printing functions
 
         public string DumpStatus()
         {
@@ -912,8 +882,6 @@ namespace Orleans.Runtime
             return GrainInstanceType == null ? placement :
                 String.Format(" #GrainType={0} Placement={1}", GrainInstanceType.FullName, placement);
         }
-
-        #endregion
 
         public void Dispose()
         {

@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using Orleans.Logging;
 using Orleans.AzureUtils.Utilities;
 using Orleans.Hosting.AzureCloudServices;
+using Orleans.Hosting;
 
 namespace Orleans.Runtime.Host
 {
@@ -44,6 +45,9 @@ namespace Orleans.Runtime.Host
         /// Defaults to <c>OrleansProxyEndpoint</c>
         /// </summary>
         public string ProxyEndpointConfigurationKeyName { get; set; }
+
+        /// <summary>delegate to add some configuration to the client</summary>
+        public Action<ISiloHostBuilder> ConfigureSiloHostDelegate { get; set; }
 
         private SiloHost host;
         private OrleansSiloInstanceManager siloInstanceManager;
@@ -155,8 +159,6 @@ namespace Orleans.Runtime.Host
             
             return config;
         }
-
-        #region Azure RoleEntryPoint methods
 
         /// <summary>
         /// Initialize this Orleans silo for execution. Config data will be read from silo config file as normal
@@ -280,6 +282,8 @@ namespace Orleans.Runtime.Host
             host.SetSiloEndpoint(myEndpoint, generation);
             host.SetProxyEndpoint(proxyEndpoint);
 
+            host.ConfigureSiloHostDelegate = ConfigureSiloHostDelegate;
+
             host.InitializeOrleansSilo();
             return StartSilo();
         }
@@ -314,8 +318,6 @@ namespace Orleans.Runtime.Host
             host.ShutdownOrleansSilo();
             logger.Info(ErrorCode.Runtime_Error_100291, "Orleans silo '{0}' shutdown.", host.Name);
         }
-
-        #endregion
 
         private bool StartSilo()
         {

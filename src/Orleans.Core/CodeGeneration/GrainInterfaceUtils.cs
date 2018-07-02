@@ -79,8 +79,19 @@ namespace Orleans.CodeGeneration
         public static bool IsTaskType(Type t)
         {
             var typeInfo = t.GetTypeInfo();
-            return t == typeof (Task)
-                || (typeInfo.IsGenericType && typeInfo.GetGenericTypeDefinition().FullName == "System.Threading.Tasks.Task`1");
+            if (t == typeof(Task))
+            {
+                return true;
+            }
+
+            if (typeInfo.IsGenericType)
+            {
+                var typeName = typeInfo.GetGenericTypeDefinition().FullName;
+                return typeName == "System.Threading.Tasks.Task`1" 
+                       || typeName == "System.Threading.Tasks.ValueTask`1";
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -118,22 +129,14 @@ namespace Orleans.CodeGeneration
                         && declaringTypeInfo.GetRuntimeInterfaceMap(i).TargetMethods.Contains(methodInfo)));
         }
 
-        public static bool IsNewTransactionRequired(MethodInfo methodInfo)
+        public static bool TryGetTransactionOption(MethodInfo methodInfo, out TransactionOption option)
         {
+            option = TransactionOption.Suppress;
             TransactionAttribute transactionAttribute = methodInfo.GetCustomAttribute<TransactionAttribute>(true);
             if (transactionAttribute != null)
             {
-                return transactionAttribute.Requirement == TransactionOption.RequiresNew;
-            }
-            return false;
-        }
-
-        public static bool IsTransactionRequired(MethodInfo methodInfo)
-        {
-            TransactionAttribute transactionAttribute = methodInfo.GetCustomAttribute<TransactionAttribute>(true);
-            if (transactionAttribute != null)
-            {
-                return transactionAttribute.Requirement == TransactionOption.Required;
+                option = transactionAttribute.Requirement;
+                return true;
             }
             return false;
         }

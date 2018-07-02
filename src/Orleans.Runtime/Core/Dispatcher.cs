@@ -63,8 +63,6 @@ namespace Orleans.Runtime
 
         public ISiloRuntimeClient RuntimeClient => this.catalog.RuntimeClient;
 
-        #region Receive path
-
         /// <summary>
         /// Receive a new message:
         /// - validate order constraints, queue (or possibly redirect) if out of order
@@ -329,7 +327,7 @@ namespace Orleans.Runtime
                    incoming.IsAlwaysInterleave
                 || targetActivation.Running == null
                 || (targetActivation.Running.IsReadOnly && incoming.IsReadOnly)
-                || (schedulingOptions.AllowCallChainReentrancy && targetActivation.ActivationId.Equals(incoming.SendingActivation))
+                || IsCallChainReentrancyAllowed(targetActivation, incoming)
                 || catalog.CanInterleave(targetActivation.ActivationId, incoming);
 
             return canInterleave;
@@ -339,21 +337,37 @@ namespace Orleans.Runtime
         /// https://github.com/dotnet/orleans/issues/3184
         /// Checks whether reentrancy is allowed for calls to grains that are already part of the call chain.
         /// Covers following case: grain A calls grain B, and while executing the invoked method B calls back to A. 
-        /// Design: Senders collection `RunningRequestsSenders` contains sending grains references
-        /// during duration of request processing. If target of outgoing request is found in that collection - 
+        /// Design: Each call chain have unique id. If target of outgoing request is already part of the chain - 
         /// such request will be marked as interleaving in order to prevent deadlocks.
         /// </summary>
-        private void MarkSameCallChainMessageAsInterleaving(ActivationData sendingActivation, Message outgoing)
+        private bool IsCallChainReentrancyAllowed(ActivationData targetActivation, Message incoming)
         {
-            if (!schedulingOptions.AllowCallChainReentrancy)
+            if (!schedulingOptions.AllowCallChainReentrancy
+                 || incoming.Direction == Message.Directions.OneWay)
+            {
+                return false;
+            }
+
+            if (incoming.CallChainId == null || targetActivation.Running == null)
+            {
+                return false;
+            }
+
+            // do not allow interleaving between requests which are concurrently sent from the same activation
+            var isCallFromOriginatorActivation = incoming.SendingActivation.Equals(targetActivation.Running.SendingActivation);
+            return !isCallFromOriginatorActivation && incoming.CallChainId != null
+                && targetActivation.Running.CallChainId == incoming.CallChainId;
+        }
+
+        private void EnsureCallChainIdIsSet(ActivationData sendingActivation, Message outgoing)
+        {
+            if (sendingActivation?.Running == null)
             {
                 return;
             }
 
-            if (sendingActivation?.RunningRequestsSenders.Contains(outgoing.TargetActivation) == true)
-            {
-                outgoing.IsAlwaysInterleave = true;
-            }
+            sendingActivation.Running.CallChainId = sendingActivation.Running.CallChainId ?? outgoing.Id;
+            outgoing.CallChainId = sendingActivation.Running.CallChainId;
         }
 
         /// <summary>
@@ -629,10 +643,6 @@ namespace Orleans.Runtime
             return message.ForwardCount < messagingOptions.MaxForwardCount;
         }
 
-        #endregion
-
-        #region Send path
-
         /// <summary>
         /// Send an outgoing message, may complete synchronously
         /// - may buffer for transaction completion / commit if it ends a transaction
@@ -806,13 +816,10 @@ namespace Orleans.Runtime
         /// <param name="sendingActivation"></param>
         public void TransportMessage(Message message, ActivationData sendingActivation = null)
         {
-            MarkSameCallChainMessageAsInterleaving(sendingActivation, message);
+            EnsureCallChainIdIsSet(sendingActivation, message);
             if (logger.IsEnabled(LogLevel.Trace)) logger.Trace(ErrorCode.Dispatcher_Send_AddressedMessage, "Addressed message {0}", message);
             Transport.SendMessage(message);
         }
-
-        #endregion
-        #region Execution
 
         /// <summary>
         /// Invoked when an activation has finished a transaction and may be ready for additional transactions
@@ -873,7 +880,5 @@ namespace Orleans.Runtime
             }
             while (runLoop);
         }
-
-        #endregion
     }
 }

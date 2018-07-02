@@ -284,7 +284,6 @@ namespace Orleans.Runtime.GrainDirectory
             }
         }
 
-        #region Handling membership events
         protected void AddServer(SiloAddress silo)
         {
             lock (membershipCache)
@@ -468,8 +467,6 @@ namespace Orleans.Runtime.GrainDirectory
             return this.siloStatusOracle.IsFunctionalDirectory(silo);
         }
 
-        #endregion
-
         /// <summary>
         /// Finds the silo that owns the directory information for the given grain ID.
         /// This routine will always return a non-null silo address unless the excludeThisSiloIfStopping parameter is true,
@@ -483,32 +480,25 @@ namespace Orleans.Runtime.GrainDirectory
             // give a special treatment for special grains
             if (grainId.IsSystemTarget)
             {
+                if (Constants.SystemMembershipTableId.Equals(grainId))
+                {
+                    if (Seed == null)
+                    {
+                        var errorMsg =
+                            $"MembershipTable cannot run without Seed node. Please check your silo configuration make sure it specifies a SeedNode element. " +
+                            $"This is in either the configuration file or the {nameof(NetworkingOptions)} configuration. " +
+                            " Alternatively, you may want to use reliable membership, such as Azure Table.";
+                        throw new ArgumentException(errorMsg, "grainId = " + grainId);
+                    }
+                }
+
                 if (log.IsEnabled(LogLevel.Trace)) log.Trace("Silo {0} looked for a system target {1}, returned {2}", MyAddress, grainId, MyAddress);
                 // every silo owns its system targets
                 return MyAddress;
             }
 
-            if (Constants.SystemMembershipTableId.Equals(grainId))
-            {
-                if (Seed == null)
-                {
-                    string grainName;
-                    if (!Constants.TryGetSystemGrainName(grainId, out grainName))
-                        grainName = "MembershipTableGrain";
-
-                    var errorMsg = $"{grainName} cannot run without Seed node. Please check your silo configuration make sure it specifies a SeedNode element. " +
-                                   $"This is in either the configuration file or the {nameof(NetworkingOptions)} configuration. " +
-                                   " Alternatively, you may want to use reliable membership, such as Azure Table.";
-                    throw new ArgumentException(errorMsg, "grainId = " + grainId);
-                }
-                // Directory info for the membership table grain has to be located on the primary (seed) node, for bootstrapping
-                if (log.IsEnabled(LogLevel.Trace)) log.Trace("Silo {0} looked for a special grain {1}, returned {2}", MyAddress, grainId, Seed);
-                return Seed;
-            }
-
             SiloAddress siloAddress = null;
             int hash = unchecked((int)grainId.GetUniformHashCode());
-
 
             // excludeMySelf from being a TargetSilo if we're not running and the excludeThisSIloIfStopping flag is true. see the comment in the Stop method.
             bool excludeMySelf = !Running && excludeThisSiloIfStopping;
@@ -547,8 +537,6 @@ namespace Orleans.Runtime.GrainDirectory
             if (log.IsEnabled(LogLevel.Trace)) log.Trace("Silo {0} calculated directory partition owner silo {1} for grain {2}: {3} --> {4}", MyAddress, siloAddress, grainId, hash, siloAddress.GetConsistentHashCode());
             return siloAddress;
         }
-
-        #region Implementation of ILocalGrainDirectory
 
         public SiloAddress CheckIfShouldForward(GrainId grainId, int hopCount, string operationDescription)
         {
@@ -1039,8 +1027,6 @@ namespace Orleans.Runtime.GrainDirectory
             isPrimary = false;
             return backupData;
         }
-
-        #endregion
 
         public override string ToString()
         {

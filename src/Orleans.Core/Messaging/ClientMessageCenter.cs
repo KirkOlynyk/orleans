@@ -64,12 +64,9 @@ namespace Orleans.Messaging
     {
         internal readonly SerializationManager SerializationManager;
 
-        #region Constants
-
         internal static readonly TimeSpan MINIMUM_INTERCONNECT_DELAY = TimeSpan.FromMilliseconds(100);   // wait one tenth of a second between connect attempts
         internal const int CONNECT_RETRY_COUNT = 2;                                                      // Retry twice before giving up on a gateway server
 
-        #endregion
         internal GrainId ClientId { get; private set; }
         public IRuntimeClient RuntimeClient { get; }
         internal bool Running { get; private set; }
@@ -94,6 +91,7 @@ namespace Orleans.Messaging
         private readonly ILoggerFactory loggerFactory;
         private readonly TimeSpan openConnectionTimeout;
         private readonly ExecutorService executorService;
+        private StatisticsLevel statisticsLevel;
 
         public ClientMessageCenter(
             IOptions<GatewayOptions> gatewayOptions,
@@ -108,7 +106,8 @@ namespace Orleans.Messaging
             IClusterConnectionStatusListener connectionStatusListener,
             ExecutorService executorService,
             ILoggerFactory loggerFactory,
-            IOptions<NetworkingOptions> networkingOptions)
+            IOptions<NetworkingOptions> networkingOptions,
+            IOptions<StatisticsOptions> statisticsOptions)
         {
             this.loggerFactory = loggerFactory;
             this.openConnectionTimeout = networkingOptions.Value.OpenConnectionTimeout;
@@ -137,16 +136,17 @@ namespace Orleans.Messaging
                         return gatewayConnections.Values.Count(conn => conn.IsLive);
                     }
                 });
-            if (StatisticsCollector.CollectQueueStats)
+            statisticsLevel = statisticsOptions.Value.CollectionLevel;
+            if (statisticsLevel.CollectQueueStats())
             {
-                queueTracking = new QueueTrackingStatistic("ClientReceiver");
+                queueTracking = new QueueTrackingStatistic("ClientReceiver", statisticsOptions);
             }
         }
 
         public void Start()
         {
             Running = true;
-            if (StatisticsCollector.CollectQueueStats)
+            if (this.statisticsLevel.CollectQueueStats())
             {
                 queueTracking.OnStartExecution();
             }
@@ -167,7 +167,7 @@ namespace Orleans.Messaging
                 PendingInboundMessages.CompleteAdding();
             });
 
-            if (StatisticsCollector.CollectQueueStats)
+            if (this.statisticsLevel.CollectQueueStats())
             {
                 queueTracking.OnStopExecution();
             }
@@ -336,14 +336,7 @@ namespace Orleans.Messaging
                 }
 
                 // Don't pass CancellationToken to Take. It causes too much spinning.
-                Message msg = PendingInboundMessages.Take();
-#if TRACK_DETAILED_STATS
-                if (StatisticsCollector.CollectQueueStats)
-                {
-                    queueTracking.OnDeQueueRequest(msg);
-                }
-#endif
-                return msg;
+                return PendingInboundMessages.Take();
             }
             catch (ThreadAbortException exc)
             {
@@ -380,12 +373,6 @@ namespace Orleans.Messaging
 
         internal void QueueIncomingMessage(Message msg)
         {
-#if TRACK_DETAILED_STATS
-            if (StatisticsCollector.CollectQueueStats)
-            {
-                queueTracking.OnEnQueueRequest(1, PendingInboundMessages.Count, msg);
-            }
-#endif
             PendingInboundMessages.Add(msg);
         }
 
@@ -426,8 +413,6 @@ namespace Orleans.Messaging
             throw new NotImplementedException("Reconnect");
         }
 
-        #region Random IMessageCenter stuff
-
         public int SendQueueLength
         {
             get { return 0; }
@@ -437,8 +422,6 @@ namespace Orleans.Messaging
         {
             get { return 0; }
         }
-
-        #endregion
 
         private IClusterTypeManager GetTypeManager(SiloAddress destination, IInternalGrainFactory grainFactory)
         {
