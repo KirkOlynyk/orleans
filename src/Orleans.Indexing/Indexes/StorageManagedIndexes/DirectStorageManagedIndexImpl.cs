@@ -25,7 +25,6 @@ namespace Orleans.Indexing
 
         private string _indexName;
         private string _indexedField;
-        //private bool _isUnique; //TODO: missing support for the uniqueness feature
 
         // IndexManager (and therefore logger) cannot be set in ctor because Grain activation has not yet set base.Runtime.
         internal SiloIndexManager SiloIndexManager => IndexManager.GetSiloIndexManager(ref __indexManager, base.ServiceProvider);
@@ -38,7 +37,6 @@ namespace Orleans.Indexing
         {
             _indexName = IndexUtils.GetIndexNameFromIndexGrain(this);
             _indexedField = _indexName.Substring(2);
-            //_isUnique = isUniqueIndex; //TODO: missing support for the uniqueness feature
             return base.OnActivateAsync();
         }
 

@@ -18,7 +18,6 @@ namespace Orleans.Indexing
         where BucketT : IHashIndexPartitionedPerKeyBucketInterface<K, V>, IGrainWithStringKey
     {
         private string _indexName;
-        //private bool _isUnique;   // TODO uniqueness currently not allowed
 
         private readonly IndexManager indexManager;
         private readonly ILogger logger;
@@ -27,7 +26,6 @@ namespace Orleans.Indexing
         public HashIndexPartitionedPerKey(IServiceProvider serviceProvider, string indexName, bool isUniqueIndex)
         {
             this._indexName = indexName;
-            //_isUnique = isUniqueIndex;
             this.indexManager = IndexManager.GetIndexManager(serviceProvider);
             this.logger = this.indexManager.LoggerFactory.CreateLoggerWithFullCategoryName<HashIndexPartitionedPerKey<K, V, BucketT>>();
             this.maxHashBuckets = this.indexManager.IndexingOptions.MaxHashBuckets;
