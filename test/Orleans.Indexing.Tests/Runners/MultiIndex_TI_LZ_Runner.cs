@@ -23,7 +23,7 @@ namespace Orleans.Indexing.Tests
         public string NonUniqueString { get; set; }
     }
 
-    [System.Serializable]
+    [Serializable]
     public class NFT_Props_UIUSNINS_TI_LZ_PK : ITestIndexProperties
     {
         [Index(typeof(TotalHashIndexPartitionedPerKey<int, INFT_Grain_UIUSNINS_TI_LZ_PK>), IsEager = false, IsUnique = true, NullValue = "-1")]
@@ -81,7 +81,7 @@ namespace Orleans.Indexing.Tests
     #endregion // PartitionedPerSilo
 
     #region SingleBucket
-    [System.Serializable]
+    [Serializable]
     public class FT_Props_UIUSNINS_TI_LZ_SB : ITestIndexProperties
     {
         [Index(typeof(ITotalHashIndexSingleBucket<int, IFT_Grain_UIUSNINS_TI_LZ_SB>), IsEager = false, IsUnique = true, NullValue = "0")]
@@ -97,7 +97,7 @@ namespace Orleans.Indexing.Tests
         public string NonUniqueString { get; set; }
     }
 
-    [System.Serializable]
+    [Serializable]
     public class NFT_Props_UIUSNINS_TI_LZ_SB : ITestIndexProperties
     {
         [Index(typeof(ITotalHashIndexSingleBucket<int, INFT_Grain_UIUSNINS_TI_LZ_SB>), IsEager = false, IsUnique = true, NullValue = "-1")]

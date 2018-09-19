@@ -25,7 +25,7 @@ namespace Orleans.Indexing.Tests
 
         private class ClientBuilderConfiguratorWf : IClientBuilderConfigurator
         {
-            public void Configure(IConfiguration configuration, IClientBuilder clientBuilder) => 
+            public void Configure(IConfiguration configuration, IClientBuilder clientBuilder) =>
                 BaseIndexingFixture.Configure(clientBuilder)
                                    .UseIndexing(indexingOptions => ConfigureBasicOptions(indexingOptions));
         }
@@ -70,13 +70,6 @@ namespace Orleans.Indexing.Tests
         internal class SiloBuilderConfiguratorWfDSMILZ : WorkflowDSMIEGIndexingFixture.SiloBuilderConfiguratorWfDSMI
         {
             internal override string GetDatabaseName() => DatabaseNamePrefix + "DSMI_LZ";
-        }
-
-        private static IndexingOptions ConfigureBasicOptions(IndexingOptions indexingOptions)
-        {
-            indexingOptions.MaxHashBuckets = 42;
-            indexingOptions.ConfigureWorkflow();
-            return indexingOptions; // allow chaining
         }
     }
 }

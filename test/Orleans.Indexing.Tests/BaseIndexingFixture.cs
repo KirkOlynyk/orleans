@@ -48,17 +48,17 @@ namespace Orleans.Indexing.Tests
 
             return databaseName != null
                 ? hostBuilder.AddCosmosDBGrainStorage(IndexingTestConstants.CosmosDBGrainStorage, opt =>
-                  {
-                      opt.AccountEndpoint = cosmosDBEndpoint;
-                      opt.AccountKey = cosmosDBKey;
-                      opt.ConnectionMode = Microsoft.Azure.Documents.Client.ConnectionMode.Gateway;
-                      opt.DropDatabaseOnInit = true;
-                      opt.AutoUpdateStoredProcedures = true;
-                      opt.CanCreateResources = true;
-                      opt.DB = databaseName;
-                      opt.InitStage = ServiceLifecycleStage.RuntimeStorageServices;
-                      opt.StateFieldsToIndex.AddRange(GetStateFieldsToIndex());
-                  })
+                    {
+                        opt.AccountEndpoint = cosmosDBEndpoint;
+                        opt.AccountKey = cosmosDBKey;
+                        opt.ConnectionMode = Microsoft.Azure.Documents.Client.ConnectionMode.Gateway;
+                        opt.DropDatabaseOnInit = true;
+                        opt.AutoUpdateStoredProcedures = true;
+                        opt.CanCreateResources = true;
+                        opt.DB = databaseName;
+                        opt.InitStage = ServiceLifecycleStage.RuntimeStorageServices;
+                        opt.StateFieldsToIndex.AddRange(GetStateFieldsToIndex());
+                    })
                 : hostBuilder;
         }
 

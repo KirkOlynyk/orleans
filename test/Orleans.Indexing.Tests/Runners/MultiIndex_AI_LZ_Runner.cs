@@ -7,7 +7,7 @@ using Xunit.Abstractions;
 namespace Orleans.Indexing.Tests
 {
     #region PartitionedPerKey
-    [System.Serializable]
+    [Serializable]
     public class FT_Props_UIUSNINS_AI_LZ_PK : ITestIndexProperties
     {
         [Index(typeof(ActiveHashIndexPartitionedPerKey<int, IFT_Grain_UIUSNINS_AI_LZ_PK>), IsEager = false, IsUnique = true, NullValue = "0")]
@@ -23,7 +23,7 @@ namespace Orleans.Indexing.Tests
         public string NonUniqueString { get; set; }
     }
 
-    [System.Serializable]
+    [Serializable]
     public class NFT_Props_UIUSNINS_AI_LZ_PK : ITestIndexProperties
     {
         [Index(typeof(ActiveHashIndexPartitionedPerKey<int, INFT_Grain_UIUSNINS_AI_LZ_PK>), IsEager = false, IsUnique = true, NullValue = "-1")]
@@ -75,7 +75,7 @@ namespace Orleans.Indexing.Tests
     #endregion // PartitionedPerKey
 
     #region PartitionedPerSilo
-    [System.Serializable]
+    [Serializable]
     public class FT_Props_UIUSNINS_AI_LZ_PS : ITestIndexProperties
     {
         [Index(typeof(IActiveHashIndexPartitionedPerSilo<int, IFT_Grain_UIUSNINS_AI_LZ_PS>), IsEager = false, IsUnique = true, NullValue = "0")]
@@ -91,7 +91,7 @@ namespace Orleans.Indexing.Tests
         public string NonUniqueString { get; set; }
     }
 
-    [System.Serializable]
+    [Serializable]
     public class NFT_Props_UIUSNINS_AI_LZ_PS : ITestIndexProperties
     {
         [Index(typeof(IActiveHashIndexPartitionedPerSilo<int, INFT_Grain_UIUSNINS_AI_LZ_PS>), IsEager = false, IsUnique = true, NullValue = "-1")]
@@ -143,7 +143,7 @@ namespace Orleans.Indexing.Tests
     #endregion // PartitionedPerSilo
 
     #region SingleBucket
-    [System.Serializable]
+    [Serializable]
     public class FT_Props_UIUSNINS_AI_LZ_SB : ITestIndexProperties
     {
         [Index(typeof(IActiveHashIndexSingleBucket<int, IFT_Grain_UIUSNINS_AI_LZ_SB>), IsEager = false, IsUnique = true, NullValue = "0")]
@@ -159,7 +159,7 @@ namespace Orleans.Indexing.Tests
         public string NonUniqueString { get; set; }
     }
 
-    [System.Serializable]
+    [Serializable]
     public class NFT_Props_UIUSNINS_AI_LZ_SB : ITestIndexProperties
     {
         [Index(typeof(IActiveHashIndexSingleBucket<int, INFT_Grain_UIUSNINS_AI_LZ_SB>), IsEager = false, IsUnique = true, NullValue = "-1")]
