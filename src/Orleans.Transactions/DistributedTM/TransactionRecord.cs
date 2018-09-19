@@ -1,4 +1,5 @@
-﻿using Orleans.Transactions.Abstractions;
+﻿using Orleans.Runtime;
+using Orleans.Transactions.Abstractions;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -25,8 +26,6 @@ namespace Orleans.Transactions
         public TransactionRecord()
         {
         }
-
-        #region execution phase
 
         // a unique identifier for this transaction
         public Guid TransactionId;
@@ -58,20 +57,16 @@ namespace Orleans.Transactions
             NumberWrites++;
         }
 
-        #endregion
-
-        #region commit phase
-
         public CommitRole Role;
 
         // used for readonly and local commit
         public TaskCompletionSource<TransactionalStatus> PromiseForTA;
 
         // used for local and remote commit
-        public ITransactionParticipant TransactionManager;
+        public ParticipantId TransactionManager;
 
         // used for local commit
-        public List<ITransactionParticipant> WriteParticipants;
+        public List<ParticipantId> WriteParticipants;
         public int WaitCount;
         public DateTime WaitingSince;
         public DateTime? LastConfirmationAttempt;
@@ -164,8 +159,6 @@ namespace Orleans.Transactions
                     throw new NotSupportedException($"{Role} is not a supported CommitRole.");
             }
         }
-
-        #endregion
     }
 
 

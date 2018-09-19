@@ -71,5 +71,12 @@ namespace Orleans.Indexing.Tests
         {
             internal override string GetDatabaseName() => DatabaseNamePrefix + "DSMI_LZ";
         }
+
+        private static IndexingOptions ConfigureBasicOptions(IndexingOptions indexingOptions)
+        {
+            indexingOptions.MaxHashBuckets = 42;
+            indexingOptions.ConfigureWorkflow();
+            return indexingOptions; // allow chaining
+        }
     }
 }

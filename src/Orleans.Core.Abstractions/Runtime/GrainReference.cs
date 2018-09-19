@@ -90,8 +90,6 @@ namespace Orleans.Runtime
 
         internal string GenericArguments => this.genericArguments;
 
-        #region Constructors
-
         /// <summary>Constructs a reference to the grain with the specified Id.</summary>
         /// <param name="grainId">The Id of the grain to refer to.</param>
         /// <param name="genericArgument">Type arguments in case of a generic grain.</param>
@@ -162,9 +160,6 @@ namespace Orleans.Runtime
         {
             this.invokeMethodOptions = invokeMethodOptions;
         }
-        #endregion
-
-        #region Instance creator factory functions
 
         /// <summary>Constructs a reference to the grain with the specified ID.</summary>
         /// <param name="grainId">The ID of the grain to refer to.</param>
@@ -181,8 +176,6 @@ namespace Orleans.Runtime
             return new GrainReference(grainId, null, null, observerId, runtime);
         }
 
-        #endregion
-        
         /// <summary>
         /// Binds this instance to a runtime.
         /// </summary>
@@ -277,8 +270,6 @@ namespace Orleans.Runtime
             return !reference1.Equals(reference2);
         }
 
-        #region Protected members
-
         /// <summary>
         /// Implemented by generated subclasses to return a constant
         /// Implemented in generated code.
@@ -348,8 +339,6 @@ namespace Orleans.Runtime
         {
             return this.Runtime.InvokeMethodAsync<T>(this, methodId, arguments, options | invokeMethodOptions, silo);
         }
-
-        #endregion
 
         private const string GRAIN_REFERENCE_STR = "GrainReference";
         private const string SYSTEM_TARGET_STR = "SystemTarget";
@@ -448,8 +437,6 @@ namespace Orleans.Runtime
         }
 
 
-        #region ISerializable Members
-
         public virtual void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             // Use the AddValue method to specify serialized values.
@@ -492,6 +479,5 @@ namespace Orleans.Runtime
             var serializerContext = context.Context as ISerializerContext;
             this.runtime = serializerContext?.ServiceProvider.GetService(typeof(IGrainReferenceRuntime)) as IGrainReferenceRuntime;
         }
-#endregion
     }
 }
