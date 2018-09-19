@@ -4,7 +4,7 @@
 //      FT or NFT - Fault Tolerant or Non FT for class impl
 //      IFT or INFT - Fault Tolerant or Non FT for class interface
 //  UI, US, NI, NS  - property abbrev
-//  AI, TI - active or total
+//  AI, TI, DSMI - Active, Total, or DirectStorageManaged
 //  EG, LZ - eager or lazy
 //  PK, PS, SB - partition per key/silo or single bucket
 //

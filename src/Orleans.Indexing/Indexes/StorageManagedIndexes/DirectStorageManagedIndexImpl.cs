@@ -23,8 +23,8 @@ namespace Orleans.Indexing
         private IGrainStorage _grainStorage;
         private string grainImplClass;
 
-        private string _indexName;
         private string _indexedField;
+        private string _indexedFieldPrefix;
 
         // IndexManager (and therefore logger) cannot be set in ctor because Grain activation has not yet set base.Runtime.
         internal SiloIndexManager SiloIndexManager => IndexManager.GetSiloIndexManager(ref __indexManager, base.ServiceProvider);
@@ -35,8 +35,8 @@ namespace Orleans.Indexing
 
         public override Task OnActivateAsync()
         {
-            _indexName = IndexUtils.GetIndexNameFromIndexGrain(this);
-            _indexedField = _indexName.Substring(2);
+            var indexName = IndexUtils.GetIndexNameFromIndexGrain(this);
+            _indexedField = indexName.Substring(2);
             return base.OnActivateAsync();
         }
 
@@ -58,9 +58,13 @@ namespace Orleans.Indexing
         private async Task<List<V>> LookupGrainReferences(K key)
         {
             EnsureGrainStorage();
+
+            // Dynamically find its LookupAsync method (currently only CosmosDB supports this). TODO: define IIndexStorageProvider?
+            // In Indexing or in Corleans? The latter would remove the need for Storage Provider consumers to reference Orleans.Indexing.
             dynamic indexableStorageProvider = _grainStorage;
 
-            List<GrainReference> resultReferences = await indexableStorageProvider.Lookup<K>(grainImplClass, _indexedField, key);
+            var qualifiedField = _indexedFieldPrefix + _indexedField;
+            List<GrainReference> resultReferences = await indexableStorageProvider.LookupAsync<K>(grainImplClass, qualifiedField, key);
             return resultReferences.Select(grain => this.SiloIndexManager.Silo.Cast<V>(grain)).ToList();
         }
 
@@ -93,9 +97,12 @@ namespace Orleans.Indexing
                 if (implementation == null || (grainImplClass = implementation.GrainClass) == null ||
                         !this.SiloIndexManager.CachedTypeResolver.TryResolveType(grainImplClass, out Type implType))
                 {
-                    throw new IndexException("The grain implementation class " + implementation.GrainClass + " for grain interface " + IndexUtils.GetFullTypeName(typeof(V)) + " was not resolved.");
+                    throw new IndexException($"The grain implementation class {implementation.GrainClass} for grain" + 
+                                             " interface {IndexUtils.GetFullTypeName(typeof(V))} was not resolved.");
                 }
                 _grainStorage = implType.GetGrainStorage(this.SiloIndexManager.ServiceProvider);
+                bool isFaultTolerant = ApplicationPartsIndexableGrainLoader.IsSubclassOfRawGenericType(typeof(IndexableGrain<,>), implType);
+                _indexedFieldPrefix = isFaultTolerant ? "UserState." : string.Empty;
             }
         }
     }

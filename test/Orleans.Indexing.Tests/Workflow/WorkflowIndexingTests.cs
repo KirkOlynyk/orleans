@@ -64,32 +64,48 @@ namespace Orleans.Indexing.Tests
     }
 
     [TestCategory("BVT"), TestCategory("Indexing")]
-    public class MultiIndex_AI_EG_Wf : MultiIndex_AI_EG, IClassFixture<WorkflowIndexingFixture>
+    public class MultiIndex_AI_EG_Wf : MultiIndex_AI_EG_Runner, IClassFixture<WorkflowIndexingFixture>
     {
         public MultiIndex_AI_EG_Wf(WorkflowIndexingFixture fixture, ITestOutputHelper output) : base(fixture, output) { }
     }
 
     [TestCategory("BVT"), TestCategory("Indexing")]
-    public class MultiIndex_AI_LZ_Wf : MultiIndex_AI_LZ, IClassFixture<WorkflowIndexingFixture>
+    public class MultiIndex_AI_LZ_Wf : MultiIndex_AI_LZ_Runner, IClassFixture<WorkflowIndexingFixture>
     {
         public MultiIndex_AI_LZ_Wf(WorkflowIndexingFixture fixture, ITestOutputHelper output) : base(fixture, output) { }
     }
 
     [TestCategory("BVT"), TestCategory("Indexing")]
-    public class MultiIndex_TI_EG_Wf : MultiIndex_TI_EG, IClassFixture<WorkflowIndexingFixture>
+    public class MultiIndex_TI_EG_Wf : MultiIndex_TI_EG_Runner, IClassFixture<WorkflowIndexingFixture>
     {
         public MultiIndex_TI_EG_Wf(WorkflowIndexingFixture fixture, ITestOutputHelper output) : base(fixture, output) { }
     }
 
     [TestCategory("BVT"), TestCategory("Indexing")]
-    public class MultiIndex_TI_LZ_Wf : MultiIndex_TI_LZ, IClassFixture<WorkflowIndexingFixture>
+    public class MultiIndex_TI_LZ_Wf : MultiIndex_TI_LZ_Runner, IClassFixture<WorkflowIndexingFixture>
     {
         public MultiIndex_TI_LZ_Wf(WorkflowIndexingFixture fixture, ITestOutputHelper output) : base(fixture, output) { }
     }
 
     [TestCategory("BVT"), TestCategory("Indexing")]
-    public class MultiIndex_All_Wf : MultiIndex_All, IClassFixture<WorkflowIndexingFixture>
+    public class MultiIndex_All_Wf : MultiIndex_All_Runner, IClassFixture<WorkflowIndexingFixture>
     {
         public MultiIndex_All_Wf(WorkflowIndexingFixture fixture, ITestOutputHelper output) : base(fixture, output) { }
     }
+
+    #region DirectStorageManagedIndexes
+
+    [TestCategory("BVT"), TestCategory("Indexing")]
+    public class MultiIndex_DSMI_EG_Wf : MultiIndex_DSMI_EG_Runner, IClassFixture<WorkflowDSMIEGIndexingFixture>
+    {
+        public MultiIndex_DSMI_EG_Wf(WorkflowDSMIEGIndexingFixture fixture, ITestOutputHelper output) : base(fixture, output) { }
+    }
+
+    [TestCategory("BVT"), TestCategory("Indexing")]
+    public class MultiIndex_DSMI_LZ_Wf : MultiIndex_DSMI_LZ_Runner, IClassFixture<WorkflowDSMILZIndexingFixture>
+    {
+        public MultiIndex_DSMI_LZ_Wf(WorkflowDSMILZIndexingFixture fixture, ITestOutputHelper output) : base(fixture, output) { }
+    }
+
+    #endregion // DirectStorageManagedIndexes
 }

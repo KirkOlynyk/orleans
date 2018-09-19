@@ -10,7 +10,7 @@ namespace Orleans.Indexing.Tests
 
     // NFT only; FT cannot be configured to be Eager.
 
-    [System.Serializable]
+    [Serializable]
     public class NFT_Props_UIUSNINS_AI_EG_PK : ITestIndexProperties
     {
         [Index(typeof(ActiveHashIndexPartitionedPerKey<int, INFT_Grain_UIUSNINS_AI_EG_PK>), IsEager = true, IsUnique = true, NullValue = "-1")]
@@ -117,9 +117,9 @@ namespace Orleans.Indexing.Tests
     }
     #endregion // SingleBucket
 
-    public abstract class MultiIndex_AI_EG : IndexingTestRunnerBase
+    public abstract class MultiIndex_AI_EG_Runner : IndexingTestRunnerBase
     {
-        protected MultiIndex_AI_EG(BaseIndexingFixture fixture, ITestOutputHelper output)
+        protected MultiIndex_AI_EG_Runner(BaseIndexingFixture fixture, ITestOutputHelper output)
             : base(fixture, output)
         {
         }

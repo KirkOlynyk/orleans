@@ -117,8 +117,9 @@ namespace Orleans.Indexing.Tests
                 var p3 = await makeGrain(adj3, adjThree, adj3000, adj3k);
 
                 var intIndexes = await this.GetAndWaitForIndexes<int, TIGrain>(ITC.UniqueIntIndex, ITC.NonUniqueIntIndex);
-                var nuIntIndex = intIndexes[1];
-                bool isNuIntTotalIndex = typeof(ITotalIndex).IsAssignableFrom(nuIntIndex.GetType());
+                var nonUniqueIntIndexType = intIndexes[1].GetType();
+                bool ignoreDeactivate = typeof(ITotalIndex).IsAssignableFrom(nonUniqueIntIndexType)
+                                      || typeof(IDirectStorageManagedIndex).IsAssignableFrom(nonUniqueIntIndexType);
                 var stringIndexes = await this.GetAndWaitForIndexes<string, TIGrain>(ITC.UniqueStringIndex, ITC.NonUniqueStringIndex);
 
                 Assert.Equal(1, await this.GetUniqueStringCount<TIGrain, TProperties>(adjOne));
@@ -148,7 +149,7 @@ namespace Orleans.Indexing.Tests
                 await Task.Delay(ITC.DelayUntilIndexesAreUpdatedLazily);
 
                 Console.WriteLine("*** Second Verify ***");
-                await verifyCount(1, isNuIntTotalIndex ? 1 : 0, isNuIntTotalIndex ? 4 : 3);
+                await verifyCount(1, ignoreDeactivate ? 1 : 0, ignoreDeactivate ? 4 : 3);
 
                 Console.WriteLine("*** Second and Third Deactivate ***");
                 await p111.Deactivate();
@@ -156,13 +157,13 @@ namespace Orleans.Indexing.Tests
                 await Task.Delay(ITC.DelayUntilIndexesAreUpdatedLazily);
 
                 Console.WriteLine("*** Third Verify ***");
-                await verifyCount(1, isNuIntTotalIndex ? 1 : 0, isNuIntTotalIndex ? 4 : 1);
+                await verifyCount(1, ignoreDeactivate ? 1 : 0, ignoreDeactivate ? 4 : 1);
 
                 Console.WriteLine("*** GetGrain ***");
                 p11 = this.GetGrain<TIGrain>(p11.GetPrimaryKeyLong());
                 Assert.Equal(adj1000, await p11.GetNonUniqueInt());
                 Console.WriteLine("*** Fourth Verify ***");
-                await verifyCount(1, 1, isNuIntTotalIndex ? 4 : 2);
+                await verifyCount(1, 1, ignoreDeactivate ? 4 : 2);
             }
         }
 

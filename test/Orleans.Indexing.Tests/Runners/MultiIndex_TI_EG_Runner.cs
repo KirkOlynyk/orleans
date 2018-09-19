@@ -8,9 +8,9 @@ namespace Orleans.Indexing.Tests
 {
     // None; Total Index cannot be Eager.
 
-    public abstract class MultiIndex_TI_EG : IndexingTestRunnerBase
+    public abstract class MultiIndex_TI_EG_Runner : IndexingTestRunnerBase
     {
-        protected MultiIndex_TI_EG(BaseIndexingFixture fixture, ITestOutputHelper output)
+        protected MultiIndex_TI_EG_Runner(BaseIndexingFixture fixture, ITestOutputHelper output)
             : base(fixture, output)
         {
         }

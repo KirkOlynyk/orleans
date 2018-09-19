@@ -210,9 +210,9 @@ namespace Orleans.Indexing.Tests
     }
     #endregion // SingleBucket
 
-    public abstract class MultiIndex_AI_LZ: IndexingTestRunnerBase
+    public abstract class MultiIndex_AI_LZ_Runner: IndexingTestRunnerBase
     {
-        protected MultiIndex_AI_LZ(BaseIndexingFixture fixture, ITestOutputHelper output)
+        protected MultiIndex_AI_LZ_Runner(BaseIndexingFixture fixture, ITestOutputHelper output)
             : base(fixture, output)
         {
         }

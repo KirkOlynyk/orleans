@@ -61,7 +61,6 @@ namespace Orleans.Indexing
         private async static Task GetIndexesForASingleGrainType(ApplicationPartsIndexableGrainLoader loader, IndexRegistry registry, Type grainType)
         {
             Type[] interfaces = grainType.GetInterfaces();
-            int numInterfaces = interfaces.Length;
             bool? grainIndexesAreEager = null;
 
             // If there is an interface that directly extends IIndexableGrain<TProperties>...
@@ -236,6 +235,8 @@ namespace Orleans.Indexing
 
         public static bool IsSubclassOfRawGenericType(Type genericType, Type typeToCheck)
         {
+            // Used to check for IndexableGrain<,> inheritance; IndexableGrain is a fault-tolerant subclass of IndexableGrainNonFaultTolerant,
+            // so we will only see it if the grain's index type is fault tolerant.
             for (; typeToCheck != null && typeToCheck != typeof(object); typeToCheck = typeToCheck.BaseType)
             {
                 if (genericType == (typeToCheck.IsGenericType ? typeToCheck.GetGenericTypeDefinition() : typeToCheck))

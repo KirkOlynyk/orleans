@@ -8,9 +8,9 @@ using Xunit.Abstractions;
 
 namespace Orleans.Indexing.Tests
 {
-    public abstract class MultiIndex_All : IndexingTestRunnerBase
+    public abstract class MultiIndex_All_Runner : IndexingTestRunnerBase
     {
-        protected MultiIndex_All(BaseIndexingFixture fixture, ITestOutputHelper output)
+        protected MultiIndex_All_Runner(BaseIndexingFixture fixture, ITestOutputHelper output)
             : base(fixture, output)
         {
         }
@@ -30,10 +30,10 @@ namespace Orleans.Indexing.Tests
                 }
             }
 
-            await Task.WhenAll(getTasks(MultiIndex_AI_EG.GetAllTestTasks())
-                    .Concat(getTasks(MultiIndex_AI_LZ.GetAllTestTasks()))
-                    .Concat(getTasks(MultiIndex_TI_EG.GetAllTestTasks()))
-                    .Concat(getTasks(MultiIndex_TI_LZ.GetAllTestTasks())));
+            await Task.WhenAll(getTasks(MultiIndex_AI_EG_Runner.GetAllTestTasks())
+                    .Concat(getTasks(MultiIndex_AI_LZ_Runner.GetAllTestTasks()))
+                    .Concat(getTasks(MultiIndex_TI_EG_Runner.GetAllTestTasks()))
+                    .Concat(getTasks(MultiIndex_TI_LZ_Runner.GetAllTestTasks())));
         }
     }
 }

@@ -7,7 +7,7 @@ using Xunit.Abstractions;
 namespace Orleans.Indexing.Tests
 {
     #region PartitionedPerKey
-    [System.Serializable]
+    [Serializable]
     public class FT_Props_UIUSNINS_TI_LZ_PK : ITestIndexProperties
     {
         [Index(typeof(TotalHashIndexPartitionedPerKey<int, IFT_Grain_UIUSNINS_TI_LZ_PK>), IsEager = false, IsUnique = true, NullValue = "0")]
@@ -148,9 +148,9 @@ namespace Orleans.Indexing.Tests
     }
     #endregion // SingleBucket
 
-    public abstract class MultiIndex_TI_LZ: IndexingTestRunnerBase
+    public abstract class MultiIndex_TI_LZ_Runner: IndexingTestRunnerBase
     {
-        protected MultiIndex_TI_LZ(BaseIndexingFixture fixture, ITestOutputHelper output)
+        protected MultiIndex_TI_LZ_Runner(BaseIndexingFixture fixture, ITestOutputHelper output)
             : base(fixture, output)
         {
         }
@@ -186,7 +186,7 @@ namespace Orleans.Indexing.Tests
                 (baseRunner, intAdjust) => baseRunner.TestIndexesWithDeactivations<IFT_Grain_UIUSNINS_TI_LZ_PK, FT_Props_UIUSNINS_TI_LZ_PK>(intAdjust),
                 (baseRunner, intAdjust) => baseRunner.TestIndexesWithDeactivations<INFT_Grain_UIUSNINS_TI_LZ_PK, NFT_Props_UIUSNINS_TI_LZ_PK>(intAdjust),
                 (baseRunner, intAdjust) => baseRunner.TestIndexesWithDeactivations<IFT_Grain_UIUSNINS_TI_LZ_SB, FT_Props_UIUSNINS_TI_LZ_SB>(intAdjust),
-                (baseRunner, intAdjust)  => baseRunner.TestIndexesWithDeactivations<INFT_Grain_UIUSNINS_TI_LZ_SB, NFT_Props_UIUSNINS_TI_LZ_SB>(intAdjust)
+                (baseRunner, intAdjust) => baseRunner.TestIndexesWithDeactivations<INFT_Grain_UIUSNINS_TI_LZ_SB, NFT_Props_UIUSNINS_TI_LZ_SB>(intAdjust)
             };
         }
     }

@@ -7,8 +7,7 @@ namespace Orleans.Indexing
     /// Defines the interface for hash-indexes
     /// </summary>
     /// <typeparam name="K">the type of key for the hash index</typeparam>
-    /// <typeparam name="V">the type of grain interface that is
-    /// being indexed</typeparam>
+    /// <typeparam name="V">the type of grain interface that is being indexed</typeparam>
     [Unordered]
     public interface IHashIndexInterface<K, V> : IIndexInterface<K, V> where V : IIndexableGrain
     {
